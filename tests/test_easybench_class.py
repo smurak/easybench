@@ -802,7 +802,7 @@ class TestEasyBenchConfig:
 
         class ColorTargetBench(EasyBench):
             def bench_slow(self) -> None:
-                time.sleep(0.001)  # Slowest - should be red (max)
+                time.sleep(0.01)  # Slowest - should be red (max)
 
             def bench_medium(self) -> None:
                 time.sleep(0.000001)  # Middle - should be neither red nor green
