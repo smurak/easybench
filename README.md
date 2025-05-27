@@ -41,7 +41,7 @@ There are 3 ways to benchmark with `easybench`:
         big_list.append(item)
     ```
 
-    > [!TIP]
+    > [!TIP]  
     > When you need fresh data for each trial, use a function or lambda to generate new data on demand.  
     > (like `lambda: list(range(1_000_000))` in the above)
 
@@ -179,7 +179,7 @@ def pop_last(big_list):
     big_list.pop()
 ```
 
-> [!TIP] 
+> [!TIP]  
 > Place the `@bench.config` decorator before (below) other bench decorators.  
 
 

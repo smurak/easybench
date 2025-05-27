@@ -41,7 +41,7 @@ pip install easybench
         big_list.append(item)
     ```
 
-    > [!TIP]
+    > [!TIP]  
     > 各試行ごとに新しいデータを使用する場合は、そのデータを返す関数またはラムダをパラメータで指定します。  
     > (上記の `lambda: list(range(1_000_000))` のように。)
 
