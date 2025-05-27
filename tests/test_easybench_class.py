@@ -723,7 +723,7 @@ class TestEasyBenchConfig:
                 pass
 
             def bench_c(self) -> None:
-                time.sleep(0.001)
+                time.sleep(0.01)
 
         # Default sort ("def") preserves definition order
         bench = SortByBench()
