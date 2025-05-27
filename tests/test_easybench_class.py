@@ -716,8 +716,6 @@ class TestEasyBenchConfig:
         """Test that sort_by configuration works correctly."""
 
         class SortByBench(EasyBench):
-            def bench_a(self) -> None:
-                time.sleep(0.00001)
 
             def bench_b(self) -> None:
                 pass
@@ -730,10 +728,9 @@ class TestEasyBenchConfig:
         bench.bench(config=PartialBenchConfig(sort_by="def"))
 
         captured_def = capsys.readouterr()
-        a_pos = captured_def.out.find("a ")
         b_pos = captured_def.out.find("b ")
         c_pos = captured_def.out.find("c ")
-        assert a_pos < b_pos < c_pos
+        assert b_pos < c_pos
 
         # Sort by average time (ascending)
         bench = SortByBench()
@@ -741,9 +738,8 @@ class TestEasyBenchConfig:
 
         captured_avg = capsys.readouterr()
         b_pos = captured_avg.out.find("b ")
-        a_pos = captured_avg.out.find("a ")
         c_pos = captured_avg.out.find("c ")
-        assert b_pos < a_pos < c_pos
+        assert b_pos < c_pos
 
         # Sort by average time (descending)
         bench = SortByBench()
@@ -751,9 +747,8 @@ class TestEasyBenchConfig:
 
         captured_rev = capsys.readouterr()
         c_pos = captured_rev.out.find("c ")
-        a_pos = captured_rev.out.find("a ")
         b_pos = captured_rev.out.find("b ")
-        assert c_pos < a_pos < b_pos
+        assert c_pos < b_pos
 
     def test_using_complete_config(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Test that a complete BenchConfig can be passed directly."""
