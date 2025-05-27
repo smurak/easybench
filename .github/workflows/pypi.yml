@@ -7,6 +7,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Grant id-token permissions
+      contents: read   # Ensure repository contents can be accessed
     steps:
     - uses: actions/checkout@v4
     - name: Setup Python
