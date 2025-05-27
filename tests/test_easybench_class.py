@@ -848,7 +848,7 @@ class TestEasyBenchConfig:
                 pass  # Fastest - should be green (min)
 
             def bench_medium(self) -> None:
-                time.sleep(0.000001)  # Middle - should be neither red nor green
+                time.sleep(0.0000001)  # Middle - should be neither red nor green
 
         bench = ColorTargetBench()
         bench.bench(trials=5, use_color=True)
