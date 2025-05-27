@@ -24,12 +24,12 @@ import pytest
 
 from easybench.core import BenchConfig
 from easybench.reporters import (
-    Formatter,
     CallbackReporter,
     ConsoleReporter,
     CSVFormatter,
     DataFrameFormatter,
     FileReporter,
+    Formatter,
     JSONFormatter,
     Reporter,
     TableFormatter,
