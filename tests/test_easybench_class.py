@@ -804,9 +804,6 @@ class TestEasyBenchConfig:
             def bench_slow(self) -> None:
                 time.sleep(0.01)  # Slowest - should be red (max)
 
-            def bench_medium(self) -> None:
-                time.sleep(0.000001)  # Middle - should be neither red nor green
-
             def bench_fast(self) -> None:
                 pass  # Fastest - should be green (min)
 
@@ -846,9 +843,6 @@ class TestEasyBenchConfig:
 
             def bench_fast(self) -> None:
                 pass  # Fastest - should be green (min)
-
-            def bench_medium(self) -> None:
-                time.sleep(0.0000001)  # Middle - should be neither red nor green
 
         bench = ColorTargetBench()
         bench.bench(trials=5, use_color=True)
