@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "easybench"
-version = "0.1.1"
+version = "0.1.2"
 description = "A simple and easy-to-use Python benchmarking library"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,7 +18,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "pydantic>=2.11.4",
+    "pydantic>=2.0.0",
 ]
 
 [project.optional-dependencies]
