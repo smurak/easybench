@@ -254,6 +254,7 @@ How to use the class-based approach:
 3. Prepare for each trial in the `setup_trial` method
 4. Methods starting with `bench_` will be benchmarked
 5. Call the `bench()` method to execute the benchmarks
+   * `bench()` displays the results on screen and returns a dictionary of measured value
 
 #### Lifecycle Methods
 
