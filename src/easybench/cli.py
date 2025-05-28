@@ -100,7 +100,7 @@ def discover_benchmarks(
 
 def run_benchmarks(
     benchmarks: dict[str, Callable[..., object] | EasyBench],
-    config: BenchConfig | PartialBenchConfig | None = None,
+    config: PartialBenchConfig | None = None,
     source_id: str | None = None,
 ) -> None:
     """

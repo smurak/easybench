@@ -18,13 +18,16 @@ from typing import (
     TypeVar,
 )
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from contextlib import AbstractContextManager
 
-from .reporters import Reporter  # noqa: TC001
+from .reporters import (
+    ConsoleReporter,
+    Reporter,
+)
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -38,31 +41,6 @@ SortType = Literal["def", "avg", "min", "max", "avg_memory", "peak_memory"]
 # Generic types
 T = TypeVar("T")
 V = TypeVar("V")
-
-
-class BenchConfig(BaseModel):
-    """Config for EasyBench."""
-
-    model_config = {"arbitrary_types_allowed": True}
-
-    trials: int = 5
-    sort_by: SortType = "def"
-    reverse: bool = False
-    memory: bool = False
-    color: bool = True
-    show_output: bool = False
-    return_output: bool = False
-    reporters: list[Reporter] = []
-
-    @model_validator(mode="after")
-    def ensure_reporter(self) -> BenchConfig:
-        """Ensure there's at least one reporter."""
-        if not self.reporters:
-            # Import here to avoid circular imports
-            from .reporters import ConsoleReporter
-
-            self.reporters = [ConsoleReporter()]
-        return self
 
 
 class PartialBenchConfig(BaseModel):
@@ -94,18 +72,30 @@ class PartialBenchConfig(BaseModel):
 
         # Update non-None fields from partial config
         for field_name, field_value in self.model_dump().items():
-            if field_value is not None:
-                if field_name == "reporters" and field_value:
-                    # Replace the reporters list entirely
-                    setattr(result, field_name, field_value)
-                elif field_name != "reporters":  # Skip empty reporters list
-                    setattr(result, field_name, field_value)
+            if field_value is not None and (
+                (field_name != "reporters")
+                or (field_name == "reporters" and field_value)
+            ):
+                setattr(result, field_name, field_value)
 
         return result
 
 
+class BenchConfig(PartialBenchConfig):
+    """Complete configuration for EasyBench with required values."""
+
+    trials: int = 5
+    sort_by: SortType = "def"
+    reverse: bool = False
+    memory: bool = False
+    color: bool = True
+    show_output: bool = False
+    return_output: bool = False
+    reporters: list[Reporter] = [ConsoleReporter()]
+
+
 def ensure_full_config(
-    config: BenchConfig | PartialBenchConfig | None,
+    config: PartialBenchConfig | None,
     base_config: BenchConfig,
 ) -> BenchConfig:
     """
@@ -234,7 +224,7 @@ class EasyBench:
 
     def _initialize_bench_params(
         self,
-        config: BenchConfig | PartialBenchConfig | None = None,
+        config: PartialBenchConfig | None = None,
         fixture_registry: dict[ScopeType, dict[str, object]] | None = None,
     ) -> tuple[
         BenchConfig,
@@ -328,7 +318,7 @@ class EasyBench:
 
     def bench(
         self,
-        config: BenchConfig | PartialBenchConfig | None = None,
+        config: PartialBenchConfig | None = None,
         fixture_registry: dict[ScopeType, dict[str, object]] | None = None,
         **kwargs: object,
     ) -> dict[str, dict[str, object]]:
