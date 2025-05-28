@@ -331,7 +331,7 @@ class MyBenchmark(EasyBench):
         memory=True,         # Enable memory measurement
         color=True,          # Use color output in results
         show_output=False,   # Display function return values
-        reporters=[]         # Custom reporters (default: ConsoleReporter)
+        reporters=[]         # Custom reporters (see explanation below)
     )
 ```
 
