@@ -521,7 +521,7 @@ class TestCliMain:
             assert config.reverse is None
             assert config.show_output is None
             # This depends on cli_args_mock.no_color which is False
-            assert config.use_color is None
+            assert config.color is None
 
     @patch("argparse.ArgumentParser.parse_args")
     @patch("easybench.cli.discover_benchmark_files")
@@ -691,7 +691,7 @@ class TestCliArguments:
         assert kwargs["config"].memory is None
         assert kwargs["config"].sort_by is None
         assert kwargs["config"].reverse is None
-        assert kwargs["config"].use_color is None
+        assert kwargs["config"].color is None
         assert kwargs["config"].show_output is None
 
     def test_memory_flag(self, cli_setup: dict[str, MagicMock]) -> None:

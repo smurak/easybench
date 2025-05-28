@@ -170,7 +170,7 @@ class BenchDecorator:
         sort_by: SortType | None = None,
         reverse: bool | None = None,
         memory: bool | None = None,
-        use_color: bool | None = None,
+        color: bool | None = None,
         show_output: bool | None = None,
         reporters: list[Reporter] | None = None,
     ) -> Callable[[F], F]: ...

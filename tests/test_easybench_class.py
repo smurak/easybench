@@ -767,7 +767,7 @@ class TestEasyBenchConfig:
         assert "Avg Mem" in captured.out
 
     def test_color_output_control(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """Test that use_color setting controls colored output."""
+        """Test that color setting controls colored output."""
 
         class ColorBench(EasyBench):
             def bench_test(self) -> None:
@@ -775,14 +775,14 @@ class TestEasyBenchConfig:
 
         # With color enabled
         bench = ColorBench()
-        bench.bench(config=PartialBenchConfig(use_color=True))
+        bench.bench(config=PartialBenchConfig(color=True))
 
         captured_color = capsys.readouterr()
         assert "\x1b[" in captured_color.out or "\033[" in captured_color.out
 
         # With color disabled
         bench = ColorBench()
-        bench.bench(config=PartialBenchConfig(use_color=False))
+        bench.bench(config=PartialBenchConfig(color=False))
 
         captured_no_color = capsys.readouterr()
         assert "\x1b[" not in captured_no_color.out
@@ -803,7 +803,7 @@ class TestEasyBenchConfig:
                 pass  # Fastest - should be green (min)
 
         bench = ColorTargetBench()
-        bench.bench(trials=DEFAULT_TRIALS, use_color=True)
+        bench.bench(trials=DEFAULT_TRIALS, color=True)
 
         captured = capsys.readouterr()
         parsed_out = parse_benchmark_output(captured.out)
@@ -840,7 +840,7 @@ class TestEasyBenchConfig:
                 pass  # Fastest - should be green (min)
 
         bench = ColorTargetBench()
-        bench.bench(trials=5, use_color=True)
+        bench.bench(trials=5, color=True)
 
         captured = capsys.readouterr()
         parsed_out = parse_benchmark_output(captured.out)
@@ -876,7 +876,7 @@ class TestEasyBenchConfig:
         # Use config instead of partial_config
         config = PartialBenchConfig(
             trials=DEFAULT_TRIALS,
-            use_color=True,
+            color=True,
             memory=True,
         )
         bench.bench(config=config)

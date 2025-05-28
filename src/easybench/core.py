@@ -49,7 +49,7 @@ class BenchConfig(BaseModel):
     sort_by: SortType = "def"
     reverse: bool = False
     memory: bool = False
-    use_color: bool = True
+    color: bool = True
     show_output: bool = False
     return_output: bool = False
     reporters: list[Reporter] = []
@@ -74,7 +74,7 @@ class PartialBenchConfig(BaseModel):
     sort_by: SortType | None = None
     reverse: bool | None = None
     memory: bool | None = None
-    use_color: bool | None = None
+    color: bool | None = None
     show_output: bool | None = None
     return_output: bool | None = None
     reporters: list[Reporter] | None = None
@@ -778,7 +778,7 @@ class FunctionBench(EasyBench):
 
         """
         super().__init__(bench_config=bench_config)
-        self.bench_config.use_color = False
+        self.bench_config.color = False
 
         if not callable(func):
             error_msg = "func must be callable"

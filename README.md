@@ -329,7 +329,7 @@ class MyBenchmark(EasyBench):
         sort_by="avg",       # Sort criterion
         reverse=False,       # Sort order (False=ascending, True=descending)
         memory=True,         # Enable memory measurement
-        use_color=True,      # Use color output in results
+        color=True,      # Use color output in results
         show_output=False,   # Display function return values
         reporters=[]         # Custom reporters (default: ConsoleReporter)
     )

@@ -184,19 +184,19 @@ class TableFormatter(Formatter):
                 stat["avg"],
                 min_avg,
                 max_avg,
-                use_color=config.use_color,
+                color=config.color,
             )
             min_val = self._format_metric(
                 stat["min"],
                 min_min,
                 max_min,
-                use_color=config.use_color,
+                color=config.color,
             )
             max_val = self._format_metric(
                 stat["max"],
                 min_max,
                 max_max,
-                use_color=config.use_color,
+                color=config.color,
             )
 
             # Format the function name with proper alignment
@@ -209,13 +209,13 @@ class TableFormatter(Formatter):
                     stat["avg_memory"],
                     min_avg_memory,
                     max_avg_memory,
-                    use_color=config.use_color,
+                    color=config.color,
                 )
                 peak_mem = self._format_metric(
                     stat["peak_memory"],
                     min_peak_memory,
                     max_peak_memory,
-                    use_color=config.use_color,
+                    color=config.color,
                 )
                 line += f" {avg_mem} {peak_mem}"
 
@@ -250,7 +250,7 @@ class TableFormatter(Formatter):
         min_value: float,
         max_value: float,
         *,
-        use_color: bool = True,
+        color: bool = True,
     ) -> str:
         """
         Format a metric value with appropriate coloring.
@@ -259,10 +259,10 @@ class TableFormatter(Formatter):
             value: The value to format
             min_value: The minimum value across all benchmarks
             max_value: The maximum value across all benchmarks
-            use_color: Whether to use colored output
+            color: Whether to use colored output
 
         Returns:
-            Formatted string with color codes if use_color is True
+            Formatted string with color codes if color is True
 
         """
         # Define ANSI color codes
@@ -271,7 +271,7 @@ class TableFormatter(Formatter):
         reset = "\033[0m"
         formatted = f"{value:.6f}".ljust(12)
 
-        if not use_color:
+        if not color:
             return formatted
 
         if value == min_value:

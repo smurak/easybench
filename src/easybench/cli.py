@@ -192,7 +192,7 @@ def cli_main() -> None:
             memory=args.memory or None,
             sort_by=args.sort_by,
             reverse=args.reverse or None,
-            use_color=False if args.no_color else None,
+            color=False if args.no_color else None,
             show_output=args.show_output or None,
         )
 

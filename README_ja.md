@@ -328,7 +328,7 @@ class MyBenchmark(EasyBench):
         sort_by="avg",       # ソート基準
         reverse=False,       # ソート順序（False=昇順、True=降順）
         memory=True,         # メモリ測定を有効化
-        use_color=True,      # 結果にカラー出力を使用
+        color=True,      # 結果にカラー出力を使用
         show_output=False,   # 関数の戻り値をベンチマーク結果に表示
         reporters=[]         # カスタムレポーター (後述の解説を参照)
     )

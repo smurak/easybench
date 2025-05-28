@@ -181,7 +181,7 @@ class TestTableFormatter:
             value,
             min_value,
             max_value,
-            use_color=False,
+            color=False,
         )
 
         assert "0.100000" in result
@@ -198,7 +198,7 @@ class TestTableFormatter:
             value,
             min_value,
             max_value,
-            use_color=True,
+            color=True,
         )
 
         assert "0.050000" in result
@@ -215,7 +215,7 @@ class TestTableFormatter:
             value,
             min_value,
             max_value,
-            use_color=True,
+            color=True,
         )
 
         assert "0.150000" in result

@@ -52,6 +52,6 @@ if __name__ == "__main__":
             trials=10,
             memory=True,
             sort_by="avg",
-            use_color=True,
+            color=True,
         ),
     )
