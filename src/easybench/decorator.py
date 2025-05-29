@@ -7,13 +7,31 @@ parameters and settings. It allows for easy setup and running of benchmarks.
 
 import inspect
 from collections.abc import Callable
-from typing import Any, TypeVar, overload
+from typing import Any, ParamSpec, Protocol, TypeVar, cast, overload
 
-from .core import BenchConfig, FunctionBench, PartialBenchConfig, SortType
+from .core import (
+    BenchConfig,
+    FixtureRegistry,
+    FunctionBench,
+    PartialBenchConfig,
+    SortType,
+)
 from .reporters import Reporter
 
 # Type for decorated functions
-F = TypeVar("F", bound=Callable[..., Any])
+P = ParamSpec("P")
+R_co = TypeVar("R_co", covariant=True)
+
+
+class BenchmarkableFunction(Protocol[P, R_co]):
+    """Function with bench."""
+
+    def __call__(self, *args: P.args, **kwds: P.kwargs) -> R_co:
+        """Call method."""
+        ...
+
+    bench: FunctionBench
+    fixture_registry: FixtureRegistry
 
 
 class BenchDecorator:
@@ -23,7 +41,7 @@ class BenchDecorator:
         self,
         *args: object,
         **kwargs: object,
-    ) -> Callable[[F], F]:
+    ) -> Callable:
         """
         EasyBench benchmark decorator.
 
@@ -63,10 +81,11 @@ class BenchDecorator:
             The decorated function
 
         """
+        func = cast("BenchmarkableFunction", func)
         # Create FunctionBench instance if not already present
         if not hasattr(func, "bench"):
             func.bench = FunctionBench(func)
-            func.bench.fixture_registry = {
+            func.fixture_registry = {
                 "trial": {},
                 "function": {},
                 "class": {},
@@ -76,10 +95,10 @@ class BenchDecorator:
         for name, value in kwargs.items():
             if callable(value) and not isinstance(value, type):
                 # For callables like lambdas, register the callable itself
-                func.bench.fixture_registry["trial"][name] = value
+                func.fixture_registry["trial"][name] = value
             else:
                 # For values, create a lambda that returns the value
-                func.bench.fixture_registry["trial"][name] = lambda v=value: v
+                func.fixture_registry["trial"][name] = lambda v=value: v
 
         # Check if all required parameters are available and run if they are
         self._maybe_run_benchmark(func)
@@ -87,7 +106,7 @@ class BenchDecorator:
 
     def _reset_bench(
         self,
-        func: Callable,
+        func: BenchmarkableFunction,
         *,
         reset_params: bool = True,
         reset_config: bool = True,
@@ -102,7 +121,7 @@ class BenchDecorator:
 
         """
         if reset_params:
-            func.bench.fixture_registry = {
+            func.fixture_registry = {
                 "trial": {},
                 "function": {},
                 "class": {},
@@ -111,7 +130,7 @@ class BenchDecorator:
         if reset_config:
             func.bench.bench_config = BenchConfig()
 
-    def fn_params(self, **kwargs: object) -> Callable[[F], F]:
+    def fn_params(self, **kwargs: object) -> Callable:
         """
         Configure benchmark function parameters.
 
@@ -129,9 +148,10 @@ class BenchDecorator:
 
         def decorator(func: Callable) -> Callable:
             # Create FunctionBench instance if needed
+            func = cast("BenchmarkableFunction", func)
             if not hasattr(func, "bench"):
                 func.bench = FunctionBench(func)
-                func.bench.fixture_registry = {
+                func.fixture_registry = {
                     "trial": {},
                     "function": {},
                     "class": {},
@@ -139,28 +159,31 @@ class BenchDecorator:
 
             # Register function parameters as fixtures
             for name, value in kwargs.items():
-                func.bench.fixture_registry["trial"][name] = lambda v=value: v
+                func.fixture_registry["trial"][name] = lambda v=value: v
 
             self._maybe_run_benchmark(func)
             return func
 
         return decorator
 
-    def _maybe_run_benchmark(self, func: Callable) -> None:
+    def _maybe_run_benchmark(self, func: BenchmarkableFunction) -> None:
         """Run the benchmark if all required parameters are available."""
         # Get function signature to determine required parameters
         sig = inspect.signature(func)
         required_params = set(sig.parameters.keys())
 
         # Check if all required parameters are available in fixtures
-        provided_params = set(func.bench.fixture_registry["trial"].keys())
+        provided_params = set(func.fixture_registry["trial"].keys())
 
         if required_params.issubset(provided_params):
             # All parameters are satisfied, run the benchmark
-            func.bench.bench(fixture_registry=func.bench.fixture_registry)
+            func.bench.bench(fixture_registry=func.fixture_registry)
 
             # Reset bench
             self._reset_bench(func, reset_config=False)
+
+    @overload
+    def config(self) -> Callable: ...
 
     @overload
     def config(
@@ -173,9 +196,9 @@ class BenchDecorator:
         color: bool | None = None,
         show_output: bool | None = None,
         reporters: list[Reporter] | None = None,
-    ) -> Callable[[F], F]: ...
+    ) -> Callable: ...
 
-    def config(self, **kwargs: object) -> Callable[[F], F]:
+    def config(self, **kwargs: Any) -> Callable:
         """
         Configure benchmark settings.
 
@@ -196,10 +219,11 @@ class BenchDecorator:
         """
 
         def decorator(func: Callable) -> Callable:
+            func = cast("BenchmarkableFunction", func)
             # Create FunctionBench instance if needed
             if not hasattr(func, "bench"):
                 func.bench = FunctionBench(func)
-                func.bench.fixture_registry = {
+                func.fixture_registry = {
                     "trial": {},
                     "function": {},
                     "class": {},

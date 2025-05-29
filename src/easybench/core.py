@@ -9,22 +9,34 @@ from __future__ import annotations
 
 import inspect
 import logging
+import sys
 import time
 import tracemalloc
 import types
 from typing import (
     TYPE_CHECKING,
     Literal,
+    TypeAlias,
     TypeVar,
+    cast,
 )
 
-from pydantic import BaseModel, model_validator
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict
+else:
+    from typing_extensions import NotRequired, TypedDict
+
+
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from contextlib import AbstractContextManager
 
-from .reporters import Reporter  # noqa: TC001
+from .reporters import (
+    ConsoleReporter,
+    Reporter,
+)
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -40,29 +52,16 @@ T = TypeVar("T")
 V = TypeVar("V")
 
 
-class BenchConfig(BaseModel):
-    """Config for EasyBench."""
+class ResultType(TypedDict):
+    """Type of benchmark result."""
 
-    model_config = {"arbitrary_types_allowed": True}
+    times: list[float]
+    memory: NotRequired[list[float]]
+    output: NotRequired[list[object]]
 
-    trials: int = 5
-    sort_by: SortType = "def"
-    reverse: bool = False
-    memory: bool = False
-    color: bool = True
-    show_output: bool = False
-    return_output: bool = False
-    reporters: list[Reporter] = []
 
-    @model_validator(mode="after")
-    def ensure_reporter(self) -> BenchConfig:
-        """Ensure there's at least one reporter."""
-        if not self.reporters:
-            # Import here to avoid circular imports
-            from .reporters import ConsoleReporter
-
-            self.reporters = [ConsoleReporter()]
-        return self
+ResultsType: TypeAlias = dict[str, ResultType]
+FixtureRegistry: TypeAlias = dict[ScopeType, dict[str, object]]
 
 
 class PartialBenchConfig(BaseModel):
@@ -94,18 +93,30 @@ class PartialBenchConfig(BaseModel):
 
         # Update non-None fields from partial config
         for field_name, field_value in self.model_dump().items():
-            if field_value is not None:
-                if field_name == "reporters" and field_value:
-                    # Replace the reporters list entirely
-                    setattr(result, field_name, field_value)
-                elif field_name != "reporters":  # Skip empty reporters list
-                    setattr(result, field_name, field_value)
+            if field_value is not None and (
+                (field_name != "reporters")
+                or (field_name == "reporters" and field_value)
+            ):
+                setattr(result, field_name, field_value)
 
         return result
 
 
+class BenchConfig(PartialBenchConfig):
+    """Complete configuration for EasyBench with required values."""
+
+    trials: int = 5
+    sort_by: SortType = "def"
+    reverse: bool = False
+    memory: bool = False
+    color: bool = True
+    show_output: bool = False
+    return_output: bool = False
+    reporters: list[Reporter] = [ConsoleReporter()]
+
+
 def ensure_full_config(
-    config: BenchConfig | PartialBenchConfig | None,
+    config: PartialBenchConfig | None,
     base_config: BenchConfig,
 ) -> BenchConfig:
     """
@@ -133,7 +144,7 @@ def ensure_full_config(
 
 
 # Store fixture objects by scope
-_fixture_registry: dict[ScopeType, dict[str, object]] = {
+_fixture_registry: FixtureRegistry = {
     "trial": {},  # Run once per trial
     "function": {},  # Run once per function
     "class": {},  # Run once per class
@@ -142,7 +153,7 @@ _fixture_registry: dict[ScopeType, dict[str, object]] = {
 
 def fixture(
     scope: ScopeType = "trial",
-    fixture_registry: dict[ScopeType, dict[str, object]] | None = None,
+    fixture_registry: FixtureRegistry | None = None,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """
     Define a fixture function.
@@ -204,14 +215,14 @@ class EasyBench:
             original_init = cls.__init__
 
             def safe_init(self: EasyBench, *args: object, **kwargs: object) -> None:
-                config = kwargs.get("bench_config")
+                config = cast("BenchConfig", kwargs.get("bench_config"))
                 EasyBench.__init__(
                     self,
                     bench_config=config,
                 )
-                original_init(self, *args, **kwargs)
+                original_init(self, *args, **kwargs)  # type: ignore [arg-type]
 
-            cls.__init__ = safe_init
+            cls.__init__ = safe_init  # type: ignore [method-assign]
 
     # Default empty implementations of special methods
     def setup_class(self) -> None:
@@ -234,11 +245,11 @@ class EasyBench:
 
     def _initialize_bench_params(
         self,
-        config: BenchConfig | PartialBenchConfig | None = None,
-        fixture_registry: dict[ScopeType, dict[str, object]] | None = None,
+        config: PartialBenchConfig | None = None,
+        fixture_registry: FixtureRegistry | None = None,
     ) -> tuple[
         BenchConfig,
-        dict[ScopeType, dict[str, object]],
+        FixtureRegistry,
     ]:
         """
         Initialize benchmark parameters with defaults from config if not provided.
@@ -274,8 +285,8 @@ class EasyBench:
     def _run_benchmarks(
         self,
         config: BenchConfig,
-        fixture_registry: dict[ScopeType, dict[str, object]],
-    ) -> dict[str, dict[str, object]]:
+        fixture_registry: FixtureRegistry,
+    ) -> ResultsType:
         """
         Execute all benchmark methods for the specified number of trials.
 
@@ -288,14 +299,14 @@ class EasyBench:
 
         """
         benchmark_methods = self._discover_benchmark_methods()
-        results = {}
-        values = {}
+        results: ResultsType = {}
+        values: dict[str, object] = {}
 
         capture_output = config.show_output or config.return_output
 
         with self._manage_scope("class", values, fixture_registry):
             for method_name, method in benchmark_methods.items():
-                result_dict = {"times": []}
+                result_dict: ResultType = {"times": []}
                 if config.memory:
                     result_dict["memory"] = []
                 if capture_output:
@@ -318,7 +329,7 @@ class EasyBench:
 
                             results[method_name]["times"].append(execution_time)
 
-                            if config.memory:
+                            if config.memory and memory_usage is not None:
                                 results[method_name]["memory"].append(memory_usage)
 
                             if capture_output:
@@ -328,10 +339,10 @@ class EasyBench:
 
     def bench(
         self,
-        config: BenchConfig | PartialBenchConfig | None = None,
-        fixture_registry: dict[ScopeType, dict[str, object]] | None = None,
+        config: PartialBenchConfig | None = None,
+        fixture_registry: FixtureRegistry | None = None,
         **kwargs: object,
-    ) -> dict[str, dict[str, object]]:
+    ) -> ResultsType:
         """
         Run all benchmark methods for the specified number of trials.
 
@@ -346,7 +357,11 @@ class EasyBench:
         """
         # Support legacy keyword arguments
         if kwargs and not config:
-            config = PartialBenchConfig(**kwargs)
+            try:
+                config = PartialBenchConfig(**kwargs)  # type: ignore [arg-type]
+            except TypeError as e:
+                msg = f"Invalid keywords: {e}"
+                raise ValueError(msg) from e
         elif kwargs:
             logger.warning(
                 "Both config and keyword arguments provided. "
@@ -381,7 +396,7 @@ class EasyBench:
             bench_instance: EasyBench,
             scope: ScopeType,
             values: dict[str, object],
-            fixture_registry: dict[ScopeType, dict[str, object]],
+            fixture_registry: FixtureRegistry,
         ) -> None:
             """
             Initialize scope manager.
@@ -521,7 +536,7 @@ class EasyBench:
         self,
         scope: ScopeType,
         values: dict[str, object],
-        fixture_registry: dict[ScopeType, dict[str, object]],
+        fixture_registry: FixtureRegistry,
     ) -> AbstractContextManager:
         """
         Context manager for setting up and tearing down the benchmark class.
@@ -544,7 +559,7 @@ class EasyBench:
         values: dict[str, object],
         memory: bool = False,
         capture_output: bool = False,
-    ) -> tuple[float, int | None, object]:
+    ) -> tuple[float, float | None, object | None]:
         """
         Run a single benchmark method with the required fixtures.
 
@@ -636,7 +651,7 @@ class EasyBench:
 
     def _display_results(
         self,
-        results: dict[str, dict[str, object]],
+        results: ResultsType,
         config: BenchConfig,
     ) -> None:
         """
@@ -651,9 +666,6 @@ class EasyBench:
             logger.info("\nNo benchmark results to display.")
             return
 
-        # Calculate the longest method name for alignment
-        max_name_len = max(len(method_name) for method_name in results)
-
         # Calculate statistics
         stats = self._calculate_statistics(
             results,
@@ -661,27 +673,17 @@ class EasyBench:
             memory=config.memory,
         )
 
-        # Determine the order of methods to display
-        sorted_methods = self._sort_results(
-            results,
-            stats,
-            config.sort_by,
-            reverse=config.reverse,
-        )
-
         # Use each reporter to report the results
         for reporter in config.reporters:
             reporter.report(
                 results=results,
                 stats=stats,
-                sorted_methods=sorted_methods,
                 config=config,
-                max_name_len=max_name_len,
             )
 
     def _calculate_statistics(
         self,
-        results: dict[str, dict[str, object]],
+        results: ResultsType,
         *,
         trials: int,
         memory: bool,
@@ -725,38 +727,6 @@ class EasyBench:
                     )
 
         return stats
-
-    def _sort_results(
-        self,
-        results: dict[str, dict[str, object]],
-        stats: dict[str, dict[str, float]],
-        sort_by: SortType,
-        *,
-        reverse: bool,
-    ) -> list[str]:
-        """
-        Sort benchmark methods based on the specified criteria.
-
-        Args:
-            results: Dictionary mapping benchmark names to lists of execution times
-            stats: Dictionary of precomputed statistics for each benchmark
-            sort_by: Metric to sort by
-                ('def', 'avg', 'min', 'max', 'avg_memory', 'peak_memory')
-            reverse: Whether to reverse the sort order
-
-        Returns:
-            Sorted list of method names
-
-        """
-        if sort_by == "def":
-            return list(results.keys())
-        if sort_by in ("avg", "min", "max", "avg_memory", "peak_memory"):
-            return sorted(
-                stats.keys(),
-                key=lambda method_name: stats[method_name][sort_by],
-                reverse=reverse,
-            )
-        return list(results.keys())
 
 
 class FunctionBench(EasyBench):
@@ -860,7 +830,7 @@ class FunctionBench(EasyBench):
                 kwargs[param_names[i]] = arg
 
         # Register parameters as fixtures
-        fixture_registry = {"trial": {}, "function": {}, "class": {}}
+        fixture_registry: FixtureRegistry = {"trial": {}, "function": {}, "class": {}}
         for name, value in kwargs.items():
             fixture_registry["trial"][name] = lambda v=value: v
 

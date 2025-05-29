@@ -4,6 +4,7 @@
 [![PyPI version](https://badge.fury.io/py/easybench.svg)](https://pypi.org/project/easybench/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
@@ -254,6 +255,7 @@ How to use the class-based approach:
 3. Prepare for each trial in the `setup_trial` method
 4. Methods starting with `bench_` will be benchmarked
 5. Call the `bench()` method to execute the benchmarks
+   * `bench()` displays the results on screen and returns a dictionary of measured value
 
 #### Lifecycle Methods
 
@@ -329,9 +331,9 @@ class MyBenchmark(EasyBench):
         sort_by="avg",       # Sort criterion
         reverse=False,       # Sort order (False=ascending, True=descending)
         memory=True,         # Enable memory measurement
-        color=True,      # Use color output in results
+        color=True,          # Use color output in results
         show_output=False,   # Display function return values
-        reporters=[]         # Custom reporters (default: ConsoleReporter)
+        reporters=[]         # Custom reporters (see explanation below)
     )
 ```
 

@@ -4,6 +4,7 @@
 [![PyPI version](https://badge.fury.io/py/easybench.svg)](https://pypi.org/project/easybench/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
@@ -253,6 +254,7 @@ if __name__ == "__main__":
 3. `setup_trial`メソッドで各試行の準備
 4. `bench_`で始まるメソッドがベンチマーク対象になります
 5. `bench()`メソッドを呼び出してベンチマークを実行
+   * ベンチマークの結果を画面に表示し、実測値の辞書を戻り値として返します
 
 #### ライフサイクルメソッド
 
@@ -328,7 +330,7 @@ class MyBenchmark(EasyBench):
         sort_by="avg",       # ソート基準
         reverse=False,       # ソート順序（False=昇順、True=降順）
         memory=True,         # メモリ測定を有効化
-        color=True,      # 結果にカラー出力を使用
+        color=True,          # 結果にカラー出力を使用
         show_output=False,   # 関数の戻り値をベンチマーク結果に表示
         reporters=[]         # カスタムレポーター (後述の解説を参照)
     )

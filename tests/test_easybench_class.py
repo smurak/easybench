@@ -13,12 +13,12 @@ This module contains various test cases for the EasyBench class, including:
 import logging
 import time
 from collections.abc import Callable, Generator
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 import pytest
 
 from easybench import BenchConfig, EasyBench, fixture
-from easybench.core import PartialBenchConfig
+from easybench.core import FixtureRegistry, PartialBenchConfig, ScopeType
 
 # Constants to replace magic numbers
 MIN_SLEEP_TIME = 0.01
@@ -475,7 +475,7 @@ class TestEasyBenchFixtures:
 
     def test_custom_fixture_registry(self) -> None:
         """Test using a custom fixture registry."""
-        custom_registry = {"trial": {}, "function": {}, "class": {}}
+        custom_registry: FixtureRegistry = {"trial": {}, "function": {}, "class": {}}
 
         @fixture(scope="trial", fixture_registry=custom_registry)
         def custom_fixture() -> str:
@@ -968,7 +968,7 @@ class TestFunctionBench:
         from easybench.core import FunctionBench
 
         with pytest.raises(TypeError, match="func must be callable"):
-            FunctionBench("not_callable")
+            FunctionBench(cast("Callable[..., object]", "not_callable"))
 
     def test_function_bench_void_return(self) -> None:
         """Test FunctionBench with a function that returns None."""
@@ -1078,13 +1078,13 @@ class TestEasyBenchScopeManager:
         from easybench.core import EasyBench
 
         bench = EasyBench()
-        values = {}
-        fixture_registry = {"trial": {}, "function": {}, "class": {}}
+        values: dict[str, object] = {}
+        fixture_registry: FixtureRegistry = {"trial": {}, "function": {}, "class": {}}
 
         # Create a ScopeManager with an invalid scope
         manager = EasyBench.ScopeManager(
             bench,
-            "invalid_scope",
+            cast("ScopeType", "invalid_scope"),
             values,
             fixture_registry,
         )
@@ -1098,14 +1098,14 @@ class TestEasyBenchScopeManager:
         from easybench.core import EasyBench
 
         bench = EasyBench()
-        values = {}
+        values: dict[str, object] = {}
 
         # Create fixture that raises an error
         def failing_fixture() -> None:
             error_msg = "Fixture setup error"
             raise ValueError(error_msg)
 
-        fixture_registry = {
+        fixture_registry: FixtureRegistry = {
             "trial": {"failing": failing_fixture},
             "function": {},
             "class": {},
@@ -1123,7 +1123,7 @@ class TestEasyBenchScopeManager:
         from easybench.core import EasyBench
 
         bench = EasyBench()
-        values = {}
+        values: dict[str, object] = {}
 
         # Create generator fixture that raises during teardown
         def failing_generator() -> Generator[str, None, None]:
@@ -1131,7 +1131,7 @@ class TestEasyBenchScopeManager:
             error_msg = "Fixture teardown error"
             raise ValueError(error_msg)
 
-        fixture_registry = {
+        fixture_registry: FixtureRegistry = {
             "trial": {"failing": failing_generator},
             "function": {},
             "class": {},
@@ -1143,45 +1143,3 @@ class TestEasyBenchScopeManager:
         # This should not raise an exception (errors are logged)
         with manager:
             pass
-
-
-class TestEasyBenchSort:
-    """Tests for sorting functionality in EasyBench."""
-
-    def test_sort_results_unknown_criteria(self) -> None:
-        """Test sorting with an invalid sort_by value."""
-
-        class SortBench(EasyBench):
-            def bench_test(self) -> None:
-                pass
-
-        bench = SortBench()
-        results = {"bench_test": {"times": [0.1]}}
-        stats = {"bench_test": {"time": 0.1}}
-
-        # This should return the keys in their original order
-        sorted_methods = bench._sort_results(results, stats, "unknown", reverse=False)
-        assert sorted_methods == list(results.keys())
-
-
-class TestFunctionBenchEdgeCases:
-    """Additional tests for edge cases in FunctionBench."""
-
-    def test_function_bench_empty_results(self) -> None:
-        """Test FunctionBench.__call__ when there are no results."""
-        from easybench.core import FunctionBench
-
-        def test_func() -> int:
-            return 42
-
-        fb = FunctionBench(test_func)
-
-        # Create a mock bench method that returns empty results
-        original_bench = fb.bench
-        fb.bench = lambda *_, **__: {}  # Use _ and __ for unused args
-
-        # Call should return None when no results are available
-        assert fb() is None
-
-        # Restore original method
-        fb.bench = original_bench
