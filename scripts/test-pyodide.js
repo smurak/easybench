@@ -17,7 +17,7 @@ const pyodideVersion = process.argv[2] || "0.27.5";
     process.exit(1);
   }
 
-  // distディレクトリの絶対パス
+  // Absolute path to dist directory
   const distDir = path.resolve(__dirname, "../dist");
   const wheelFile = fs.readdirSync(distDir).find(f => f.endsWith(".whl"));
   if (!wheelFile) {
@@ -27,22 +27,22 @@ const pyodideVersion = process.argv[2] || "0.27.5";
 
   console.log("📦 Found wheel:", wheelFile);
 
-  // serve-staticでdistフォルダを配信
+  // Serve the dist folder using serve-static
   const serve = serveStatic(distDir, { index: false });
 
-  // HTTPサーバーを作成
+  // Create HTTP server
   const server = http.createServer((req, res) => {
-    // CORSヘッダーをつける
+    // Add CORS headers
     res.setHeader("Access-Control-Allow-Origin", "*");
     serve(req, res, finalhandler(req, res));
   });
 
-  // ポート8000でリスン開始
+  // Start listening on port 8000
   const port = 8000;
   await new Promise((resolve) => server.listen(port, resolve));
   console.log(`🌐 HTTP server running at http://localhost:${port}/`);
 
-  // ブラウザ起動
+  // Launch browser
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
@@ -52,7 +52,7 @@ const pyodideVersion = process.argv[2] || "0.27.5";
   const blankHtmlUrl = `file://${blankHtmlPath.replace(/\\/g, "/")}`;
   await page.goto(blankHtmlUrl);
 
-  // wheelファイルのURLをHTTPサーバー経由で渡す
+  // Pass wheel file URL via HTTP server
   const wheelUrl = `http://localhost:${port}/${wheelFile}`;
 
   await page.evaluate(
@@ -79,6 +79,6 @@ const pyodideVersion = process.argv[2] || "0.27.5";
 
   await browser.close();
 
-  // HTTPサーバーを閉じる
+  // Close HTTP server
   server.close();
 })();
