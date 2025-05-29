@@ -1145,25 +1145,6 @@ class TestEasyBenchScopeManager:
             pass
 
 
-class TestEasyBenchSort:
-    """Tests for sorting functionality in EasyBench."""
-
-    def test_sort_results_unknown_criteria(self) -> None:
-        """Test sorting with an invalid sort_by value."""
-
-        class SortBench(EasyBench):
-            def bench_test(self) -> None:
-                pass
-
-        bench = SortBench()
-        results = {"bench_test": {"times": [0.1]}}
-        stats = {"bench_test": {"time": 0.1}}
-
-        # This should return the keys in their original order
-        sorted_methods = bench._sort_results(results, stats, "unknown", reverse=False)
-        assert sorted_methods == list(results.keys())
-
-
 class TestFunctionBenchEdgeCases:
     """Additional tests for edge cases in FunctionBench."""
 

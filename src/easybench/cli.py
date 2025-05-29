@@ -6,7 +6,6 @@ import inspect
 import logging
 import sys
 import types
-from collections.abc import Callable
 from pathlib import Path
 
 from .core import BenchConfig, EasyBench, FunctionBench, PartialBenchConfig
@@ -63,7 +62,7 @@ def load_benchmark_module(file_path: Path) -> types.ModuleType | None:
 
 def discover_benchmarks(
     module: types.ModuleType,
-) -> dict[str, Callable[..., object] | EasyBench]:
+) -> dict[str, types.FunctionType | EasyBench]:
     """
     Discover all benchmarks in a module.
 
@@ -79,7 +78,7 @@ def discover_benchmarks(
 
     """
     # Find all benchmark functions (ones that start with 'bench_')
-    benchmarks = {
+    benchmarks: dict[str, types.FunctionType | EasyBench] = {
         name: obj
         for name, obj in inspect.getmembers(module, inspect.isfunction)
         if name.startswith("bench_")
@@ -99,7 +98,7 @@ def discover_benchmarks(
 
 
 def run_benchmarks(
-    benchmarks: dict[str, Callable[..., object] | EasyBench],
+    benchmarks: dict[str, types.FunctionType | EasyBench],
     config: PartialBenchConfig | None = None,
     source_id: str | None = None,
 ) -> None:
@@ -122,7 +121,7 @@ def run_benchmarks(
         )
 
     for name, benchmark in benchmarks.items():
-        logger.info("Running benchmark: %s", name)
+        print("Running benchmark: %s", name)  # noqa: T201
 
         try:
             if inspect.isfunction(benchmark):
@@ -145,7 +144,7 @@ def cli_main() -> None:
     easybench [--trials N] [--memory] [--sort-by METRIC] [--reverse]
     [--show-output] [directory]
     """
-    config = BenchConfig()
+    default_config = BenchConfig()
     parser = argparse.ArgumentParser(
         description="Run benchmarks in the specified directory",
     )
@@ -159,7 +158,10 @@ def cli_main() -> None:
         "--trials",
         type=int,
         default=None,
-        help=f"Number of trials to run for each benchmark (default: {config.trials})",
+        help=(
+            "Number of trials to run for each benchmark "
+            f"(default: {default_config.trials})"
+        ),
     )
     parser.add_argument(
         "--memory",

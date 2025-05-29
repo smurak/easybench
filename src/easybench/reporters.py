@@ -25,9 +25,12 @@ if TYPE_CHECKING:
 
     import pandas as pd
 
-    from .core import BenchConfig
+    from .core import BenchConfig, ResultsType
 
 T = TypeVar("T")
+
+type Stats = dict[str, dict[str, float]]
+type Formatted = str | pd.DataFrame
 
 
 class Formatter(ABC):
@@ -36,26 +39,74 @@ class Formatter(ABC):
     @abstractmethod
     def format(
         self,
-        results: dict[str, dict[str, Any]],
-        stats: dict[str, dict[str, float]],
-        sorted_methods: list[str],
+        results: ResultsType,
+        stats: Stats,
         config: BenchConfig,
-        max_name_len: int,
-    ) -> str | pd.DataFrame:
+    ) -> Formatted:
         """
         Format benchmark results.
 
         Args:
             results: Dictionary mapping benchmark names to result data
+              Example:
+              {
+                  "bench_append": {
+                      "times": [0.01, 0.012],  # Execution times per trial
+                      "memory": [10.5, 10.2],   # Memory usage (if enabled)
+                      "output": ["result", "result2"]  # Function outputs (if enabled)
+                  },
+                  "bench_insert": {
+                      "times": [0.02, 0.019, 0.021],
+                      "memory": [12.1, 12.0, 12.3],
+                      "output": ["result", "result2", "result3"]
+                  }
+              }
             stats: Dictionary of calculated statistics
-            sorted_methods: List of method names in sorted order
+              Example:
+              {
+                  "bench_append": {
+                      "avg": 0.011, "min": 0.01, "max": 0.012,
+                      "avg_memory": 10.35, "peak_memory": 10.5
+                  },
+                  "bench_insert": {
+                      "avg": 0.02, "min": 0.019, "max": 0.021,
+                      "avg_memory": 12.13, "peak_memory": 12.3
+                  }
+              }
             config: Benchmark configuration
-            max_name_len: Length of the longest method name
 
         Returns:
             Formatted results in the appropriate format
 
         """
+
+    def sort_keys(
+        self,
+        stats: Stats,
+        config: BenchConfig,
+    ) -> list[str]:
+        """
+        Sort stats keys based on the config.
+
+        Args:
+            stats: Dictionary of precomputed statistics for each benchmark
+            config: Benchmark config
+
+        Returns:
+            Sorted list of stats keys
+
+        """
+        if config.sort_by in ("avg", "min", "max", "avg_memory", "peak_memory"):
+            return sorted(
+                stats.keys(),
+                key=lambda method_name: stats[method_name][config.sort_by],
+                reverse=config.reverse,
+            )
+
+        if config.reverse:
+            return list(stats.keys())[::-1]
+
+        return list(stats.keys())
 
 
 class TableFormatter(Formatter):
@@ -63,47 +114,43 @@ class TableFormatter(Formatter):
 
     def format(
         self,
-        results: dict[str, dict[str, Any]],
-        stats: dict[str, dict[str, float]],
-        sorted_methods: list[str],
+        results: ResultsType,
+        stats: Stats,
         config: BenchConfig,
-        max_name_len: int,
     ) -> str:
         """Format results as text tables."""
         output = []
+        self.max_name_len = max(len(name) for name in results)
+        self.sorted_methods = self.sort_keys(stats, config)
 
         # Add title line
         output.append(self._format_title(config))
 
         # Format header
-        header = self._format_header(config, max_name_len)
+        header = self._format_header(config)
         output.append(header)
 
         # Add dash line
-        dash_length = self._calculate_dash_length(config, max_name_len)
+        dash_length = self._calculate_dash_length(config)
         output.append("-" * dash_length)
 
         # Format result lines
         if config.trials == 1:
             self._format_single_trial_results(
                 output,
-                sorted_methods,
                 stats,
                 config,
-                max_name_len,
             )
         else:
             self._format_multiple_trial_results(
                 output,
-                sorted_methods,
                 stats,
                 config,
-                max_name_len,
             )
 
         # Add function outputs if requested
         if config.show_output:
-            self._format_output_section(output, sorted_methods, results, max_name_len)
+            self._format_output_section(output, results)
 
         return "\n".join(output) + "\n"
 
@@ -114,40 +161,38 @@ class TableFormatter(Formatter):
             f"{'s' if config.trials > 1 else ''}):\n"
         )
 
-    def _format_header(self, config: BenchConfig, max_name_len: int) -> str:
+    def _format_header(self, config: BenchConfig) -> str:
         """Format the header row."""
         if config.trials == 1:
-            header = f"{'Function':<{max_name_len + 2}} {'Time (s)':<11}"
+            header = f"{'Function':<{self.max_name_len + 2}} {'Time (s)':<11}"
             if config.memory:
                 header += f" {'Memory (KB)'}"
         else:
             header = (
-                f"{'Function':<{max_name_len + 2}} {'Avg Time (s)'} "
+                f"{'Function':<{self.max_name_len + 2}} {'Avg Time (s)'} "
                 f"{'Min Time (s)'} {'Max Time (s)'}"
             )
             if config.memory:
                 header += f" {'Avg Mem (KB)'} {'Peak Mem (KB)'}"
         return header
 
-    def _calculate_dash_length(self, config: BenchConfig, max_name_len: int) -> int:
+    def _calculate_dash_length(self, config: BenchConfig) -> int:
         """Calculate dash line length."""
         if config.trials == 1:
-            return max_name_len + (14 if not config.memory else 26)
-        return max_name_len + (38 if not config.memory else 68)
+            return self.max_name_len + (14 if not config.memory else 26)
+        return self.max_name_len + (38 if not config.memory else 68)
 
     def _format_single_trial_results(
         self,
         output: list[str],
-        sorted_methods: list[str],
-        stats: dict[str, dict[str, float]],
+        stats: Stats,
         config: BenchConfig,
-        max_name_len: int,
     ) -> None:
         """Format results for a single trial benchmark."""
-        for method_name in sorted_methods:
+        for method_name in self.sorted_methods:
             stat = stats[method_name]
             time_val = f"{stat['time']:.6f}".ljust(12)
-            line = f"{method_name}".ljust(max_name_len + 2) + f" {time_val}"
+            line = f"{method_name}".ljust(self.max_name_len + 2) + f" {time_val}"
             if config.memory:
                 mem_val = f"{stat['memory']:.6f}".ljust(12)
                 line += f" {mem_val}"
@@ -156,10 +201,8 @@ class TableFormatter(Formatter):
     def _format_multiple_trial_results(
         self,
         output: list[str],
-        sorted_methods: list[str],
-        stats: dict[str, dict[str, float]],
+        stats: Stats,
         config: BenchConfig,
-        max_name_len: int,
     ) -> None:
         """Format results for multiple trial benchmarks."""
         # Find min and max values for each metric for coloring
@@ -176,7 +219,7 @@ class TableFormatter(Formatter):
             min_peak_memory = min(stat["peak_memory"] for stat in stats.values())
             max_peak_memory = max(stat["peak_memory"] for stat in stats.values())
 
-        for method_name in sorted_methods:
+        for method_name in self.sorted_methods:
             stat = stats[method_name]
 
             # Format values with appropriate coloring
@@ -200,7 +243,7 @@ class TableFormatter(Formatter):
             )
 
             # Format the function name with proper alignment
-            method_col = f"{method_name}".ljust(max_name_len + 2)
+            method_col = f"{method_name}".ljust(self.max_name_len + 2)
             line = f"{method_col} {avg_val} {min_val} {max_val}"
 
             if config.memory:
@@ -224,15 +267,13 @@ class TableFormatter(Formatter):
     def _format_output_section(
         self,
         output: list[str],
-        sorted_methods: list[str],
-        results: dict[str, dict[str, Any]],
-        max_name_len: int,
+        results: ResultsType,
     ) -> None:
         """Format the output section."""
         output.append("\nBenchmark Return Values:")
-        output.append("-" * max(max_name_len + 10, 30))
+        output.append("-" * max(self.max_name_len + 10, 30))
 
-        for method_name in sorted_methods:
+        for method_name in self.sorted_methods:
             if "output" not in results[method_name]:
                 continue
 
@@ -286,14 +327,12 @@ class CSVFormatter(Formatter):
 
     def format(
         self,
-        results: dict[str, dict[str, Any]],
-        stats: dict[str, dict[str, float]],
-        sorted_methods: list[str],
+        results: ResultsType,
+        stats: Stats,
         config: BenchConfig,
-        max_name_len: int,
     ) -> str:
         """Format results as CSV."""
-        _, _ = results, max_name_len  # unused but avoids ARG002
+        _ = results  # unused but avoids ARG002
         output = StringIO()
         writer = csv.writer(output)
 
@@ -310,7 +349,7 @@ class CSVFormatter(Formatter):
         writer.writerow(header)
 
         # Write data rows
-        for method_name in sorted_methods:
+        for method_name in self.sort_keys(stats, config):
             stat = stats[method_name]
             if config.trials == 1:
                 row = [method_name, stat["time"]]
@@ -331,15 +370,12 @@ class JSONFormatter(Formatter):
 
     def format(
         self,
-        results: dict[str, dict[str, Any]],
-        stats: dict[str, dict[str, float]],
-        sorted_methods: list[str],
+        results: ResultsType,
+        stats: Stats,
         config: BenchConfig,
-        max_name_len: int,
     ) -> str:
         """Format results as JSON."""
-        _ = max_name_len  # unused but avoids ARG002
-        output_data = {
+        output_data: dict[str, dict[str, Any]] = {
             "config": {
                 "trials": config.trials,
                 "memory": config.memory,
@@ -349,7 +385,7 @@ class JSONFormatter(Formatter):
             "results": {},
         }
 
-        for method_name in sorted_methods:
+        for method_name in self.sort_keys(stats, config):
             stat = stats[method_name]
             output_data["results"][method_name] = stat
 
@@ -367,14 +403,11 @@ class DataFrameFormatter(Formatter):
 
     def format(
         self,
-        results: dict[str, dict[str, Any]],
-        stats: dict[str, dict[str, float]],
-        sorted_methods: list[str],
+        results: ResultsType,
+        stats: Stats,
         config: BenchConfig,
-        max_name_len: int,
     ) -> pd.DataFrame:
         """Format results as DataFrame."""
-        _ = max_name_len  # unused but avoids ARG002
         try:
             import pandas as pd
         except ImportError as err:
@@ -384,11 +417,10 @@ class DataFrameFormatter(Formatter):
             )
             raise ImportError(error_msg) from err
 
-        # Using max_name_len for consistent method signature, even if not used here
         data = []
-        for method_name in sorted_methods:
+        for method_name in self.sort_keys(stats, config):
             stat = stats[method_name]
-            row = {"Function": method_name}
+            row: dict[str, Any] = {"Function": method_name}
 
             # Add stats based on number of trials
             if config.trials == 1:
@@ -413,9 +445,8 @@ class DataFrameFormatter(Formatter):
 
             # Add output if requested
             if config.show_output and "output" in results[method_name]:
-                row["Output"] = results[method_name]["output"][
-                    0
-                ]  # Just take first output
+                # Just take first output
+                row["Output"] = results[method_name]["output"][0]
 
             data.append(row)
 
@@ -437,11 +468,9 @@ class Reporter:
 
     def report(
         self,
-        results: dict[str, dict[str, Any]],
-        stats: dict[str, dict[str, float]],
-        sorted_methods: list[str],
+        results: ResultsType,
+        stats: Stats,
         config: BenchConfig,
-        max_name_len: int,
     ) -> None:
         """
         Report benchmark results.
@@ -449,21 +478,18 @@ class Reporter:
         Args:
             results: Dictionary mapping benchmark names to result data
             stats: Dictionary of calculated statistics
-            sorted_methods: List of method names in sorted order
             config: Benchmark configuration
-            max_name_len: Length of the longest method name
 
         """
         formatted = self.formatter.format(
             results=results,
             stats=stats,
-            sorted_methods=sorted_methods,
             config=config,
-            max_name_len=max_name_len,
         )
         self._send(formatted)
 
-    def _send(self, formatted_output: str | pd.DataFrame) -> None:
+    @abstractmethod
+    def _send(self, formatted_output: Formatted) -> None:
         """
         Send formatted output to the destination.
 
@@ -471,7 +497,6 @@ class Reporter:
             formatted_output: The formatted output to send
 
         """
-        # Base implementation does nothing
 
 
 class ConsoleReporter(Reporter):
@@ -493,7 +518,7 @@ class ConsoleReporter(Reporter):
         super().__init__(formatter or TableFormatter())
         self.file = file
 
-    def _send(self, formatted_output: str | pd.DataFrame) -> None:
+    def _send(self, formatted_output: Formatted) -> None:
         """
         Print formatted output to console.
 
@@ -541,7 +566,7 @@ class FileReporter(Reporter):
         self.mode = mode
         self.encoding = encoding
 
-    def _send(self, formatted_output: str | pd.DataFrame) -> None:
+    def _send(self, formatted_output: Formatted) -> None:
         """
         Write formatted output to file.
 
@@ -558,7 +583,7 @@ class CallbackReporter(Reporter):
 
     def __init__(
         self,
-        callback: Callable[[str | pd.DataFrame], None],
+        callback: Callable[[Formatted], None],
         formatter: Formatter | None = None,
     ) -> None:
         """
@@ -572,7 +597,7 @@ class CallbackReporter(Reporter):
         super().__init__(formatter or DataFrameFormatter())
         self.callback = callback
 
-    def _send(self, formatted_output: str | pd.DataFrame) -> None:
+    def _send(self, formatted_output: Formatted) -> None:
         """
         Send formatted output to callback.
 

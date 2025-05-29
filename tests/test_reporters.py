@@ -63,10 +63,9 @@ class TestTableFormatter:
         formatter = TableFormatter()
         results = {"test_func": {"times": [TEST_TIME_VALUE], "memory": [1024]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE, "memory": TEST_MEMORY_VALUE}}
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=1, memory=True)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
 
         assert "Benchmark Results (1 trial)" in output
         assert "Function" in output
@@ -87,10 +86,9 @@ class TestTableFormatter:
                 "max": TEST_SLOWER_TIME,
             },
         }
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=3)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
 
         assert "Benchmark Results (3 trials)" in output
         assert "Function" in output
@@ -117,10 +115,9 @@ class TestTableFormatter:
                 "peak_memory": TEST_PEAK_MEMORY,
             },
         }
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=3, memory=True)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
 
         assert "Benchmark Results (3 trials)" in output
         assert "Function" in output
@@ -133,10 +130,9 @@ class TestTableFormatter:
         formatter = TableFormatter()
         results = {"test_func": {"times": [TEST_TIME_VALUE], "output": ["result"]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=1, show_output=True)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
 
         assert "Benchmark Results (1 trial)" in output
         assert "Benchmark Return Values" in output
@@ -158,10 +154,9 @@ class TestTableFormatter:
                 "max": TEST_SLOWER_TIME,
             },
         }
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=3, show_output=True)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
 
         assert "Benchmark Results (3 trials)" in output
         assert "Benchmark Return Values" in output
@@ -230,10 +225,9 @@ class TestCSVFormatter:
         formatter = CSVFormatter()
         results = {"test_func": {"times": [TEST_TIME_VALUE]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=1)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
 
         # Parse the CSV output
         reader = csv.reader(io.StringIO(output))
@@ -257,10 +251,9 @@ class TestCSVFormatter:
                 "max": TEST_SLOWER_TIME,
             },
         }
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=3)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
 
         # Parse the CSV output
         reader = csv.reader(io.StringIO(output))
@@ -278,10 +271,9 @@ class TestCSVFormatter:
         formatter = CSVFormatter()
         results = {"test_func": {"times": [TEST_TIME_VALUE], "memory": [1024]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE, "memory": TEST_MEMORY_VALUE}}
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=1, memory=True)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
 
         # Parse the CSV output
         reader = csv.reader(io.StringIO(output))
@@ -311,10 +303,9 @@ class TestCSVFormatter:
                 "peak_memory": TEST_PEAK_MEMORY,
             },
         }
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=3, memory=True)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
 
         # Parse the CSV output
         reader = csv.reader(io.StringIO(output))
@@ -343,10 +334,9 @@ class TestJSONFormatter:
         formatter = JSONFormatter()
         results = {"test_func": {"times": [TEST_TIME_VALUE]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=1)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
         data = json.loads(output)
 
         assert "config" in data
@@ -373,10 +363,9 @@ class TestJSONFormatter:
                 "peak_memory": TEST_PEAK_MEMORY,
             },
         }
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=3, memory=True)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
         data = json.loads(output)
 
         assert data["config"]["memory"] is True
@@ -388,10 +377,9 @@ class TestJSONFormatter:
         formatter = JSONFormatter()
         results = {"test_func": {"times": [TEST_TIME_VALUE], "output": ["result"]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=1, show_output=True)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
         data = json.loads(output)
 
         assert "output" in data["results"]["test_func"]
@@ -412,10 +400,9 @@ class TestDataFrameFormatter:
         formatter = DataFrameFormatter()
         results = {"test_func": {"times": [TEST_TIME_VALUE]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=1)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
 
         assert isinstance(output, pd.DataFrame)
         assert "Function" in output.columns
@@ -446,10 +433,9 @@ class TestDataFrameFormatter:
                 "peak_memory": TEST_PEAK_MEMORY,
             },
         }
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=3, memory=True)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
 
         assert "Avg Memory (KB)" in output.columns
         assert "Peak Memory (KB)" in output.columns
@@ -465,10 +451,9 @@ class TestDataFrameFormatter:
         formatter = DataFrameFormatter()
         results = {"test_func": {"times": [TEST_TIME_VALUE], "output": ["result"]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=1, show_output=True)
 
-        output = formatter.format(results, stats, sorted_methods, config, 10)
+        output = formatter.format(results, stats, config)
 
         assert "Output" in output.columns
         assert output["Output"].iloc[0] == "result"
@@ -478,7 +463,6 @@ class TestDataFrameFormatter:
         formatter = DataFrameFormatter()
         results = {"test_func": {"times": [TEST_TIME_VALUE]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=1)
 
         # Mock pandas import failure
@@ -502,7 +486,7 @@ class TestDataFrameFormatter:
                 ImportError,
                 match="pandas is required for DataFrame output",
             ):
-                formatter.format(results, stats, sorted_methods, config, 10)
+                formatter.format(results, stats, config)
         finally:
             builtins.__import__ = original_import
 
@@ -539,11 +523,10 @@ class TestReporters:
             # Test data
             results = {"test_func": {"times": [TEST_TIME_VALUE]}}
             stats = {"test_func": {"time": TEST_TIME_VALUE}}
-            sorted_methods = ["test_func"]
             config = BenchConfig(trials=1)
 
             # Call report which should call _send
-            concrete_reporter.report(results, stats, sorted_methods, config, 10)
+            concrete_reporter.report(results, stats, config)
 
             # Verify _send was called
             mock_send.assert_called_once()
@@ -644,19 +627,16 @@ class TestReporters:
         # Test data
         results = {"test_func": {"times": [TEST_TIME_VALUE]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
-        sorted_methods = ["test_func"]
         config = BenchConfig(trials=1)
 
         # Call the report method
-        reporter.report(results, stats, sorted_methods, config, 10)
+        reporter.report(results, stats, config)
 
         # Use keyword arguments to match the actual call pattern
         formatter.format.assert_called_once_with(
             results=results,
             stats=stats,
-            sorted_methods=sorted_methods,
             config=config,
-            max_name_len=10,
         )
 
         # Verify _send was called with the formatter's output
