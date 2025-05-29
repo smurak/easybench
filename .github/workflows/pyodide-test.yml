@@ -1,0 +1,62 @@
+name: Pyodide Tests
+
+on:
+  push:
+    branches: ['*']
+  pull_request:
+    branches: ['*']
+  workflow_dispatch:
+    inputs:
+      pyodide-versions:
+        description: 'Space-separated Pyodide versions to test (e.g., "0.27.5 0.27.6")'
+        required: false
+
+env:
+  DEFAULT_PYODIDE_VERSIONS: '0.27.5 0.27.6 0.27.0'
+
+jobs:
+  pyodide-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Install Node.js dependencies
+        run: npm install playwright serve-static finalhandler
+
+      - name: 📥 Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: 🔧 Install uv (Rust-based Python packaging tool)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "${HOME}/.cargo/bin" >> $GITHUB_PATH
+
+      - name: 🧪 Run Pyodide tests
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            versions="${{ github.event.inputs.pyodide-versions }}"
+            if [ -z "$versions" ]; then
+              echo "❌ Error: pyodide-versions must be specified for manual dispatch."
+              exit 1
+            fi
+          else
+            versions="${DEFAULT_PYODIDE_VERSIONS}"
+          fi
+
+          for v in $versions; do
+            echo "=================================================="
+            echo "🧪 Testing Pyodide version: $v"
+            node scripts/test-pyodide.js "$v"
+          done
