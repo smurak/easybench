@@ -16,6 +16,7 @@ import types
 from typing import (
     TYPE_CHECKING,
     Literal,
+    TypeAlias,
     TypeVar,
     cast,
 )
@@ -59,8 +60,8 @@ class ResultType(TypedDict):
     output: NotRequired[list[object]]
 
 
-type ResultsType = dict[str, ResultType]
-type FixtureRegistry = dict[ScopeType, dict[str, object]]
+ResultsType: TypeAlias = dict[str, ResultType]
+FixtureRegistry: TypeAlias = dict[ScopeType, dict[str, object]]
 
 
 class PartialBenchConfig(BaseModel):

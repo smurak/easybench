@@ -17,6 +17,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     TextIO,
+    TypeAlias,
     TypeVar,
 )
 
@@ -29,8 +30,8 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
-type Stats = dict[str, dict[str, float]]
-type Formatted = str | pd.DataFrame
+Stats: TypeAlias = dict[str, dict[str, float]]
+Formatted: TypeAlias = "str | pd.DataFrame"
 
 
 class Formatter(ABC):
