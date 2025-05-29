@@ -109,7 +109,7 @@ def _get_benchmark_columns(*, is_single_trial: bool, has_memory: bool) -> list[s
 
 def _initialize_color_info(columns: list[str]) -> dict[str, dict[str, str]]:
     """Initialize the color information dictionary."""
-    color_info = {}
+    color_info: dict[str, dict[str, str]] = {}
     for col in columns:
         if col != "function":  # Function name column doesn't have color info
             color_info[col] = {}
@@ -176,7 +176,7 @@ def _parse_functions_data(
     has_memory: bool,
 ) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, str]]]:
     """Parse function benchmark data and color information."""
-    functions = {}
+    functions: dict[str, dict[str, float]] = {}
 
     if not clean_lines:
         return functions, {}
@@ -223,11 +223,11 @@ def _parse_functions_data(
     return functions, cleaned_colors
 
 
-def _parse_return_values(lines: list[str]) -> dict[str, Any]:
+def _parse_return_values(lines: list[str]) -> dict[str, str | list[str]]:
     """Parse function return value information."""
-    return_values = {}
-    current_func = None
-    trial_values = []
+    return_values: dict[str, str | list[str]] = {}
+    current_func: str | None = None
+    trial_values: list[str] = []
 
     for i in range(len(lines)):
         line = lines[i].strip()

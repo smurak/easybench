@@ -12,11 +12,15 @@ This module tests various aspects of the bench decorator, including:
 """
 
 import time
-from collections.abc import Generator
+from collections.abc import Callable, Generator
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
 from easybench import bench
+
+if TYPE_CHECKING:
+    from easybench.decorator import BenchmarkableFunction
 
 # Constants for magic values
 DEFAULT_TRIALS = 5
@@ -192,7 +196,7 @@ class TestBenchDecoratorOutput:
         """Test that fn_params properly sets function parameters for benchmarking."""
 
         @bench.fn_params(func=lambda x: x)
-        def function_test(func: callable) -> int:
+        def function_test(func: Callable[[Any], Any]) -> int:
             return func(10)
 
         captured = capsys.readouterr()
@@ -210,7 +214,7 @@ class TestBenchDecoratorOutput:
         """Test that fn_params doesn't run benchmarks when missing parameters."""
 
         @bench.fn_params(func=lambda x: x)
-        def function_test2(func: callable, value: int) -> int:
+        def function_test2(func: Callable[[Any], Any], value: int) -> int:
             return func(value)
 
         captured = capsys.readouterr()
@@ -225,7 +229,7 @@ class TestBenchDecoratorOutput:
 
         @bench(value=100)
         @bench.fn_params(func=lambda x: x)
-        def function_test2(func: callable, value: int) -> int:
+        def function_test2(func: Callable[[Any], Any], value: int) -> int:
             return func(value)
 
         captured = capsys.readouterr()
@@ -264,8 +268,8 @@ class TestBenchDecoratorOutput:
             return list(range(100))
 
         @bench(big_list=get_list)
-        def append_list(big_list: list[int]) -> int:
-            return big_list.append(-1)
+        def append_list(big_list: list[int]) -> None:
+            big_list.append(-1)
 
         captured = capsys.readouterr()
         assert "Benchmark Results" in captured.out
@@ -321,17 +325,19 @@ class TestBenchDecoratorOutput:
         def return_value(value: int) -> int:
             return value
 
-        captured = capsys.readouterr()
-        assert captured.out == ""
-        assert captured.err == ""
-
-        return_value(EXPECTED_VALUE)
+        decorated_func = cast("BenchmarkableFunction", return_value)
 
         captured = capsys.readouterr()
         assert captured.out == ""
         assert captured.err == ""
 
-        x = return_value.bench(EXPECTED_VALUE)
+        decorated_func(EXPECTED_VALUE)
+
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert captured.err == ""
+
+        x = decorated_func.bench(EXPECTED_VALUE)
         assert x == EXPECTED_VALUE
 
         captured = capsys.readouterr()
@@ -352,11 +358,13 @@ class TestBenchDecoratorOutput:
         def return_value(value: int) -> int:
             return value
 
+        decorated_func = cast("BenchmarkableFunction", return_value)
+
         captured = capsys.readouterr()
         assert captured.out == ""
         assert captured.err == ""
 
-        return_value.bench(100, bench_trials=13)
+        decorated_func.bench(100, bench_trials=13)
 
         captured = capsys.readouterr()
         assert "Benchmark Results (13 trials)" in captured.out
@@ -368,7 +376,7 @@ class TestBenchDecoratorOutput:
     def test_bench_decorator_parse_output(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test parsing the benchmark output for basic configuration."""
 
@@ -387,7 +395,7 @@ class TestBenchDecoratorOutput:
     def test_bench_decorator_parse_output2(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test parsing the benchmark output for single trial configuration."""
 
@@ -406,7 +414,7 @@ class TestBenchDecoratorOutput:
     def test_bench_decorator_parse_output3(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test parsing the benchmark output with memory metrics enabled."""
 
@@ -425,7 +433,7 @@ class TestBenchDecoratorOutput:
     def test_bench_decorator_parse_output4(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test parsing the benchmark output for single trial with memory metrics."""
 
@@ -444,7 +452,7 @@ class TestBenchDecoratorOutput:
     def test_bench_decorator_parse_output5(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test parsing the benchmark output with return values displayed."""
 
@@ -464,7 +472,7 @@ class TestBenchDecoratorOutput:
     def test_bench_decorator_parse_output6(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test parsing the output with different return values across trials."""
         count = 0
@@ -487,7 +495,7 @@ class TestBenchDecoratorOutput:
     def test_bench_decorator_parse_output7(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test parsing the output for single trial with return values but no memory."""
 
@@ -507,7 +515,7 @@ class TestBenchDecoratorOutput:
     def test_bench_decorator_parse_output8(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test parsing the output for multi trials with return values but no memory."""
         count = 0
@@ -530,7 +538,7 @@ class TestBenchDecoratorOutput:
     def test_bench_decorator_parse_output9(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test parsing the output when using a mutable object across trials."""
 
@@ -549,7 +557,7 @@ class TestBenchDecoratorOutput:
     def test_bench_decorator_parse_output10(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test parsing the benchmark output when using a lambda-generated fixture."""
 
@@ -599,7 +607,7 @@ class TestBenchDecoratorTime:
     def test_bench_decorator_time(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test that time measurement works properly with a single trial."""
 
@@ -617,7 +625,7 @@ class TestBenchDecoratorTime:
     def test_bench_decorator_time2(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test that time measurement works properly with multiple trials."""
 
@@ -637,7 +645,7 @@ class TestBenchDecoratorTime:
     def test_bench_decorator_time3(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test that time measurement doesn't include the fixture setup time."""
 
@@ -659,7 +667,7 @@ class TestBenchDecoratorTime:
     def test_bench_decorator_time4(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test that time measurement doesn't include the fixture teardown time."""
 
@@ -686,8 +694,8 @@ class TestBenchDecoratorMemory:
     def test_bench_decorator_memory_basic(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
-        allocate_memory: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+        allocate_memory: Callable[[int], list[int]],
         kb_size: int,
     ) -> None:
         """Test basic memory measurement with a predictable memory allocation."""
@@ -718,8 +726,8 @@ class TestBenchDecoratorMemory:
     def test_bench_decorator_memory_before(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
-        allocate_memory: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+        allocate_memory: Callable[[int], list[int]],
     ) -> None:
         """Test that memory allocated before the benchmark isn't counted."""
 
@@ -747,8 +755,8 @@ class TestBenchDecoratorMemory:
     def test_bench_decorator_memory_before2(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
-        allocate_memory: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+        allocate_memory: Callable[[int], list[int]],
     ) -> None:
         """Test that memory allocated within fixture isn't counted in the benchmark."""
 
@@ -776,8 +784,8 @@ class TestBenchDecoratorMemory:
     def test_bench_decorator_memory_after(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
-        allocate_memory: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+        allocate_memory: Callable[[int], list[int]],
     ) -> None:
         """Test that memory allocated during teardown isn't counted in the benchmark."""
 
@@ -805,8 +813,8 @@ class TestBenchDecoratorMemory:
     def test_memory_comparison(
         self,
         capsys: pytest.CaptureFixture,
-        parse_benchmark_output: callable,
-        allocate_memory: callable,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+        allocate_memory: Callable[[int], list[int]],
     ) -> None:
         """Test that relative memory usage between functions is measured accurately."""
 

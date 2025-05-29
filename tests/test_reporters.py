@@ -18,17 +18,18 @@ import io
 import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TypeVar, cast
+from typing import TypeVar
 
 import pytest
 
-from easybench.core import BenchConfig
+from easybench.core import BenchConfig, ResultType
 from easybench.reporters import (
     CallbackReporter,
     ConsoleReporter,
     CSVFormatter,
     DataFrameFormatter,
     FileReporter,
+    Formatted,
     Formatter,
     JSONFormatter,
     Reporter,
@@ -61,7 +62,9 @@ class TestTableFormatter:
     def test_format_single_trial(self) -> None:
         """Test formatting results for a single trial."""
         formatter = TableFormatter()
-        results = {"test_func": {"times": [TEST_TIME_VALUE], "memory": [1024]}}
+        results: dict[str, ResultType] = {
+            "test_func": {"times": [TEST_TIME_VALUE], "memory": [1024]},
+        }
         stats = {"test_func": {"time": TEST_TIME_VALUE, "memory": TEST_MEMORY_VALUE}}
         config = BenchConfig(trials=1, memory=True)
 
@@ -76,7 +79,7 @@ class TestTableFormatter:
     def test_format_multiple_trials(self) -> None:
         """Test formatting results for multiple trials."""
         formatter = TableFormatter()
-        results = {
+        results: dict[str, ResultType] = {
             "test_func": {"times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME]},
         }
         stats = {
@@ -100,7 +103,7 @@ class TestTableFormatter:
     def test_format_with_memory_metrics(self) -> None:
         """Test formatting results with memory metrics."""
         formatter = TableFormatter()
-        results = {
+        results: dict[str, ResultType] = {
             "test_func": {
                 "times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME],
                 "memory": [1024, 2048, 3072],
@@ -128,7 +131,9 @@ class TestTableFormatter:
     def test_format_with_return_values(self) -> None:
         """Test formatting results with return values."""
         formatter = TableFormatter()
-        results = {"test_func": {"times": [TEST_TIME_VALUE], "output": ["result"]}}
+        results: dict[str, ResultType] = {
+            "test_func": {"times": [TEST_TIME_VALUE], "output": ["result"]},
+        }
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
         config = BenchConfig(trials=1, show_output=True)
 
@@ -141,7 +146,7 @@ class TestTableFormatter:
     def test_format_with_different_return_values(self) -> None:
         """Test formatting results with different return values across trials."""
         formatter = TableFormatter()
-        results = {
+        results: dict[str, ResultType] = {
             "test_func": {
                 "times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME],
                 "output": [1, 2, 3],
@@ -223,7 +228,7 @@ class TestCSVFormatter:
     def test_format_single_trial(self) -> None:
         """Test formatting single trial results as CSV."""
         formatter = CSVFormatter()
-        results = {"test_func": {"times": [TEST_TIME_VALUE]}}
+        results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
         config = BenchConfig(trials=1)
 
@@ -241,7 +246,7 @@ class TestCSVFormatter:
     def test_format_multiple_trials(self) -> None:
         """Test formatting multiple trial results as CSV."""
         formatter = CSVFormatter()
-        results = {
+        results: dict[str, ResultType] = {
             "test_func": {"times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME]},
         }
         stats = {
@@ -269,7 +274,9 @@ class TestCSVFormatter:
     def test_format_with_memory(self) -> None:
         """Test formatting results with memory metrics as CSV."""
         formatter = CSVFormatter()
-        results = {"test_func": {"times": [TEST_TIME_VALUE], "memory": [1024]}}
+        results: dict[str, ResultType] = {
+            "test_func": {"times": [TEST_TIME_VALUE], "memory": [1024]},
+        }
         stats = {"test_func": {"time": TEST_TIME_VALUE, "memory": TEST_MEMORY_VALUE}}
         config = BenchConfig(trials=1, memory=True)
 
@@ -288,7 +295,7 @@ class TestCSVFormatter:
     def test_format_multiple_trials_with_memory(self) -> None:
         """Test formatting multiple trial results with memory as CSV."""
         formatter = CSVFormatter()
-        results = {
+        results: dict[str, ResultType] = {
             "test_func": {
                 "times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME],
                 "memory": [1024, 2048, 3072],
@@ -332,7 +339,7 @@ class TestJSONFormatter:
     def test_format_basic(self) -> None:
         """Test basic JSON formatting."""
         formatter = JSONFormatter()
-        results = {"test_func": {"times": [TEST_TIME_VALUE]}}
+        results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
         config = BenchConfig(trials=1)
 
@@ -348,7 +355,7 @@ class TestJSONFormatter:
     def test_format_with_memory(self) -> None:
         """Test JSON formatting with memory metrics."""
         formatter = JSONFormatter()
-        results = {
+        results: dict[str, ResultType] = {
             "test_func": {
                 "times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME],
                 "memory": [1024, 2048, 3072],
@@ -375,7 +382,9 @@ class TestJSONFormatter:
     def test_format_with_output(self) -> None:
         """Test JSON formatting with function outputs."""
         formatter = JSONFormatter()
-        results = {"test_func": {"times": [TEST_TIME_VALUE], "output": ["result"]}}
+        results: dict[str, ResultType] = {
+            "test_func": {"times": [TEST_TIME_VALUE], "output": ["result"]},
+        }
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
         config = BenchConfig(trials=1, show_output=True)
 
@@ -398,7 +407,7 @@ class TestDataFrameFormatter:
         import pandas as pd  # Import inside the test to avoid dependency issues
 
         formatter = DataFrameFormatter()
-        results = {"test_func": {"times": [TEST_TIME_VALUE]}}
+        results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
         config = BenchConfig(trials=1)
 
@@ -418,7 +427,7 @@ class TestDataFrameFormatter:
     def test_format_with_memory(self) -> None:
         """Test DataFrame formatting with memory metrics."""
         formatter = DataFrameFormatter()
-        results = {
+        results: dict[str, ResultType] = {
             "test_func": {
                 "times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME],
                 "memory": [1024, 2048, 3072],
@@ -449,7 +458,9 @@ class TestDataFrameFormatter:
     def test_format_with_output(self) -> None:
         """Test DataFrame formatting with function outputs."""
         formatter = DataFrameFormatter()
-        results = {"test_func": {"times": [TEST_TIME_VALUE], "output": ["result"]}}
+        results: dict[str, ResultType] = {
+            "test_func": {"times": [TEST_TIME_VALUE], "output": ["result"]},
+        }
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
         config = BenchConfig(trials=1, show_output=True)
 
@@ -461,27 +472,30 @@ class TestDataFrameFormatter:
     def test_import_error(self) -> None:
         """Test handling of missing pandas import."""
         formatter = DataFrameFormatter()
-        results = {"test_func": {"times": [TEST_TIME_VALUE]}}
+        results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
         config = BenchConfig(trials=1)
 
         # Mock pandas import failure
         import builtins
+        from types import ModuleType
 
         original_import = builtins.__import__
 
         def mock_import(
             name: str,
-            *args: object,
-            **kwargs: object,
-        ) -> ImportReturnT | None:
+            globals_: Mapping[str, object] | None = None,
+            locals_: Mapping[str, object] | None = None,
+            fromlist: Sequence[str] = (),
+            level: int = 0,
+        ) -> ModuleType:
             if name == "pandas":
                 error_msg = "No module named 'pandas'"
                 raise ImportError(error_msg)
-            return cast("ImportReturnT", original_import(name, *args, **kwargs))
+            return original_import(name, globals_, locals_, fromlist, level)
 
         try:
-            builtins.__import__ = mock_import
+            builtins.__import__ = mock_import  # type: ignore [method-assign, assignment]
             with pytest.raises(
                 ImportError,
                 match="pandas is required for DataFrame output",
@@ -499,40 +513,34 @@ class TestReporters:
         from unittest.mock import MagicMock
 
         formatter = TableFormatter()
-        reporter = Reporter(formatter)
+
+        # Create a concrete subclass that implements _send
+        class ConcreteReporter(Reporter):
+            def _send(self, formatted_output: Formatted) -> None:
+                pass
+
+        reporter = ConcreteReporter(formatter)
 
         assert reporter.formatter is formatter
 
-        # Create a concrete subclass that doesn't override _send
-        # This is how we test that the method should be overridden
-        class ConcreteReporter(Reporter):
-            pass
-
-        concrete_reporter = ConcreteReporter(formatter)
-
-        # The base class implementation might not raise NotImplementedError
-        # but we can test the required behavior by checking if _send exists
-        # and then verifying report calls _send
-
         # Mock the _send method to track if it's called
-        original_send = Reporter._send
-        try:
-            mock_send = MagicMock()
-            Reporter._send = mock_send
+        original_send = reporter._send
+        mock_send = MagicMock()
+        reporter._send = mock_send  # type: ignore [method-assign]
 
-            # Test data
-            results = {"test_func": {"times": [TEST_TIME_VALUE]}}
-            stats = {"test_func": {"time": TEST_TIME_VALUE}}
-            config = BenchConfig(trials=1)
+        # Test data
+        results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
+        stats = {"test_func": {"time": TEST_TIME_VALUE}}
+        config = BenchConfig(trials=1)
 
-            # Call report which should call _send
-            concrete_reporter.report(results, stats, config)
+        # Call report which should call _send
+        reporter.report(results, stats, config)
 
-            # Verify _send was called
-            mock_send.assert_called_once()
-        finally:
-            # Restore the original method
-            Reporter._send = original_send
+        # Verify _send was called
+        mock_send.assert_called_once()
+
+        # Restore the original method
+        reporter._send = original_send  # type: ignore [method-assign]
 
     def test_console_reporter(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Test the ConsoleReporter class."""
@@ -595,7 +603,7 @@ class TestReporters:
         formatter = TableFormatter()
         callback_results = []
 
-        def callback_func(output: str) -> None:
+        def callback_func(output: str | object) -> None:
             callback_results.append(output)
 
         reporter = CallbackReporter(callback_func, formatter)
@@ -615,17 +623,17 @@ class TestReporters:
         formatter = MagicMock(spec=Formatter)
         formatter.format.return_value = "Formatted output"
 
-        # Create a concrete reporter subclass that doesn't raise NotImplementedError
+        # Create a concrete reporter subclass that implements _send
         class TestReporter(Reporter):
-            def _send(self, formatted_output: str) -> None:
+            def _send(self, formatted_output: str | object) -> None:
                 pass
 
         # Create a reporter with the mock formatter and mock its _send method
         reporter = TestReporter(formatter)
-        reporter._send = MagicMock()
+        reporter._send = MagicMock()  # type: ignore [method-assign]
 
         # Test data
-        results = {"test_func": {"times": [TEST_TIME_VALUE]}}
+        results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
         stats = {"test_func": {"time": TEST_TIME_VALUE}}
         config = BenchConfig(trials=1)
 

@@ -12,9 +12,10 @@ This module tests various aspects of the CLI, including:
 
 import logging
 import tempfile
+import types
 from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -227,19 +228,16 @@ class TestDiscoverBenchmarks:
     """Tests for discovering benchmark functions and classes in modules."""
 
     @pytest.fixture
-    def mock_module(self) -> MockModuleProtocol:
+    def mock_module(self) -> types.ModuleType:
         """
         Create a mock module with benchmark functions and classes.
 
         Returns:
-            MockModuleProtocol: A mock module containing benchmark functions and classes
+            types.ModuleType: A mock module containing benchmark functions and classes
 
         """
-
-        class MockModule:
-            pass
-
-        module = MockModule()
+        # Use MagicMock instead of types.ModuleType for better attribute handling
+        mock_mod = MagicMock(name="mock_module")
 
         # Add benchmark functions
         def bench_func1() -> int:
@@ -251,9 +249,9 @@ class TestDiscoverBenchmarks:
         def not_a_bench() -> int:
             return 3
 
-        module.bench_func1 = bench_func1
-        module.bench_func2 = bench_func2
-        module.not_a_bench = not_a_bench
+        mock_mod.bench_func1 = bench_func1
+        mock_mod.bench_func2 = bench_func2
+        mock_mod.not_a_bench = not_a_bench
 
         # Add benchmark classes
         class BenchClass1(EasyBench):
@@ -267,13 +265,13 @@ class TestDiscoverBenchmarks:
         class NotABench:
             pass
 
-        module.BenchClass1 = BenchClass1
-        module.BenchClass2 = BenchClass2
-        module.NotABench = NotABench
+        mock_mod.BenchClass1 = BenchClass1
+        mock_mod.BenchClass2 = BenchClass2
+        mock_mod.NotABench = NotABench
 
-        return module
+        return cast("types.ModuleType", mock_mod)
 
-    def test_discover_benchmarks(self, mock_module: MockModuleProtocol) -> None:
+    def test_discover_benchmarks(self, mock_module: types.ModuleType) -> None:
         """Test discovering benchmark functions and classes in a module."""
         benchmarks = discover_benchmarks(mock_module)
 
@@ -291,12 +289,8 @@ class TestDiscoverBenchmarks:
 
     def test_discover_benchmarks_error_handling(self) -> None:
         """Test handling errors when initializing benchmark classes."""
-
-        # Create a mock module
-        class MockModule:
-            pass
-
-        module = MockModule()
+        # Use MagicMock instead of types.ModuleType
+        mock_mod = MagicMock(name="test_module")
 
         # Add a benchmark class that raises an error when instantiated
         class BrokenBench(EasyBench):
@@ -304,28 +298,25 @@ class TestDiscoverBenchmarks:
                 error_msg = "This class is broken"
                 raise ValueError(error_msg)
 
-        module.BrokenBench = BrokenBench
+        mock_mod.BrokenBench = BrokenBench
 
         # Discover benchmarks (should handle the error)
-        benchmarks = discover_benchmarks(module)
+        benchmarks = discover_benchmarks(cast("types.ModuleType", mock_mod))
 
         # Verify the broken class wasn't added to the benchmarks
         assert "BrokenBench" not in benchmarks
 
     def test_discover_no_benchmarks(self) -> None:
         """Test discovering benchmarks in a module with none."""
-
-        class MockModule:
-            pass
-
-        module = MockModule()
+        # Use MagicMock instead of types.ModuleType
+        mock_mod = MagicMock(name="empty_module")
 
         def regular_function() -> bool:
             return True
 
-        module.regular_function = regular_function
+        mock_mod.regular_function = regular_function
 
-        benchmarks = discover_benchmarks(module)
+        benchmarks = discover_benchmarks(cast("types.ModuleType", mock_mod))
 
         assert len(benchmarks) == 0
 
@@ -344,7 +335,7 @@ class TestRunBenchmarks:
         def bench_func2() -> int:
             return 2
 
-        benchmarks = {
+        benchmarks: dict[str, Any] = {
             "bench_func1": bench_func1,
             "bench_func2": bench_func2,
         }
@@ -374,13 +365,11 @@ class TestRunBenchmarks:
             def bench_test(self) -> int:
                 return 10
 
-        mock_instance1 = MockBench()
-        mock_instance1.bench = MagicMock()
+        # Create instances with mocked bench method
+        mock_instance1 = MagicMock(spec=MockBench)
+        mock_instance2 = MagicMock(spec=MockBench)
 
-        mock_instance2 = MockBench()
-        mock_instance2.bench = MagicMock()
-
-        benchmarks = {
+        benchmarks: dict[str, Any] = {
             "MockBench1": mock_instance1,
             "MockBench2": mock_instance2,
         }
@@ -412,7 +401,7 @@ class TestRunBenchmarks:
             error_msg = "Benchmark error"
             raise ValueError(error_msg)
 
-        benchmarks = {"bench_func": bench_func}
+        benchmarks: dict[str, Any] = {"bench_func": bench_func}
 
         # Make the FunctionBench.bench method raise an exception
         mock_instance = MagicMock()
