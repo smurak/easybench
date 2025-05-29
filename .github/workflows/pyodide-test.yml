@@ -1,0 +1,41 @@
+name: Tests
+
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+
+jobs:
+  pyodide-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pyodide-version: ["0.27.5", "0.27.6", "0.27.0"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Install Node.js dependencies
+        run: npm install playwright serve-static finalhandler
+
+      - name: 📥 Install Playwright browsers
+        run: npx playwright install --with-deps
+    
+      - name: 🔧 Install uv (Rust-based Python packaging tool)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "${HOME}/.cargo/bin" >> $GITHUB_PATH
+
+      - name: 🧪 Run Pyodide test with version ${{ matrix.pyodide-version }}
+        run: node scripts/test-pyodide.js ${{ matrix.pyodide-version }}
