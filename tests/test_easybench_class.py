@@ -194,13 +194,13 @@ class TestEasyBenchOutput:
         class DefinitionOrderBench(EasyBench):
             # Define methods deliberately not in alphabetical order
             def bench_c(self) -> None:
-                time.sleep(0.05)
+                pass
 
             def bench_a(self) -> None:
-                time.sleep(0.15)
+                time.sleep(0.1)
 
             def bench_b(self) -> None:
-                time.sleep(0.1)
+                time.sleep(0.0001)
 
         # Test with sort_by="def" (should preserve c, a, b order)
         bench1 = DefinitionOrderBench()
