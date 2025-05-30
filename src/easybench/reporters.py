@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
     import pandas as pd
 
-    from .core import BenchConfig, ResultsType
+    from .core import BenchConfig, ResultsType, SortType
 
 T = TypeVar("T")
 
@@ -454,6 +454,75 @@ class DataFrameFormatter(Formatter):
         return pd.DataFrame(data)
 
 
+class SimpleFormatter(Formatter):
+    """Format results as concise metric values."""
+
+    def __init__(
+        self,
+        metric: SortType = "avg",
+        item_format: Callable[[str, float], str] | None = None,
+        list_format: Callable[[list[str]], str] | None = None,
+    ) -> None:
+        """
+        Initialize with a metric to output.
+
+        Args:
+            metric: The metric to output (avg, min, max, avg_memory, peak_memory)
+            item_format: Optional function to format individual values
+                         Takes method_name and value as arguments
+            list_format: Optional function to join multiple values
+
+        """
+        self.metric = metric
+        if metric not in ("avg", "min", "max", "avg_memory", "peak_memory"):
+            msg = f"'{metric}' is not a valid metric for Simple formatter"
+            raise ValueError(msg)
+
+        # Use provided functions or defaults
+        self.item_format = item_format or (lambda _, value: str(value))
+        self.list_format = list_format or (lambda values: "\n".join(values))
+
+    def format(
+        self,
+        results: ResultsType,
+        stats: Stats,
+        config: BenchConfig,
+    ) -> str:
+        """
+        Format results as concise metric values.
+
+        Args:
+            results: Dictionary mapping benchmark names to result data
+            stats: Dictionary of calculated statistics
+            config: Benchmark configuration
+
+        Returns:
+            Simple metric values as a string
+
+        """
+        values = []
+        _ = results
+
+        for method_name in self.sort_keys(stats, config):
+            stat = stats[method_name]
+
+            # Get the value for the specified metric
+            value: float | None = None
+            if self.metric in stat:
+                value = stat[self.metric]
+            elif config.trials == 1 and self.metric == "avg":
+                value = stat.get("time", None)
+            elif config.trials == 1 and self.metric == "avg_memory":
+                value = stat.get("memory", None)
+
+            if value is not None:
+                values.append(self.item_format(method_name, value))
+            else:
+                values.append("")
+
+        return self.list_format(values)
+
+
 class Reporter:
     """Base reporter class for sending benchmark results to destinations."""
 
@@ -500,8 +569,8 @@ class Reporter:
         """
 
 
-class ConsoleReporter(Reporter):
-    """Reporter that sends output to the console."""
+class StreamReporter(Reporter):
+    """Reporter that sends output to a stream."""
 
     def __init__(
         self,
@@ -509,7 +578,7 @@ class ConsoleReporter(Reporter):
         file: TextIO | None = None,
     ) -> None:
         """
-        Initialize console reporter.
+        Initialize stream reporter.
 
         Args:
             formatter: Formatter to use (defaults to TableFormatter)
@@ -521,7 +590,7 @@ class ConsoleReporter(Reporter):
 
     def _send(self, formatted_output: Formatted) -> None:
         """
-        Print formatted output to console.
+        Print formatted output to stream.
 
         Args:
             formatted_output: The formatted output to print
@@ -529,6 +598,20 @@ class ConsoleReporter(Reporter):
         """
         _file = self.file or sys.stdout
         print(formatted_output, file=_file, end="")
+
+
+class ConsoleReporter(StreamReporter):
+    """Reporter that sends output to the console (stdout)."""
+
+    def __init__(self, formatter: Formatter | None = None) -> None:
+        """
+        Initialize console reporter.
+
+        Args:
+            formatter: Formatter to use (defaults to TableFormatter)
+
+        """
+        super().__init__(formatter=formatter, file=None)
 
 
 class FileReporter(Reporter):
@@ -607,3 +690,59 @@ class CallbackReporter(Reporter):
 
         """
         self.callback(formatted_output)
+
+
+class SimpleStreamReporter(StreamReporter):
+    """Reporter that outputs concise metric values to a stream."""
+
+    def __init__(
+        self,
+        metric: SortType = "avg",
+        item_format: Callable[[str, float], str] | None = None,
+        list_format: Callable[[list[str]], str] | None = None,
+        file: TextIO | None = None,
+    ) -> None:
+        """
+        Initialize simple stream reporter.
+
+        Args:
+            metric: The metric to output (avg, min, max, avg_memory, peak_memory)
+            item_format: Optional function to format individual values
+                         Takes method_name and value as arguments
+            list_format: Optional function to join multiple values
+            file: File object to write to (defaults to sys.stdout)
+
+        """
+        formatter = SimpleFormatter(
+            metric=metric,
+            item_format=item_format,
+            list_format=list_format,
+        )
+        super().__init__(formatter=formatter, file=file)
+
+
+class SimpleConsoleReporter(SimpleStreamReporter):
+    """Reporter that outputs concise metric values to the console (stdout)."""
+
+    def __init__(
+        self,
+        metric: SortType = "avg",
+        item_format: Callable[[str, float], str] | None = None,
+        list_format: Callable[[list[str]], str] | None = None,
+    ) -> None:
+        """
+        Initialize simple console reporter.
+
+        Args:
+            metric: The metric to output (avg, min, max, avg_memory, peak_memory)
+            item_format: Optional function to format individual values
+                         Takes method_name and value as arguments
+            list_format: Optional function to join multiple values
+
+        """
+        super().__init__(
+            metric=metric,
+            item_format=item_format,
+            list_format=list_format,
+            file=None,
+        )
