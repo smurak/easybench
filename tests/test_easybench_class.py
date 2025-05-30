@@ -21,7 +21,7 @@ from easybench import BenchConfig, EasyBench, fixture
 from easybench.core import FixtureRegistry, PartialBenchConfig, ScopeType
 
 # Constants to replace magic numbers
-MIN_SLEEP_TIME = 0.01
+MIN_SLEEP_TIME = 0.05
 MIN_MEMORY_KB = 100
 MED_MEMORY_KB = 500
 LARGE_MEMORY_KB = 1000
@@ -36,6 +36,8 @@ LAMBDA_MULTIPLY_FACTOR = 2
 EXPECTED_RESULT_5 = 5
 EXPECTED_RESULT_10 = 10
 EXPECTED_RESULT_15 = 15
+# Add tolerance for time comparisons to handle Windows timer resolution
+TIME_COMPARISON_TOLERANCE = 0.01
 
 
 class TestEasyBenchOutput:
@@ -192,13 +194,13 @@ class TestEasyBenchOutput:
         class DefinitionOrderBench(EasyBench):
             # Define methods deliberately not in alphabetical order
             def bench_c(self) -> None:
-                time.sleep(0.001)  # Fast
+                time.sleep(0.05)
 
             def bench_a(self) -> None:
-                time.sleep(0.003)  # Slow
+                time.sleep(0.15)
 
             def bench_b(self) -> None:
-                time.sleep(0.002)  # Medium
+                time.sleep(0.1)
 
         # Test with sort_by="def" (should preserve c, a, b order)
         bench1 = DefinitionOrderBench()
@@ -249,9 +251,19 @@ class TestEasyBenchTime:
         captured = capsys.readouterr()
         parsed_out = parse_benchmark_output(captured.out)
         assert "bench_sleep" in parsed_out["functions"]
-        assert parsed_out["functions"]["bench_sleep"]["avg"] >= MIN_SLEEP_TIME
-        assert parsed_out["functions"]["bench_sleep"]["min"] >= MIN_SLEEP_TIME
-        assert parsed_out["functions"]["bench_sleep"]["max"] >= MIN_SLEEP_TIME
+        # Add tolerance to timing assertions for Windows timer resolution
+        assert (
+            parsed_out["functions"]["bench_sleep"]["avg"]
+            >= MIN_SLEEP_TIME - TIME_COMPARISON_TOLERANCE
+        )
+        assert (
+            parsed_out["functions"]["bench_sleep"]["min"]
+            >= MIN_SLEEP_TIME - TIME_COMPARISON_TOLERANCE
+        )
+        assert (
+            parsed_out["functions"]["bench_sleep"]["max"]
+            >= MIN_SLEEP_TIME - TIME_COMPARISON_TOLERANCE
+        )
 
     def test_relative_timing_accuracy(
         self,
@@ -264,7 +276,7 @@ class TestEasyBenchTime:
             bench_config = BenchConfig(trials=DEFAULT_TRIALS)
 
             def bench_slow(self) -> None:
-                time.sleep(0.0001)
+                time.sleep(0.05)
 
             def bench_fast(self) -> None:
                 pass
