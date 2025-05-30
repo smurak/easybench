@@ -182,6 +182,50 @@ class TestEasyBenchOutput:
 
         assert "No benchmark results to display" in caplog.text
 
+    def test_definition_order_sorting(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test that sort_by='def' correctly preserves method definition order."""
+
+        class DefinitionOrderBench(EasyBench):
+            # Define methods deliberately not in alphabetical order
+            def bench_c(self) -> None:
+                time.sleep(0.001)  # Fast
+
+            def bench_a(self) -> None:
+                time.sleep(0.003)  # Slow
+
+            def bench_b(self) -> None:
+                time.sleep(0.002)  # Medium
+
+        # Test with sort_by="def" (should preserve c, a, b order)
+        bench1 = DefinitionOrderBench()
+        bench1.bench(config=PartialBenchConfig(sort_by="def"))
+
+        captured_def = capsys.readouterr()
+        c_pos = captured_def.out.find("bench_c")
+        a_pos = captured_def.out.find("bench_a")
+        b_pos = captured_def.out.find("bench_b")
+        # Verify definition order is preserved (c, a, b)
+        assert 0 < c_pos < a_pos < b_pos, "Definition order not preserved"
+
+        # Compare with sort_by="avg" (should be c, b, a - from fast to slow)
+        bench2 = DefinitionOrderBench()
+        bench2.bench(config=PartialBenchConfig(sort_by="avg"))
+
+        captured_avg = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured_avg.out)
+        sorted_methods = list(parsed_out["functions"].keys())
+
+        # With sort_by="avg", should be ordered by execution time (fast to slow)
+        assert sorted_methods == [
+            "bench_c",
+            "bench_b",
+            "bench_a",
+        ], "Expected performance order not followed"
+
 
 class TestEasyBenchTime:
     """Tests for time measurement functionality in EasyBench."""
