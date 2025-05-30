@@ -480,7 +480,7 @@ class SimpleFormatter(Formatter):
 
         # Use provided functions or defaults
         self.item_format = item_format or (lambda _, value: str(value))
-        self.list_format = list_format or (lambda values: "\n".join(values))
+        self.list_format = list_format or (lambda values: "\n".join(values) + "\n")
 
     def format(
         self,
