@@ -7,6 +7,7 @@ This module tests the various reporter classes and formatters, including:
 - JSONFormatter
 - DataFrameFormatter
 - Reporter
+- StreamReporter
 - ConsoleReporter
 - FileReporter
 - CallbackReporter
@@ -18,11 +19,11 @@ import io
 import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TypeVar
+from typing import TypeVar, get_args
 
 import pytest
 
-from easybench.core import BenchConfig, ResultType
+from easybench.core import BenchConfig, ResultType, SortType
 from easybench.reporters import (
     CallbackReporter,
     ConsoleReporter,
@@ -33,6 +34,7 @@ from easybench.reporters import (
     Formatter,
     JSONFormatter,
     Reporter,
+    StreamReporter,
     TableFormatter,
 )
 
@@ -395,6 +397,244 @@ class TestJSONFormatter:
         assert data["results"]["test_func"]["output"] == ["result"]
 
 
+class TestSimpleFormatter:
+    """Tests for the SimpleFormatter class."""
+
+    def test_init_with_valid_metric(self) -> None:
+        """Test initialization with valid metrics."""
+        from easybench.reporters import SimpleFormatter
+
+        for metric in get_args(SortType):
+            if metric == "def":
+                continue
+            formatter = SimpleFormatter(metric=metric)
+            assert formatter.metric == metric
+
+    def test_init_with_invalid_metric(self) -> None:
+        """Test that 'def' is not a valid metric for SimpleFormatter."""
+        from easybench.reporters import SimpleFormatter
+
+        with pytest.raises(
+            ValueError,
+            match="'def' is not a valid metric for Simple formatter",
+        ):
+            SimpleFormatter(metric="def")
+
+    def test_format_single_trial(self) -> None:
+        """Test formatting with single trial results."""
+        from easybench.reporters import SimpleFormatter
+
+        metric: SortType = "avg"
+        formatter = SimpleFormatter(metric=metric)
+        results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
+        stats = {"test_func": {"time": TEST_TIME_VALUE}}
+        config = BenchConfig(trials=1)
+
+        output = formatter.format(results, stats, config)
+        assert output.strip() == str(TEST_TIME_VALUE)
+
+    def test_format_multiple_trials_avg(self) -> None:
+        """Test formatting multiple trial results with 'avg' metric."""
+        from easybench.reporters import SimpleFormatter
+
+        formatter = SimpleFormatter(metric="avg")
+        results: dict[str, ResultType] = {
+            "test_func": {"times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME]},
+        }
+        stats = {
+            "test_func": {
+                "avg": TEST_AVG_TIME,
+                "min": TEST_TIME_VALUE,
+                "max": TEST_SLOWER_TIME,
+            },
+        }
+        config = BenchConfig(trials=3)
+
+        output = formatter.format(results, stats, config)
+        assert output.strip() == str(TEST_AVG_TIME)
+
+    def test_format_multiple_trials_min(self) -> None:
+        """Test formatting multiple trial results with 'min' metric."""
+        from easybench.reporters import SimpleFormatter
+
+        formatter = SimpleFormatter(metric="min")
+        results: dict[str, ResultType] = {
+            "test_func": {"times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME]},
+        }
+        stats = {
+            "test_func": {
+                "avg": TEST_AVG_TIME,
+                "min": TEST_TIME_VALUE,
+                "max": TEST_SLOWER_TIME,
+            },
+        }
+        config = BenchConfig(trials=3)
+
+        output = formatter.format(results, stats, config)
+        assert output.strip() == str(TEST_TIME_VALUE)
+
+    def test_format_with_memory_metrics(self) -> None:
+        """Test formatting results with memory metrics."""
+        from easybench.reporters import SimpleFormatter
+
+        formatter = SimpleFormatter(metric="avg_memory")
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "times": [TEST_TIME_VALUE],
+                "memory": [1024],
+            },
+        }
+        stats = {
+            "test_func": {
+                "time": TEST_TIME_VALUE,
+                "avg_memory": TEST_AVG_MEMORY,
+                "peak_memory": TEST_PEAK_MEMORY,
+            },
+        }
+        config = BenchConfig(trials=1, memory=True)
+
+        output = formatter.format(results, stats, config)
+        assert output.strip() == str(TEST_AVG_MEMORY)
+
+    def test_format_multiple_functions(self) -> None:
+        """Test formatting results with multiple functions."""
+        from easybench.reporters import SimpleFormatter
+
+        formatter = SimpleFormatter(metric="avg")
+        results: dict[str, ResultType] = {
+            "test_func1": {"times": [TEST_TIME_VALUE]},
+            "test_func2": {"times": [TEST_SLOW_TIME]},
+        }
+        stats = {
+            "test_func1": {"avg": TEST_TIME_VALUE},
+            "test_func2": {"avg": TEST_SLOW_TIME},
+        }
+        config = BenchConfig(trials=1)
+
+        output = formatter.format(results, stats, config)
+        lines = output.strip().split("\n")
+        length = 2
+        assert len(lines) == length
+        assert lines[0] == str(TEST_TIME_VALUE)
+        assert lines[1] == str(TEST_SLOW_TIME)
+
+    def test_format_metric_fallback_for_single_trial(self) -> None:
+        """Test fallback to 'time' when 'avg' requested for single trial."""
+        from easybench.reporters import SimpleFormatter
+
+        formatter = SimpleFormatter(metric="avg")
+        results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
+        stats = {"test_func": {"time": TEST_TIME_VALUE}}  # No 'avg' key
+        config = BenchConfig(trials=1)
+
+        output = formatter.format(results, stats, config)
+        assert output.strip() == str(TEST_TIME_VALUE)
+
+    def test_format_missing_metric(self) -> None:
+        """Test handling of missing metrics."""
+        from easybench.reporters import SimpleFormatter
+
+        with pytest.raises(ValueError, match="'non_existent' is not a valid metric"):
+            SimpleFormatter(metric="non_existent")  # type: ignore [assignment, arg-type]
+
+    def test_format_with_custom_formatter(self) -> None:
+        """Test SimpleFormatter with custom format function."""
+        from easybench.reporters import SimpleFormatter
+
+        # Define a custom formatter that rounds to 3 decimal places and adds a unit
+        def custom_format(method_name: str, value: float) -> str:
+            _ = method_name
+            return f"{value:.3f}s"
+
+        formatter = SimpleFormatter(metric="avg", item_format=custom_format)
+        results: dict[str, ResultType] = {
+            "test_func": {"times": [TEST_TIME_VALUE]},
+        }
+        stats = {"test_func": {"avg": TEST_TIME_VALUE}}
+        config = BenchConfig(trials=1)
+
+        output = formatter.format(results, stats, config)
+        assert output.strip() == f"{TEST_TIME_VALUE:.3f}s"
+
+    def test_format_with_custom_joiner(self) -> None:
+        """Test SimpleFormatter with custom join function."""
+        from easybench.reporters import SimpleFormatter
+
+        # Define a custom joiner that uses commas
+        def custom_join(values: list[str]) -> str:
+            return ", ".join(values)
+
+        formatter = SimpleFormatter(metric="avg", list_format=custom_join)
+        results: dict[str, ResultType] = {
+            "test_func1": {"times": [TEST_TIME_VALUE]},
+            "test_func2": {"times": [TEST_SLOW_TIME]},
+        }
+        stats = {
+            "test_func1": {"avg": TEST_TIME_VALUE},
+            "test_func2": {"avg": TEST_SLOW_TIME},
+        }
+        config = BenchConfig(trials=1)
+
+        output = formatter.format(results, stats, config)
+        expected = f"{TEST_TIME_VALUE}, {TEST_SLOW_TIME}"
+        assert output == expected
+
+    def test_format_with_combined_custom_functions(self) -> None:
+        """Test SimpleFormatter with both custom format and join functions."""
+        from easybench.reporters import SimpleFormatter
+
+        # Define custom formatter and joiner
+        def custom_format(method_name: str, value: float) -> str:
+            _ = method_name
+            return f"{value*1000:.1f}ms"
+
+        def custom_join(values: list[str]) -> str:
+            return " | ".join(values)
+
+        formatter = SimpleFormatter(
+            metric="avg",
+            item_format=custom_format,
+            list_format=custom_join,
+        )
+        results: dict[str, ResultType] = {
+            "test_func1": {"times": [TEST_TIME_VALUE]},
+            "test_func2": {"times": [TEST_SLOW_TIME]},
+        }
+        stats = {
+            "test_func1": {"avg": TEST_TIME_VALUE},
+            "test_func2": {"avg": TEST_SLOW_TIME},
+        }
+        config = BenchConfig(trials=1)
+
+        output = formatter.format(results, stats, config)
+        expected = f"{TEST_TIME_VALUE*1000:.1f}ms | {TEST_SLOW_TIME*1000:.1f}ms"
+        assert output == expected
+
+    def test_format_with_method_name(self) -> None:
+        """Test SimpleFormatter with custom format function using method name."""
+        from easybench.reporters import SimpleFormatter
+
+        # Define a custom formatter that includes method name in output
+        def custom_format(method_name: str, value: float) -> str:
+            return f"{method_name}={value:.2f}"
+
+        formatter = SimpleFormatter(metric="avg", item_format=custom_format)
+        results: dict[str, ResultType] = {
+            "test_func1": {"times": [TEST_TIME_VALUE]},
+            "test_func2": {"times": [TEST_SLOW_TIME]},
+        }
+        stats = {
+            "test_func1": {"avg": TEST_TIME_VALUE},
+            "test_func2": {"avg": TEST_SLOW_TIME},
+        }
+        config = BenchConfig(trials=1)
+
+        output = formatter.format(results, stats, config)
+        lines = output.strip().split("\n")
+        assert lines[0] == f"test_func1={TEST_TIME_VALUE:.2f}"
+        assert lines[1] == f"test_func2={TEST_SLOW_TIME:.2f}"
+
+
 class TestDataFrameFormatter:
     """Tests for the DataFrameFormatter class."""
 
@@ -542,6 +782,28 @@ class TestReporters:
         # Restore the original method
         reporter._send = original_send  # type: ignore [method-assign]
 
+    def test_stream_reporter(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test the StreamReporter class."""
+        formatter = TableFormatter()
+        reporter = StreamReporter(formatter)
+
+        test_output = "Test benchmark output"
+        reporter._send(test_output)
+
+        captured = capsys.readouterr()
+        assert test_output in captured.out
+
+    def test_stream_reporter_with_custom_file(self) -> None:
+        """Test StreamReporter with a custom file."""
+        formatter = TableFormatter()
+        output = io.StringIO()
+        reporter = StreamReporter(formatter, file=output)
+
+        test_output = "Test benchmark output"
+        reporter._send(test_output)
+
+        assert test_output in output.getvalue()
+
     def test_console_reporter(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Test the ConsoleReporter class."""
         formatter = TableFormatter()
@@ -649,3 +911,86 @@ class TestReporters:
 
         # Verify _send was called with the formatter's output
         reporter._send.assert_called_once_with("Formatted output")
+
+
+class TestSimpleConsoleReporter:
+    """Tests for the SimpleConsoleReporter class."""
+
+    def test_simple_console_reporter_basic(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test basic SimpleConsoleReporter functionality."""
+        from easybench.reporters import SimpleConsoleReporter
+
+        reporter = SimpleConsoleReporter(metric="avg")
+        results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
+        stats = {"test_func": {"avg": TEST_TIME_VALUE}}
+        config = BenchConfig(trials=1)
+
+        reporter.report(results, stats, config)
+        captured = capsys.readouterr()
+        assert captured.out.strip() == str(TEST_TIME_VALUE)
+
+    def test_simple_console_reporter_with_custom_formatter(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test SimpleConsoleReporter with custom formatter."""
+        from easybench.reporters import SimpleConsoleReporter
+
+        def custom_format(method_name: str, value: float) -> str:
+            _ = method_name
+            return f"{value:.3f}s"
+
+        reporter = SimpleConsoleReporter(metric="avg", item_format=custom_format)
+        results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
+        stats = {"test_func": {"avg": TEST_TIME_VALUE}}
+        config = BenchConfig(trials=1)
+
+        reporter.report(results, stats, config)
+        captured = capsys.readouterr()
+        assert captured.out.strip() == f"{TEST_TIME_VALUE:.3f}s"
+
+    def test_simple_console_reporter_with_custom_joiner(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test SimpleConsoleReporter with custom joiner."""
+        from easybench.reporters import SimpleConsoleReporter
+
+        def custom_join(values: list[str]) -> str:
+            return ", ".join(values)
+
+        reporter = SimpleConsoleReporter(metric="avg", list_format=custom_join)
+        results: dict[str, ResultType] = {
+            "test_func1": {"times": [TEST_TIME_VALUE]},
+            "test_func2": {"times": [TEST_SLOW_TIME]},
+        }
+        stats = {
+            "test_func1": {"avg": TEST_TIME_VALUE},
+            "test_func2": {"avg": TEST_SLOW_TIME},
+        }
+        config = BenchConfig(trials=1)
+
+        reporter.report(results, stats, config)
+        captured = capsys.readouterr()
+        expected = f"{TEST_TIME_VALUE}, {TEST_SLOW_TIME}"
+        assert captured.out.strip() == expected
+
+    def test_simple_console_reporter_with_custom_file(self) -> None:
+        """Test SimpleConsoleReporter with custom file."""
+        import io
+
+        from easybench.reporters import SimpleStreamReporter
+
+        output_file = io.StringIO()
+        reporter = SimpleStreamReporter(metric="avg", file=output_file)
+        results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
+        stats = {"test_func": {"avg": TEST_TIME_VALUE}}
+        config = BenchConfig(trials=1)
+
+        reporter.report(results, stats, config)
+        output_file.seek(0)
+        content = output_file.read()
+        assert content.strip() == str(TEST_TIME_VALUE)
