@@ -26,7 +26,9 @@ if TYPE_CHECKING:
 DEFAULT_TRIALS = 5
 SINGLE_TRIAL = 1
 MULTIPLE_TRIALS = 3
-SLEEP_TIME = 0.001
+SLEEP_TIME = 0.05
+# Add tolerance for time comparisons to handle Windows timer resolution
+TIME_COMPARISON_TOLERANCE = 0.01
 SMALL_KB = 100
 MEDIUM_KB = 500
 LARGE_KB = 1000
@@ -620,7 +622,11 @@ class TestBenchDecoratorTime:
         captured = capsys.readouterr()
         parsed_out = parse_benchmark_output(captured.out)
         assert "sleep_func" in parsed_out["functions"]
-        assert parsed_out["functions"]["sleep_func"]["time"] >= SLEEP_TIME
+        # Add tolerance to timing assertion for Windows timer resolution
+        assert (
+            parsed_out["functions"]["sleep_func"]["time"]
+            >= SLEEP_TIME - TIME_COMPARISON_TOLERANCE
+        )
 
     def test_bench_decorator_time2(
         self,
@@ -638,9 +644,19 @@ class TestBenchDecoratorTime:
         captured = capsys.readouterr()
         parsed_out = parse_benchmark_output(captured.out)
         assert "sleep_func" in parsed_out["functions"]
-        assert parsed_out["functions"]["sleep_func"]["avg"] >= SLEEP_TIME
-        assert parsed_out["functions"]["sleep_func"]["min"] >= SLEEP_TIME
-        assert parsed_out["functions"]["sleep_func"]["max"] >= SLEEP_TIME
+        # Add tolerance to timing assertions for Windows timer resolution
+        assert (
+            parsed_out["functions"]["sleep_func"]["avg"]
+            >= SLEEP_TIME - TIME_COMPARISON_TOLERANCE
+        )
+        assert (
+            parsed_out["functions"]["sleep_func"]["min"]
+            >= SLEEP_TIME - TIME_COMPARISON_TOLERANCE
+        )
+        assert (
+            parsed_out["functions"]["sleep_func"]["max"]
+            >= SLEEP_TIME - TIME_COMPARISON_TOLERANCE
+        )
 
     def test_bench_decorator_time3(
         self,
@@ -661,8 +677,11 @@ class TestBenchDecoratorTime:
         captured = capsys.readouterr()
         parsed_out = parse_benchmark_output(captured.out)
         assert "return_value" in parsed_out["functions"]
-        assert parsed_out["functions"]["return_value"]["avg"] < SLEEP_TIME
-        assert parsed_out["functions"]["return_value"]["min"] < SLEEP_TIME
+        # Given Windows timer resolution,
+        # we should just check it's significantly smaller
+        # rather than using a strict comparison that may fail due to timer imprecision
+        assert parsed_out["functions"]["return_value"]["avg"] < SLEEP_TIME / 2
+        assert parsed_out["functions"]["return_value"]["min"] < SLEEP_TIME / 2
 
     def test_bench_decorator_time4(
         self,
@@ -683,8 +702,11 @@ class TestBenchDecoratorTime:
         captured = capsys.readouterr()
         parsed_out = parse_benchmark_output(captured.out)
         assert "return_value" in parsed_out["functions"]
-        assert parsed_out["functions"]["return_value"]["avg"] < SLEEP_TIME
-        assert parsed_out["functions"]["return_value"]["min"] < SLEEP_TIME
+        # Given Windows timer resolution,
+        # we should just check it's significantly smaller
+        # rather than using a strict comparison that may fail due to timer imprecision
+        assert parsed_out["functions"]["return_value"]["avg"] < SLEEP_TIME / 2
+        assert parsed_out["functions"]["return_value"]["min"] < SLEEP_TIME / 2
 
 
 class TestBenchDecoratorMemory:

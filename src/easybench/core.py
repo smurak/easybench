@@ -627,7 +627,7 @@ class EasyBench:
         benchmark_methods = {}
 
         # Find all attributes that are callable and start with 'bench_'
-        for name in dir(self):
+        for name in self.__class__.__dict__:
             if name.startswith("bench_"):
                 attr = getattr(self, name)
                 if callable(attr):
