@@ -417,7 +417,7 @@ easybench --trials 10 --memory
 
 EasyBench uses a mechanism called **Reporter** to output benchmark results. By default, `ConsoleReporter` is used.
 
-`ConsoleReporter` is a reporter that outputs data to the console screen, and by default formats the data in tabular form (`TableFormatter`). In EasyBench, you can change both the `Formatter` (output format) and the `Reporter` (output destination) to enable various forms of output.
+`ConsoleReporter` is a reporter that outputs data to the console screen, and by default formats the data in tabular form (`TableFormatter`). In EasyBench, you can change both the `Formatter` (output format) and the `Reporter` (output method) to enable various forms of output.
 
 #### Using Reporters
 
