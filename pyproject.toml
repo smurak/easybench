@@ -42,6 +42,7 @@ docs = [
 [project.urls]
 "Homepage" = "https://github.com/smurak/easybench"
 "Bug Tracker" = "https://github.com/smurak/easybench/issues"
+"Documentation" = "https://smurak.github.io/easybench/"
 
 [project.scripts]
 easybench = "easybench.cli:cli_main"
