@@ -141,8 +141,8 @@ def cli_main() -> None:
     Execute the main command line interface for easybench.
 
     Usage:
-    easybench [--trials N] [--memory] [--sort-by METRIC] [--reverse]
-    [--show-output] [directory]
+    easybench [`--trials N`] [`--memory`] [`--sort-by METRIC`] [`--reverse`]
+    [`--show-output`] [`directory`]
     """
     default_config = BenchConfig()
     parser = argparse.ArgumentParser(

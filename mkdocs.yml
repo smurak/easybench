@@ -1,0 +1,28 @@
+site_name: EasyBench
+site_url: https://smurak.github.io/easybench/
+
+repo_name: smurak/easybench
+repo_url: https://github.com/smurak/easybench
+
+theme:
+  name: material
+
+plugins:
+  - search
+  - mkdocstrings
+
+nav:
+  - Home: index.md
+  - Quick Start: quickstart.md
+  - Usage: usage.md
+  - Advanced Usage: advanced.md
+  - Reference:
+    - CLI: reference/cli.md
+    - Core: reference/core.md
+    - Decorator: reference/decorator.md
+    - Reporters: reference/reporters.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
