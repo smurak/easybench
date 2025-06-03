@@ -49,31 +49,31 @@ class Formatter(ABC):
 
         Args:
             results: Dictionary mapping benchmark names to result data
-              Example:
-              {
-                  "bench_append": {
-                      "times": [0.01, 0.012],  # Execution times per trial
-                      "memory": [10.5, 10.2],   # Memory usage (if enabled)
-                      "output": ["result", "result2"]  # Function outputs (if enabled)
-                  },
-                  "bench_insert": {
-                      "times": [0.02, 0.019, 0.021],
-                      "memory": [12.1, 12.0, 12.3],
-                      "output": ["result", "result2", "result3"]
-                  }
-              }
+                Example:
+                {
+                    "bench_append": {
+                        "times": [0.01, 0.012],  # Execution times per trial
+                        "memory": [10.5, 10.2],   # Memory usage (if enabled)
+                        "output": ["result", "result2"]  # Function outputs (if enabled)
+                    },
+                    "bench_insert": {
+                        "times": [0.02, 0.019, 0.021],
+                        "memory": [12.1, 12.0, 12.3],
+                        "output": ["result", "result2", "result3"]
+                    }
+                }
             stats: Dictionary of calculated statistics
-              Example:
-              {
-                  "bench_append": {
-                      "avg": 0.011, "min": 0.01, "max": 0.012,
-                      "avg_memory": 10.35, "peak_memory": 10.5
-                  },
-                  "bench_insert": {
-                      "avg": 0.02, "min": 0.019, "max": 0.021,
-                      "avg_memory": 12.13, "peak_memory": 12.3
-                  }
-              }
+                Example:
+                {
+                    "bench_append": {
+                        "avg": 0.011, "min": 0.01, "max": 0.012,
+                        "avg_memory": 10.35, "peak_memory": 10.5
+                    },
+                    "bench_insert": {
+                        "avg": 0.02, "min": 0.019, "max": 0.021,
+                        "avg_memory": 12.13, "peak_memory": 12.3
+                    }
+                }
             config: Benchmark configuration
 
         Returns:
