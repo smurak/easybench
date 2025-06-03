@@ -36,6 +36,7 @@ test = [
 docs = [
   "mkdocstrings[python]",
   "mkdocs-material",
+  "black",
 ]
 
 [project.urls]
