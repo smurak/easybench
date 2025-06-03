@@ -33,6 +33,11 @@ test = [
     "pytest",
     "pytest-cov",
 ]
+docs = [
+  "mkdocstrings[python]",
+  "mkdocs-material",
+  "black",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/smurak/easybench"

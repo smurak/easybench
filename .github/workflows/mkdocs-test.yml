@@ -1,15 +1,11 @@
-name: "Deploy MkDocs"
+name: "Test MkDocs Build"
 
 on:
-  push:
-    branches:
-      - main
-
-permissions:
-  contents: write
+  pull_request:
+    branches: [ '*' ]
 
 jobs:
-  deploy:
+  build-docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,4 +15,4 @@ jobs:
       - run: |
           python -m pip install --upgrade pip
           python -m pip install .[docs]
-      - run: mkdocs gh-deploy --force
+      - run: mkdocs build --strict
