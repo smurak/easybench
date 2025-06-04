@@ -5,7 +5,7 @@ on:
     branches: [ '*' ]
 
 jobs:
-  build-docs:
+  build-docs-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
