@@ -19,7 +19,7 @@ English | [日本語](README_ja.md)
 
 - Three benchmarking styles (decorator, class-based, and command-line)
 - Measure both execution time and estimated memory usage ([see limitations](#memory-measurement-limitations))
-- Pytest-like fixture system for easy test data setup
+- A pytest-like fixture system for easy test data setup
 - Customizable benchmark configuration
 - Command-line tool to run multiple benchmarks at once
 - Multiple output formats (text tables, CSV, JSON, pandas.DataFrame)
