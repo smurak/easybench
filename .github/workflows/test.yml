@@ -28,3 +28,18 @@ jobs:
     - name: Pytest
       run: |
         pytest --cov=src/easybench tests/
+
+  test-summary:
+    name: Wait for all test jobs
+    runs-on: ubuntu-latest
+    if: always()
+    needs: test
+    steps:
+      - name: Check job results
+        run: |
+          if grep -q '"conclusion":"failure"' <<< "${{ toJson(needs) }}"; then
+            echo "At least one matrix job failed"
+            exit 1
+          else
+            echo "All matrix jobs succeeded"
+          fi
