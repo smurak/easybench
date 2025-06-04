@@ -1,5 +1,5 @@
 """
-Pytest fixtures and testing utilities for easybench.
+A collection of pytest fixtures and testing utilities for easybench.
 
 This module provides common fixtures and helper functions
 used across multiple test files:
