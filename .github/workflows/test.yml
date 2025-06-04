@@ -30,16 +30,17 @@ jobs:
         pytest --cov=src/easybench tests/
 
   test-summary:
-    name: Wait for all test jobs
     runs-on: ubuntu-latest
     if: always()
     needs: test
     steps:
       - name: Check job results
         run: |
-          if grep -q '"conclusion":"failure"' <<< "${{ toJson(needs) }}"; then
-            echo "At least one matrix job failed"
-            exit 1
+          result="${{ needs.test.result }}"
+          if [[ "$result" == "success" || "$result" == "skipped" ]]; then
+            echo "✅ All matrix jobs passed"
+            exit 0
           else
-            echo "All matrix jobs succeeded"
+            echo "❌ Some matrix jobs failed"
+            exit 1
           fi
