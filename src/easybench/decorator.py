@@ -9,6 +9,8 @@ import inspect
 from collections.abc import Callable
 from typing import Any, ParamSpec, Protocol, TypeVar, cast, overload
 
+from pydantic import BaseModel
+
 from .core import (
     BenchConfig,
     FixtureRegistry,
@@ -21,6 +23,39 @@ from .reporters import Reporter
 # Type for decorated functions
 P = ParamSpec("P")
 R_co = TypeVar("R_co", covariant=True)
+
+
+class BenchDecoParams(BaseModel):
+    """
+    Class to store parameters for easybench decorators.
+
+    This class allows grouping parameters for various easybench decorators together,
+    making it easier to reuse parameter sets across multiple benchmarks.
+
+    Attributes:
+        bench: Dictionary of parameters for @bench decorator
+        fn_params: Dictionary of parameters for @bench.fn_params decorator
+        config: Dictionary of parameters for @bench.config decorator
+
+    Example:
+        ```python
+        params = BenchDecoParams(
+            bench={"item": 123, "big_list": lambda: list(range(1_000_000))},
+            config={"trials": 5, "memory": True}
+        )
+
+        @bench(params)
+        def add_item(item, big_list):
+            big_list.append(item)
+        ```
+
+    """
+
+    model_config = {"arbitrary_types_allowed": True}
+
+    bench: dict[str, Any] = {}
+    fn_params: dict[str, Any] = {}
+    config: dict[str, Any] = {}
 
 
 class BenchmarkableFunction(Protocol[P, R_co]):
@@ -59,6 +94,10 @@ class BenchDecorator:
             A decorated function with benchmark capabilities
 
         """
+        # Handle BenchDecoParams instance as first argument
+        if len(args) == 1 and isinstance(args[0], BenchDecoParams) and not kwargs:
+            return self._decorate_with_bench_param(args[0])
+
         # Handle direct function decoration: @bench
         if len(args) == 1 and callable(args[0]) and not kwargs:
             return self._decorate(args[0])
@@ -66,6 +105,64 @@ class BenchDecorator:
         # Handle parameterized decoration: @bench(param=value)
         def decorator(func: Callable) -> Callable:
             return self._decorate(func, **kwargs)
+
+        return decorator
+
+    def _decorate_with_bench_param(
+        self,
+        param: BenchDecoParams,
+    ) -> Callable:
+        """
+        Set up the function for benchmarking using a BenchDecoParams instance.
+
+        Args:
+            param: BenchDecoParams instance with benchmark configuration
+
+        Returns:
+            A decorator function that configures the function with the BenchDecoParams
+
+        """
+
+        def decorator(func: Callable) -> Callable:
+            # Create FunctionBench instance if not already present
+            func = cast("BenchmarkableFunction", func)
+            if not hasattr(func, "bench"):
+                func.bench = FunctionBench(func)
+                func.fixture_registry = {
+                    "trial": {},
+                    "function": {},
+                    "class": {},
+                }
+
+            # Apply config parameters
+            if param.config:
+                partial_config = PartialBenchConfig(**param.config)
+                func.bench.bench_config = partial_config.merge_with(
+                    func.bench.bench_config,
+                )
+
+            # Apply function parameters
+            if param.fn_params:
+                for name, value in param.fn_params.items():
+                    if callable(value) and not isinstance(value, type):
+                        func.fixture_registry["trial"][name] = value
+                    else:
+                        func.fixture_registry["trial"][name] = lambda v=value: v
+
+            # Apply bench parameters
+            if param.bench:
+                for name, value in param.bench.items():
+                    if callable(value) and not isinstance(value, type):
+                        # For callables like lambdas, register the callable itself
+                        func.fixture_registry["trial"][name] = value
+                    else:
+                        # For values, create a lambda that returns the value
+                        func.fixture_registry["trial"][name] = lambda v=value: v
+
+            # Run benchmark if all parameters are satisfied
+            self._maybe_run_benchmark(func)
+
+            return func
 
         return decorator
 
