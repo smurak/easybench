@@ -121,7 +121,7 @@ There are 3 ways to benchmark with `easybench`:
 
 * Multiple benchmarks
 
-  ![EasyBench Benchmark Result](images/easybench_screenshot.png)
+  ![EasyBench Benchmark Result](https://raw.githubusercontent.com/smurak/easybench/main/images/easybench_screenshot.png)
 
 
 
