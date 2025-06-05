@@ -277,7 +277,7 @@ class BenchDecorator:
                 )
 
                 if results:
-                    all_results[f"{func_name}({param_name})"] = results
+                    all_results[f"{func_name} ({param_name})"] = results
                     if first_config is None:
                         first_config = config
 

@@ -1037,9 +1037,9 @@ class TestBenchDecoParamsDecorator:
 
         # Verify comparison output
         assert "Benchmark Results" in captured.out
-        assert "create_sorted_list(Small)" in captured.out
-        assert "create_sorted_list(Medium)" in captured.out
-        assert "create_sorted_list(Large)" in captured.out
+        assert "create_sorted_list (Small)" in captured.out
+        assert "create_sorted_list (Medium)" in captured.out
+        assert "create_sorted_list (Large)" in captured.out
         assert "Avg Time" in captured.out
         # Each parameter set should have been executed
         assert (
@@ -1069,5 +1069,5 @@ class TestBenchDecoParamsDecorator:
 
         # Verify output
         assert "Benchmark Results" in captured.out
-        assert "create_sorted_list(Standard)" in captured.out
+        assert "create_sorted_list (Standard)" in captured.out
         assert "Avg Time" in captured.out
