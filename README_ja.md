@@ -364,10 +364,11 @@ class MyBenchmark(EasyBench):
 複数のベンチマークを一度に実行するには、`easybench`コマンドを使用します：
 
 ```bash
-easybench [オプション] [ディレクトリ]
+easybench [オプション] [パス]
 ```
 
 * デフォルトでは、`benchmarks`ディレクトリ内の`bench_*.py`という名前のファイルを実行します
+* ベンチマークファイルを含むディレクトリを指定するか、特定のベンチマークファイルを直接指定できます
 * ベンチマークスクリプトは以下のルールに従う必要があります：
   * クラスベースのベンチマークでは、クラス名が`Bench`で始まる
   * 関数ベースのベンチマークでは、関数名が`bench_`で始まる
@@ -375,7 +376,7 @@ easybench [オプション] [ディレクトリ]
 #### コマンドオプション
 
 ```bash
-easybench [--trials N] [--memory] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [ディレクトリ]
+easybench [--trials N] [--memory] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [パス]
 ```
 
 - `--trials N`: 試行回数 (デフォルト: 5)
@@ -384,7 +385,7 @@ easybench [--trials N] [--memory] [--sort-by METRIC] [--reverse] [--no-color] [-
 - `--reverse`: 結果を降順でソート
 - `--no-color`: カラー出力を無効化
 - `--show-output`: 関数の戻り値を表示
-- `directory`: ベンチマークファイルを含むディレクトリ (デフォルト: "benchmarks")
+- `パス`: ベンチマークファイルを含むディレクトリまたは特定のベンチマークファイル (デフォルト: "benchmarks")
 
 #### 関数ベースのベンチマーク例
 

@@ -14,23 +14,32 @@ from .core import BenchConfig, EasyBench, FunctionBench, PartialBenchConfig
 logger = logging.getLogger(__name__)
 
 
-def discover_benchmark_files(directory: str | Path = "benchmarks") -> list[Path]:
+def discover_benchmark_files(path: str | Path = "benchmarks") -> list[Path]:
     """
-    Discover all Python files starting with 'bench_' in the specified directory.
+    Discover benchmark files based on the input path.
+
+    If path is a directory, find all Python files starting with 'bench_'.
 
     Args:
-        directory: Directory to search for benchmark files
+        path: Path to a benchmark file or directory containing benchmark files
 
     Returns:
         List of paths to benchmark files
 
     """
-    directory = Path(directory)
-    if not directory.is_dir():
-        logger.error("Directory not found: %s", directory)
-        return []
+    path = Path(path)
 
-    return sorted(directory.glob("bench_*.py"))
+    # If the path is a file
+    if path.is_file():
+        return [path]
+
+    # If the path is a directory
+    if path.is_dir():
+        return sorted(path.glob("bench_*.py"))
+
+    # If the path doesn't exist
+    logger.error("Path not found: %s", path)
+    return []
 
 
 def load_benchmark_module(file_path: Path) -> types.ModuleType | None:
@@ -115,13 +124,11 @@ def run_benchmarks(
     if source_id:
         separator = "=" * 80
         print(  # noqa: T201
-            f"\n{separator}\n"
-            f"Running benchmarks from: {source_id}\n"
-            f"{separator}\n",
+            f"\n{separator}\nRunning benchmarks from: {source_id}\n{separator}",
         )
 
     for name, benchmark in benchmarks.items():
-        print("Running benchmark: %s", name)  # noqa: T201
+        print(f"\n=== Running benchmark: {name} ===")  # noqa: T201
 
         try:
             if inspect.isfunction(benchmark):
@@ -142,17 +149,20 @@ def cli_main() -> None:
 
     Usage:
     easybench [`--trials N`] [`--memory`] [`--sort-by METRIC`] [`--reverse`]
-    [`--show-output`] [`directory`]
+    [`--show-output`] [`path`]
     """
     default_config = BenchConfig()
     parser = argparse.ArgumentParser(
-        description="Run benchmarks in the specified directory",
+        description="Run benchmarks in the specified file or directory",
     )
     parser.add_argument(
-        "directory",
+        "path",
         nargs="?",
         default="benchmarks",
-        help="Directory containing benchmark files (default: benchmarks)",
+        help=(
+            "Benchmark file or directory containing benchmark files "
+            "(default: benchmarks directory)"
+        ),
     )
     parser.add_argument(
         "--trials",
@@ -199,9 +209,9 @@ def cli_main() -> None:
         )
 
         # Discover benchmark files
-        benchmark_files = discover_benchmark_files(args.directory)
+        benchmark_files = discover_benchmark_files(args.path)
         if not benchmark_files:
-            logger.error("No benchmark files found in %s", args.directory)
+            logger.error("No benchmark files found at %s", args.path)
             return
 
         logger.info("Found %d benchmark files:", len(benchmark_files))
