@@ -121,8 +121,7 @@ pip install easybench
 
 * 複数ベンチマーク
 
-  ![EasyBench Benchmark Result](images/easybench_screenshot.png)
-
+  ![EasyBench Benchmark Result](https://raw.githubusercontent.com/smurak/easybench/main/images/easybench_screenshot.png)
 
 
 ## 使用方法
