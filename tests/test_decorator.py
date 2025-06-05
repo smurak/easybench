@@ -1004,3 +1004,70 @@ class TestBenchDecoParamsDecorator:
         captured2 = capsys.readouterr()
         assert "Benchmark Results (2 trials)" in captured2.out
         assert "test_func2" in captured2.out
+
+    def test_bench_param_with_list(self, capsys: pytest.CaptureFixture) -> None:
+        """Test using a list of BenchDecoParams for parameter comparison."""
+        from easybench.decorator import BenchDecoParams
+
+        # Create multiple parameter sets for comparison
+        params1 = BenchDecoParams(
+            name="Small",
+            bench={"size": 100},
+            config={"trials": 2},
+        )
+
+        params2 = BenchDecoParams(
+            name="Medium",
+            bench={"size": 500},
+            config={"trials": 2},
+        )
+
+        params3 = BenchDecoParams(
+            name="Large",
+            bench={"size": 1000},
+            config={"trials": 2},
+        )
+
+        # Use the list of params with the bench decorator
+        @bench([params1, params2, params3])
+        def create_sorted_list(size: int) -> list[int]:
+            return sorted(range(size))
+
+        captured = capsys.readouterr()
+
+        # Verify comparison output
+        assert "Benchmark Results" in captured.out
+        assert "create_sorted_list(Small)" in captured.out
+        assert "create_sorted_list(Medium)" in captured.out
+        assert "create_sorted_list(Large)" in captured.out
+        assert "Avg Time" in captured.out
+        # Each parameter set should have been executed
+        assert (
+            "100" not in captured.out
+        )  # Sorted lists don't show return values by default
+
+    def test_bench_param_with_single_item_list(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test using a list with a single BenchDecoParams for parameter testing."""
+        from easybench.decorator import BenchDecoParams
+
+        # Create a single parameter set
+        params = BenchDecoParams(
+            name="Standard",
+            bench={"size": 500},
+            config={"trials": 2},
+        )
+
+        # Use a single-item list with the bench decorator
+        @bench([params])  # Note: This is a list containing one item
+        def create_sorted_list(size: int) -> list[int]:
+            return sorted(range(size))
+
+        captured = capsys.readouterr()
+
+        # Verify output
+        assert "Benchmark Results" in captured.out
+        assert "create_sorted_list(Standard)" in captured.out
+        assert "Avg Time" in captured.out

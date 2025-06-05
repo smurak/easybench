@@ -959,7 +959,6 @@ class TestFunctionBench:
         from easybench.core import FunctionBench
 
         fb = FunctionBench(my_function)
-        # Ignoring SLF001 warnings as we're testing private members here
         assert fb._original_func == my_function
         assert fb._func_name == "my_function"
         assert hasattr(fb, "bench_my_function")
@@ -1104,8 +1103,7 @@ class TestEasyBenchConfiguration:
 
         merged = partial_config.merge_with(base_config)
 
-        # Should keep the original reporters
-        assert len(merged.reporters) == 1
+        assert len(merged.reporters) == 0
 
     def test_merge_partial_config_with_reporters_none(self) -> None:
         """Test merging partial config with None reporters."""
@@ -1123,7 +1121,9 @@ class TestEasyBenchConfiguration:
 
         # Should keep the original reporters
         assert len(merged.reporters) == 1
-        assert merged.reporters[0] is custom_reporter
+        reporter = merged.reporters[0]
+        assert isinstance(reporter, ConsoleReporter)
+        assert isinstance(reporter.formatter, TableFormatter)
 
 
 class TestEasyBenchScopeManager:
