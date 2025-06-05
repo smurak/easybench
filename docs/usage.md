@@ -240,10 +240,11 @@ Sorting options (`sort_by`):
 To run multiple benchmarks at once, use the `easybench` command:
 
 ```bash
-easybench [options] [directory]
+easybench [options] [path]
 ```
 
 * By default, it runs files named `bench_*.py` in the `benchmarks` directory
+* You can specify either a directory containing benchmark files or a specific benchmark file
 * Benchmark scripts must follow these rules:
   * For class-based benchmarks, class names should start with `Bench`
   * For function-based benchmarks, function names should start with `bench_`
@@ -251,7 +252,7 @@ easybench [options] [directory]
 ### Command Options
 
 ```bash
-easybench [--trials N] [--memory] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [directory]
+easybench [--trials N] [--memory] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [path]
 ```
 
 - `--trials N`: Number of trials (default: 5)
@@ -260,7 +261,7 @@ easybench [--trials N] [--memory] [--sort-by METRIC] [--reverse] [--no-color] [-
 - `--reverse`: Sort results in descending order
 - `--no-color`: Disable colored output
 - `--show-output`: Display function return values
-- `directory`: Directory containing benchmark files (default: "benchmarks")
+- `path`: Directory containing benchmark files or a specific benchmark file (default: "benchmarks")
 
 ### Function-based Benchmark Example
 
@@ -287,4 +288,10 @@ Save this file in the `benchmarks` folder and run the `easybench` command to ben
 
 ```bash
 easybench --trials 10 --memory
+```
+
+You can also run a specific benchmark file directly:
+
+```bash
+easybench --trials 10 --memory benchmarks/bench_list_operations.py
 ```

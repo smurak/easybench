@@ -125,7 +125,7 @@ def create_module_file() -> Callable[[Path, str, str], Path]:
 def cli_args_mock() -> MagicMock:
     """Create a mock for CLI arguments."""
     args = MagicMock()
-    args.directory = "test_dir"
+    args.path = "test_dir"
     args.trials = DEFAULT_TEST_TRIALS
     args.memory = False
     args.sort_by = "avg"
@@ -160,6 +160,61 @@ class TestDiscoverBenchmarkFiles:
     def test_discover_benchmark_files_nonexistent_dir(self) -> None:
         """Test discovery with a non-existent directory."""
         found_files = discover_benchmark_files("/path/that/does/not/exist")
+        assert len(found_files) == 0
+
+    def test_discover_benchmark_files_directory(self, temp_dir: Path) -> None:
+        """Test discovering benchmark files from a directory."""
+        # Create a subdirectory for the test
+        sub_dir = temp_dir / "subdir"
+        sub_dir.mkdir()
+
+        # Create mock benchmark files in the subdirectory
+        bench_file1 = sub_dir / "bench_test1.py"
+        bench_file2 = sub_dir / "bench_test2.py"
+        bench_file1.touch()
+        bench_file2.touch()
+
+        # Discover benchmark files in the subdirectory
+        found_files = discover_benchmark_files(str(sub_dir))
+
+        num_files = 2
+        assert len(found_files) == num_files
+        assert bench_file1 in found_files
+        assert bench_file2 in found_files
+
+    def test_discover_benchmark_files_single_file(self, temp_dir: Path) -> None:
+        """Test discovering benchmark files with a single file path."""
+        # Create a valid benchmark file
+        valid_bench_file = temp_dir / "bench_test.py"
+        valid_bench_file.touch()
+
+        # Discover benchmark files with a single file path
+        found_files = discover_benchmark_files(str(valid_bench_file))
+
+        assert len(found_files) == 1
+        assert found_files[0] == valid_bench_file
+
+        # Create a valid benchmark file (not start with bench_)
+        bench_file = temp_dir / "test.py"
+        bench_file.touch()
+
+        # Discover benchmark files (not start with bench_)
+        found_files = discover_benchmark_files(str(bench_file))
+
+        assert len(found_files) == 1
+
+        # Create a benchmark file (non-py extension)
+        non_py_ext_file = temp_dir / "bench_test.txt"
+        non_py_ext_file.touch()
+
+        # Discover benchmark files with an non-py extension
+        found_files = discover_benchmark_files(str(non_py_ext_file))
+
+        assert len(found_files) == 1
+
+    def test_discover_benchmark_files_nonexistent(self) -> None:
+        """Test discovering benchmark files with a non-existent path."""
+        found_files = discover_benchmark_files("nonexistent_path")
         assert len(found_files) == 0
 
 
@@ -522,7 +577,7 @@ class TestCliMain:
     ) -> None:
         """Test CLI behavior when no benchmark files are found."""
         # Setup mocks
-        cli_args_mock.directory = "empty_dir"
+        cli_args_mock.path = "empty_dir"
         mock_parse_args.return_value = cli_args_mock
 
         # Mock finding no benchmark files
@@ -652,7 +707,7 @@ class TestCliArguments:
         """Test using default arguments when none are provided."""
         # Setup mocks
         mock_args = MagicMock()
-        mock_args.directory = "benchmarks"  # Default directory
+        mock_args.path = "benchmarks"
         mock_args.trials = None
         mock_args.memory = False
         mock_args.sort_by = None
@@ -1019,3 +1074,42 @@ def bench_memory_test():
 
         # Check for memory measurement in output
         assert "Memory (KB)" in output, "Memory measurement not shown in output"
+
+
+def test_discover_benchmark_files_directory() -> None:
+    """Test discovering benchmark files from a directory."""
+    with (
+        patch("pathlib.Path.is_dir", return_value=True),
+        patch(
+            "pathlib.Path.glob",
+            return_value=[Path("bench_test1.py"), Path("bench_test2.py")],
+        ),
+    ):
+        files = discover_benchmark_files("some_dir")
+        num_files = 2
+        assert len(files) == num_files
+        assert files[0].name == "bench_test1.py"
+        assert files[1].name == "bench_test2.py"
+
+
+def test_discover_benchmark_files_single_file() -> None:
+    """Test discovering benchmark files with a single file path."""
+    with (
+        patch("pathlib.Path.is_file", return_value=True),
+        patch("pathlib.Path.is_dir", return_value=False),
+    ):
+        # Valid benchmark filename
+        test_file = Path("bench_test.py")
+        files = discover_benchmark_files(test_file)
+        assert len(files) == 1
+        assert files[0] == test_file
+
+
+def test_discover_benchmark_files_nonexistent() -> None:
+    """Test discovering benchmark files with a non-existent path."""
+    with (
+        patch("pathlib.Path.is_file", return_value=False),
+        patch("pathlib.Path.is_dir", return_value=False),
+    ):
+        files = discover_benchmark_files("nonexistent")
+        assert len(files) == 0
