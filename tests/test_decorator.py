@@ -1071,3 +1071,132 @@ class TestBenchParamsDecorator:
         assert "Benchmark Results" in captured.out
         assert "create_sorted_list (Standard)" in captured.out
         assert "Avg Time" in captured.out
+
+
+class TestBenchParamsAlias:
+    """Tests for bench.Params alias functionality."""
+
+    def test_bench_params_alias_basic(self, capsys: pytest.CaptureFixture) -> None:
+        """Test that bench.Params can be used as an alias for BenchParams."""
+        params = bench.Params(
+            params={"value": 10},
+        )
+
+        @bench(params)
+        def test_func(value: int) -> int:
+            return value * 2
+
+        captured = capsys.readouterr()
+        assert "Benchmark Results" in captured.out
+        assert "test_func" in captured.out
+        assert "Avg Time" in captured.out
+
+    def test_bench_params_alias_with_config(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test bench.Params with configuration options."""
+        params = bench.Params(
+            params={"value": 10},
+            config={"trials": SINGLE_TRIAL, "memory": True},
+        )
+
+        @bench(params)
+        def test_func(value: int) -> int:
+            return value * 2
+
+        captured = capsys.readouterr()
+        assert f"Benchmark Results ({SINGLE_TRIAL} trial)" in captured.out
+        assert "test_func" in captured.out
+        assert "Time" in captured.out
+        assert "Memory" in captured.out
+        assert "Avg Time" not in captured.out  # Single trial format
+
+    def test_bench_params_alias_named(self, capsys: pytest.CaptureFixture) -> None:
+        """Test bench.Params with a name for comparison."""
+        params1 = bench.Params(
+            name="Small",
+            params={"size": 100},
+            config={"trials": 2},
+        )
+
+        params2 = bench.Params(
+            name="Large",
+            params={"size": 1000},
+            config={"trials": 2},
+        )
+
+        @bench([params1, params2])
+        def create_sorted_list(size: int) -> list[int]:
+            return sorted(range(size))
+
+        captured = capsys.readouterr()
+        assert "Benchmark Results" in captured.out
+        assert "create_sorted_list (Small)" in captured.out
+        assert "create_sorted_list (Large)" in captured.out
+        assert "Avg Time" in captured.out
+
+    def test_bench_params_alias_with_fn_params(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test bench.Params with function parameters."""
+
+        def get_multiply() -> Callable[[int], int]:
+            def multiply(x: int) -> int:
+                return x * 2
+
+            return multiply
+
+        params = bench.Params(
+            params={"value": 10},
+            fn_params={"operation": get_multiply},
+        )
+
+        @bench(params)
+        def test_func(value: int, operation: Callable[[int], int]) -> int:
+            return operation(value)
+
+        captured = capsys.readouterr()
+        assert "Benchmark Results" in captured.out
+        assert "test_func" in captured.out
+        assert "Avg Time" in captured.out
+
+    def test_bench_params_alias_comparative_benchmark(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test bench.Params for comparative benchmarks with different configs."""
+        # Create params for small, medium and large workloads
+        small = bench.Params(
+            name="Small",
+            params={"data_size": 100},
+            config={"trials": 2, "show_output": True},
+        )
+
+        medium = bench.Params(
+            name="Medium",
+            params={"data_size": 500},
+            config={"trials": 2, "show_output": True},
+        )
+
+        large = bench.Params(
+            name="Large",
+            params={"data_size": 1000},
+            config={"trials": 2, "show_output": True},
+        )
+
+        @bench([small, medium, large])
+        def sum_range(data_size: int) -> int:
+            return sum(range(data_size))
+
+        captured = capsys.readouterr()
+
+        assert "Benchmark Results" in captured.out
+        assert "sum_range (Small)" in captured.out
+        assert "sum_range (Medium)" in captured.out
+        assert "sum_range (Large)" in captured.out
+        assert "Return Values" in captured.out
+        assert "4950" in captured.out  # Sum of range(100)
+        assert "124750" in captured.out  # Sum of range(500)
+        assert "499500" in captured.out  # Sum of range(1000)
