@@ -37,7 +37,7 @@ class BenchDecoParams(BaseModel):
 
     Attributes:
         name: Optional name for this parameter set (used for comparison display)
-        bench: Dictionary of parameters for @bench decorator
+        params: Dictionary of parameters for @bench decorator
         fn_params: Dictionary of parameters for @bench.fn_params decorator
         config: Dictionary of parameters for @bench.config decorator
 
@@ -45,7 +45,7 @@ class BenchDecoParams(BaseModel):
         ```python
         params = BenchDecoParams(
             name="Large dataset",
-            bench={"item": 123, "big_list": lambda: list(range(1_000_000))},
+            params={"item": 123, "big_list": lambda: list(range(1_000_000))},
             config={"trials": 5, "memory": True}
         )
 
@@ -57,7 +57,7 @@ class BenchDecoParams(BaseModel):
     """
 
     name: str | None = None
-    bench: dict[str, Any] = {}
+    params: dict[str, Any] = {}
     fn_params: dict[str, Any] = {}
     config: dict[str, Any] = {}
 
@@ -329,8 +329,8 @@ class BenchDecorator:
                         func.fixture_registry["trial"][name] = lambda v=value: v
 
             # Apply bench parameters
-            if param.bench:
-                for name, value in param.bench.items():
+            if param.params:
+                for name, value in param.params.items():
                     if callable(value) and not isinstance(value, type):
                         # For callables like lambdas, register the callable itself
                         func.fixture_registry["trial"][name] = value

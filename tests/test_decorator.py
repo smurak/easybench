@@ -868,7 +868,7 @@ class TestBenchDecoParamsDecorator:
         from easybench.decorator import BenchDecoParams
 
         params = BenchDecoParams(
-            bench={"value": 10},
+            params={"value": 10},
         )
 
         @bench(params)
@@ -887,7 +887,7 @@ class TestBenchDecoParamsDecorator:
         from easybench.decorator import BenchDecoParams
 
         params = BenchDecoParams(
-            bench={"value": 10},
+            params={"value": 10},
             config={"trials": SINGLE_TRIAL, "memory": True},
         )
 
@@ -915,7 +915,7 @@ class TestBenchDecoParamsDecorator:
             return multiply
 
         params = BenchDecoParams(
-            bench={"value": 10},
+            params={"value": 10},
             fn_params={"operation": get_multiply},
         )
 
@@ -941,7 +941,7 @@ class TestBenchDecoParamsDecorator:
             return list(range(100))
 
         params = BenchDecoParams(
-            bench={"value": 5},
+            params={"value": 5},
             fn_params={"data": generate_list},
             config={"trials": MULTIPLE_TRIALS, "memory": True, "show_output": True},
         )
@@ -972,7 +972,7 @@ class TestBenchDecoParamsDecorator:
         def get_transformer() -> Callable[[int], int]:
             return lambda x: x * 3
 
-        params = BenchDecoParams(bench={"value": 10, "transformer": get_transformer})
+        params = BenchDecoParams(params={"value": 10, "transformer": get_transformer})
 
         @bench(params)
         def test_func(value: int, transformer: Callable[[int], int]) -> int:
@@ -987,7 +987,7 @@ class TestBenchDecoParamsDecorator:
         """Test reusing the same BenchDecoParams for multiple functions."""
         from easybench.decorator import BenchDecoParams
 
-        params = BenchDecoParams(bench={"value": 10}, config={"trials": 2})
+        params = BenchDecoParams(params={"value": 10}, config={"trials": 2})
 
         @bench(params)
         def test_func1(value: int) -> int:
@@ -1012,19 +1012,19 @@ class TestBenchDecoParamsDecorator:
         # Create multiple parameter sets for comparison
         params1 = BenchDecoParams(
             name="Small",
-            bench={"size": 100},
+            params={"size": 100},
             config={"trials": 2},
         )
 
         params2 = BenchDecoParams(
             name="Medium",
-            bench={"size": 500},
+            params={"size": 500},
             config={"trials": 2},
         )
 
         params3 = BenchDecoParams(
             name="Large",
-            bench={"size": 1000},
+            params={"size": 1000},
             config={"trials": 2},
         )
 
@@ -1056,7 +1056,7 @@ class TestBenchDecoParamsDecorator:
         # Create a single parameter set
         params = BenchDecoParams(
             name="Standard",
-            bench={"size": 500},
+            params={"size": 500},
             config={"trials": 2},
         )
 
