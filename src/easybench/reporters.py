@@ -220,6 +220,7 @@ class TableFormatter(Formatter):
             min_peak_memory = min(stat["peak_memory"] for stat in stats.values())
             max_peak_memory = max(stat["peak_memory"] for stat in stats.values())
 
+        color = config.color if len(stats) > 1 else False
         for method_name in self.sorted_methods:
             stat = stats[method_name]
 
@@ -228,19 +229,19 @@ class TableFormatter(Formatter):
                 stat["avg"],
                 min_avg,
                 max_avg,
-                color=config.color,
+                color=color,
             )
             min_val = self._format_metric(
                 stat["min"],
                 min_min,
                 max_min,
-                color=config.color,
+                color=color,
             )
             max_val = self._format_metric(
                 stat["max"],
                 min_max,
                 max_max,
-                color=config.color,
+                color=color,
             )
 
             # Format the function name with proper alignment
@@ -253,13 +254,13 @@ class TableFormatter(Formatter):
                     stat["avg_memory"],
                     min_avg_memory,
                     max_avg_memory,
-                    color=config.color,
+                    color=color,
                 )
                 peak_mem = self._format_metric(
                     stat["peak_memory"],
                     min_peak_memory,
                     max_peak_memory,
-                    color=config.color,
+                    color=color,
                 )
                 line += f" {avg_mem} {peak_mem}"
 

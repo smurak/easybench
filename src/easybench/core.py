@@ -745,7 +745,6 @@ class FunctionBench(EasyBench):
 
         """
         super().__init__(bench_config=bench_config)
-        self.bench_config.color = False
 
         if not callable(func):
             error_msg = "func must be callable"

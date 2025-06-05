@@ -834,7 +834,8 @@ class TestEasyBenchConfig:
         bench.bench(config=PartialBenchConfig(color=True))
 
         captured_color = capsys.readouterr()
-        assert "\x1b[" in captured_color.out or "\033[" in captured_color.out
+        assert "\x1b[" not in captured_color.out
+        assert "\033[" not in captured_color.out
 
         # With color disabled
         bench = ColorBench()
