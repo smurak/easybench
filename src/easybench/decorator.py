@@ -28,7 +28,7 @@ P = ParamSpec("P")
 R_co = TypeVar("R_co", covariant=True)
 
 
-class BenchDecoParams(BaseModel):
+class BenchParams(BaseModel):
     """
     Class to store parameters for easybench decorators.
 
@@ -43,7 +43,7 @@ class BenchDecoParams(BaseModel):
 
     Example:
         ```python
-        params = BenchDecoParams(
+        params = BenchParams(
             name="Large dataset",
             params={"item": 123, "big_list": lambda: list(range(1_000_000))},
             config={"trials": 5, "memory": True}
@@ -123,10 +123,10 @@ class BenchDecorator:
                 big_list.append(item)
             ```
 
-            # Using a list of BenchDecoParams for comparison
+            # Using a list of BenchParams for comparison
             ```python
-            params1 = BenchDecoParams(name="Small", bench={"size": 1000})
-            params2 = BenchDecoParams(name="Large", bench={"size": 10000})
+            params1 = BenchParams(name="Small", bench={"size": 1000})
+            params2 = BenchParams(name="Large", bench={"size": 10000})
 
             @bench([params1, params2])
             def sorted_list(size):
@@ -137,17 +137,17 @@ class BenchDecorator:
             A decorated function with benchmark capabilities
 
         """
-        # Handle list of BenchDecoParams as first argument
+        # Handle list of BenchParams as first argument
         if (
             len(args) == 1
             and isinstance(args[0], list)
             and not kwargs
-            and all(isinstance(param, BenchDecoParams) for param in args[0])
+            and all(isinstance(param, BenchParams) for param in args[0])
         ):
             return self._decorate_with_bench_param_list(args[0])
 
-        # Handle BenchDecoParams instance as first argument
-        if len(args) == 1 and isinstance(args[0], BenchDecoParams) and not kwargs:
+        # Handle BenchParams instance as first argument
+        if len(args) == 1 and isinstance(args[0], BenchParams) and not kwargs:
             return self._decorate_with_bench_param(args[0])
 
         # Handle direct function decoration: @bench
@@ -163,7 +163,7 @@ class BenchDecorator:
     def _process_single_param_set(
         self,
         func: Callable,
-        params: BenchDecoParams,
+        params: BenchParams,
         index: int,
         func_name: str,
     ) -> tuple[str, ResultType | None, BenchConfig | None]:
@@ -236,19 +236,19 @@ class BenchDecorator:
 
     def _decorate_with_bench_param_list(
         self,
-        params_list: list[BenchDecoParams],
+        params_list: list[BenchParams],
     ) -> Callable:
         """
-        Set up the function for benchmarking using a list of BenchDecoParams instances.
+        Set up the function for benchmarking using a list of BenchParams instances.
 
         This allows comparing different parameter configurations for the same function.
 
         Args:
-            params_list: List of BenchDecoParams instances with benchmark configurations
+            params_list: List of BenchParams instances with benchmark configurations
 
         Returns:
             A decorator function that configures the function with multiple
-            BenchDecoParams and compares results
+            BenchParams and compares results
 
         """
 
@@ -296,16 +296,16 @@ class BenchDecorator:
 
     def _decorate_with_bench_param(
         self,
-        param: BenchDecoParams,
+        param: BenchParams,
     ) -> Callable:
         """
-        Set up the function for benchmarking using a BenchDecoParams instance.
+        Set up the function for benchmarking using a BenchParams instance.
 
         Args:
-            param: BenchDecoParams instance with benchmark configuration
+            param: BenchParams instance with benchmark configuration
 
         Returns:
-            A decorator function that configures the function with the BenchDecoParams
+            A decorator function that configures the function with the BenchParams
 
         """
 

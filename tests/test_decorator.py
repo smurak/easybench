@@ -860,14 +860,14 @@ class TestBenchDecoratorMemory:
         )
 
 
-class TestBenchDecoParamsDecorator:
-    """Tests for the BenchDecoParams functionality with bench decorator."""
+class TestBenchParamsDecorator:
+    """Tests for the BenchParams functionality with bench decorator."""
 
     def test_bench_param_basic(self, capsys: pytest.CaptureFixture) -> None:
-        """Test basic usage of BenchDecoParams with bench decorator."""
-        from easybench.decorator import BenchDecoParams
+        """Test basic usage of BenchParams with bench decorator."""
+        from easybench.decorator import BenchParams
 
-        params = BenchDecoParams(
+        params = BenchParams(
             params={"value": 10},
         )
 
@@ -883,10 +883,10 @@ class TestBenchDecoParamsDecorator:
         assert "Max Time" in captured.out
 
     def test_bench_param_with_config(self, capsys: pytest.CaptureFixture) -> None:
-        """Test BenchDecoParams with configuration options."""
-        from easybench.decorator import BenchDecoParams
+        """Test BenchParams with configuration options."""
+        from easybench.decorator import BenchParams
 
-        params = BenchDecoParams(
+        params = BenchParams(
             params={"value": 10},
             config={"trials": SINGLE_TRIAL, "memory": True},
         )
@@ -904,8 +904,8 @@ class TestBenchDecoParamsDecorator:
         assert "Avg Time" not in captured.out
 
     def test_bench_param_with_fn_params(self, capsys: pytest.CaptureFixture) -> None:
-        """Test BenchDecoParams with function parameters."""
-        from easybench.decorator import BenchDecoParams
+        """Test BenchParams with function parameters."""
+        from easybench.decorator import BenchParams
 
         # Create a function that takes no arguments but returns a callable
         def get_multiply() -> Callable[[int], int]:
@@ -914,7 +914,7 @@ class TestBenchDecoParamsDecorator:
 
             return multiply
 
-        params = BenchDecoParams(
+        params = BenchParams(
             params={"value": 10},
             fn_params={"operation": get_multiply},
         )
@@ -933,14 +933,14 @@ class TestBenchDecoParamsDecorator:
         capsys: pytest.CaptureFixture,
         parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
-        """Test BenchDecoParams with all types of parameters."""
-        from easybench.decorator import BenchDecoParams
+        """Test BenchParams with all types of parameters."""
+        from easybench.decorator import BenchParams
 
         # This function takes no arguments
         def generate_list() -> list[int]:
             return list(range(100))
 
-        params = BenchDecoParams(
+        params = BenchParams(
             params={"value": 5},
             fn_params={"data": generate_list},
             config={"trials": MULTIPLE_TRIALS, "memory": True, "show_output": True},
@@ -965,14 +965,14 @@ class TestBenchDecoParamsDecorator:
         self,
         capsys: pytest.CaptureFixture,
     ) -> None:
-        """Test BenchDecoParams with lambda functions."""
-        from easybench.decorator import BenchDecoParams
+        """Test BenchParams with lambda functions."""
+        from easybench.decorator import BenchParams
 
         # Create a function that returns a transformer function
         def get_transformer() -> Callable[[int], int]:
             return lambda x: x * 3
 
-        params = BenchDecoParams(params={"value": 10, "transformer": get_transformer})
+        params = BenchParams(params={"value": 10, "transformer": get_transformer})
 
         @bench(params)
         def test_func(value: int, transformer: Callable[[int], int]) -> int:
@@ -984,10 +984,10 @@ class TestBenchDecoParamsDecorator:
         assert "Avg Time" in captured.out
 
     def test_bench_param_reuse(self, capsys: pytest.CaptureFixture) -> None:
-        """Test reusing the same BenchDecoParams for multiple functions."""
-        from easybench.decorator import BenchDecoParams
+        """Test reusing the same BenchParams for multiple functions."""
+        from easybench.decorator import BenchParams
 
-        params = BenchDecoParams(params={"value": 10}, config={"trials": 2})
+        params = BenchParams(params={"value": 10}, config={"trials": 2})
 
         @bench(params)
         def test_func1(value: int) -> int:
@@ -1006,23 +1006,23 @@ class TestBenchDecoParamsDecorator:
         assert "test_func2" in captured2.out
 
     def test_bench_param_with_list(self, capsys: pytest.CaptureFixture) -> None:
-        """Test using a list of BenchDecoParams for parameter comparison."""
-        from easybench.decorator import BenchDecoParams
+        """Test using a list of BenchParams for parameter comparison."""
+        from easybench.decorator import BenchParams
 
         # Create multiple parameter sets for comparison
-        params1 = BenchDecoParams(
+        params1 = BenchParams(
             name="Small",
             params={"size": 100},
             config={"trials": 2},
         )
 
-        params2 = BenchDecoParams(
+        params2 = BenchParams(
             name="Medium",
             params={"size": 500},
             config={"trials": 2},
         )
 
-        params3 = BenchDecoParams(
+        params3 = BenchParams(
             name="Large",
             params={"size": 1000},
             config={"trials": 2},
@@ -1050,11 +1050,11 @@ class TestBenchDecoParamsDecorator:
         self,
         capsys: pytest.CaptureFixture,
     ) -> None:
-        """Test using a list with a single BenchDecoParams for parameter testing."""
-        from easybench.decorator import BenchDecoParams
+        """Test using a list with a single BenchParams for parameter testing."""
+        from easybench.decorator import BenchParams
 
         # Create a single parameter set
-        params = BenchDecoParams(
+        params = BenchParams(
             name="Standard",
             params={"size": 500},
             config={"trials": 2},
