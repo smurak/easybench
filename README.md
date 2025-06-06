@@ -193,6 +193,30 @@ Main configuration options:
 * `memory`: Also measure memory usage (default: `False`)
 * For other options, see "Configuration Options" below
 
+#### **Multiple parameter sets** (`bench.Params`)
+
+When you want to benchmark a function with multiple parameter sets,
+you can pass a list of parameter sets created with `bench.Params` to the `@bench` decorator:
+
+```python
+from easybench import bench
+
+# Define parameter sets
+small = bench.Params(
+    name="Small",                                 # Parameter set name
+    params={"lst": lambda: list(range(10_000))},  # Parameters for @bench
+)
+large = bench.Params(
+    name="Large",
+    params={"lst": lambda: list(range(1_000_000))}
+)
+
+# Benchmark with multiple parameter sets
+@bench([small, large])
+def sorted_list(lst):
+    return sorted(lst)
+```
+
 #### **On-demand benchmarking**
 
 If you want to run the benchmark only when needed, use the `.bench()` method:
@@ -434,30 +458,6 @@ To use reporters, set them as a list in the `reporters` parameter of your benchm
     from easybench.reporters import ConsoleReporter, FileReporter
     
     # Multiple output formats at once
-    config = BenchConfig(
-        reporters=[
-            ConsoleReporter(),             # Show in console as a table
-            FileReporter("results.csv"),   # Save as CSV file
-            FileReporter("results.json"),  # Save as JSON file
-        ]
-    )
-    ```
-
-#### Creating Custom Reporters
-
-For advanced use cases, you can create custom reporters:
-
-```python
-from easybench.reporters import (
-    Reporter, TableFormatter, JSONFormatter, CSVFormatter
-)
-
-# Custom reporter example - sends results to a web API
-class WebAPIReporter(Reporter):
-    def __init__(self, api_url, auth_token):
-        super().__init__(JSONFormatter())  # Use JSON format
-        self.api_url = api_url
-        self.auth_token = auth_token
     
     def _send(self, formatted_output):
         # Send formatted results to an API endpoint
