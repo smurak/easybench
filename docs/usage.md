@@ -66,6 +66,30 @@ Main configuration options:
 * `memory`: Also measure memory usage (default: `False`)
 * For other options, see "Configuration Options" below
 
+### **Multiple parameter sets** (`bench.Params`)
+
+When you want to benchmark a function with multiple parameter sets,
+you can pass a list of parameter sets created with `bench.Params` to the `@bench` decorator:
+
+```python
+from easybench import bench
+
+# Define parameter sets
+small = bench.Params(
+    name="Small",                                 # Parameter set name
+    params={"lst": lambda: list(range(10_000))},  # Parameters for @bench
+)
+large = bench.Params(
+    name="Large",
+    params={"lst": lambda: list(range(1_000_000))}
+)
+
+# Benchmark with multiple parameter sets
+@bench([small, large])
+def pop_first(lst):
+    return lst.pop(0)
+```
+
 ### **On-demand benchmarking**
 
 If you want to run the benchmark only when needed, use the `.bench()` method:

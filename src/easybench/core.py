@@ -89,14 +89,11 @@ class PartialBenchConfig(BaseModel):
             A complete BenchConfig with non-None values from this partial config
 
         """
-        result = config.model_copy()
+        result = config.model_copy(deep=True)
 
         # Update non-None fields from partial config
         for field_name, field_value in self.model_dump().items():
-            if field_value is not None and (
-                (field_name != "reporters")
-                or (field_name == "reporters" and field_value)
-            ):
+            if field_value is not None:
                 setattr(result, field_name, field_value)
 
         return result
@@ -134,7 +131,7 @@ def ensure_full_config(
 
     """
     if config is None:
-        return base_config.model_copy()
+        return base_config.model_copy(deep=True)
 
     if isinstance(config, BenchConfig):
         return config
@@ -199,7 +196,7 @@ class EasyBench:
         if bench_config is not None:
             self.bench_config = bench_config
         else:
-            self.bench_config = self.__class__.bench_config.model_copy()
+            self.bench_config = self.__class__.bench_config.model_copy(deep=True)
 
     def __init_subclass__(cls, **kwargs: object) -> None:
         """
@@ -748,7 +745,6 @@ class FunctionBench(EasyBench):
 
         """
         super().__init__(bench_config=bench_config)
-        self.bench_config.color = False
 
         if not callable(func):
             error_msg = "func must be callable"

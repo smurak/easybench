@@ -858,3 +858,392 @@ class TestBenchDecoratorMemory:
             parsed_small["functions"]["small_alloc"]["avg_memory"]
             < parsed_large["functions"]["large_alloc"]["avg_memory"]
         )
+
+
+class TestBenchParamsDecorator:
+    """Tests for the BenchParams functionality with bench decorator."""
+
+    def test_bench_param_basic(self, capsys: pytest.CaptureFixture) -> None:
+        """Test basic usage of BenchParams with bench decorator."""
+        from easybench.decorator import BenchParams
+
+        params = BenchParams(
+            params={"value": 10},
+        )
+
+        @bench(params)
+        def test_func(value: int) -> int:
+            return value * 2
+
+        captured = capsys.readouterr()
+        assert "Benchmark Results" in captured.out
+        assert "test_func" in captured.out
+        assert "Avg Time" in captured.out
+        assert "Min Time" in captured.out
+        assert "Max Time" in captured.out
+
+    def test_bench_param_with_config(self, capsys: pytest.CaptureFixture) -> None:
+        """Test BenchParams with configuration options."""
+        from easybench.decorator import BenchParams
+
+        params = BenchParams(
+            params={"value": 10},
+        )
+
+        @bench(params)
+        @bench.config(trials=SINGLE_TRIAL, memory=True)
+        def test_func(value: int) -> int:
+            return value * 2
+
+        captured = capsys.readouterr()
+        assert f"Benchmark Results ({SINGLE_TRIAL} trial)" in captured.out
+        assert "test_func" in captured.out
+        assert "Time" in captured.out
+        assert "Memory" in captured.out
+        # Single trial format doesn't have Avg/Min/Max
+        assert "Avg Time" not in captured.out
+
+    def test_bench_param_with_fn_params(self, capsys: pytest.CaptureFixture) -> None:
+        """Test BenchParams with function parameters."""
+        from easybench.decorator import BenchParams
+
+        # Create a function that takes no arguments but returns a callable
+        def get_multiply() -> Callable[[int], int]:
+            def multiply(x: int) -> int:
+                return x * 2
+
+            return multiply
+
+        params = BenchParams(
+            params={"value": 10},
+            fn_params={"operation": get_multiply},
+        )
+
+        @bench(params)
+        def test_func(value: int, operation: Callable[[int], int]) -> int:
+            return operation(value)
+
+        captured = capsys.readouterr()
+        assert "Benchmark Results" in captured.out
+        assert "test_func" in captured.out
+        assert "Avg Time" in captured.out
+
+    def test_bench_param_with_all_options(
+        self,
+        capsys: pytest.CaptureFixture,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test BenchParams with all types of parameters."""
+        from easybench.decorator import BenchParams
+
+        # This function takes no arguments
+        def generate_list() -> list[int]:
+            return list(range(100))
+
+        params = BenchParams(
+            params={"value": 5},
+            fn_params={"data": generate_list},
+        )
+
+        @bench(params)
+        @bench.config(trials=MULTIPLE_TRIALS, memory=True, show_output=True)
+        def test_func(value: int, data: list[int]) -> int:
+            data.append(value)
+            return len(data)
+
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        assert f"Benchmark Results ({MULTIPLE_TRIALS} trials)" in captured.out
+        assert "test_func" in parsed_out["functions"]
+        assert parsed_out["trials"] == MULTIPLE_TRIALS
+        assert parsed_out["has_memory_metrics"]
+        assert parsed_out["has_return_values"]
+        assert parsed_out["return_values"]["test_func"] == "101"
+
+    def test_bench_param_with_lambda_callable(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test BenchParams with lambda functions."""
+        from easybench.decorator import BenchParams
+
+        # Create a function that returns a transformer function
+        def get_transformer() -> Callable[[int], int]:
+            return lambda x: x * 3
+
+        params = BenchParams(params={"value": 10, "transformer": get_transformer})
+
+        @bench(params)
+        def test_func(value: int, transformer: Callable[[int], int]) -> int:
+            return transformer(value)
+
+        captured = capsys.readouterr()
+        assert "Benchmark Results" in captured.out
+        assert "test_func" in captured.out
+        assert "Avg Time" in captured.out
+
+    def test_bench_param_reuse(self, capsys: pytest.CaptureFixture) -> None:
+        """Test reusing the same BenchParams for multiple functions."""
+        from easybench.decorator import BenchParams
+
+        params = BenchParams(params={"value": 10})
+
+        @bench(params)
+        def test_func1(value: int) -> int:
+            return value * 2
+
+        captured1 = capsys.readouterr()
+        assert "Benchmark Results (5 trials)" in captured1.out
+        assert "test_func1" in captured1.out
+
+        @bench(params)  # Reuse the same params
+        def test_func2(value: int) -> int:
+            return value + 5
+
+        captured2 = capsys.readouterr()
+        assert "Benchmark Results (5 trials)" in captured2.out
+        assert "test_func2" in captured2.out
+
+    def test_bench_param_with_list(self, capsys: pytest.CaptureFixture) -> None:
+        """Test using a list of BenchParams for parameter comparison."""
+        from easybench.decorator import BenchParams
+
+        # Create multiple parameter sets for comparison
+        params1 = BenchParams(
+            name="Small",
+            params={"size": 100},
+        )
+
+        params2 = BenchParams(
+            name="Medium",
+            params={"size": 500},
+        )
+
+        params3 = BenchParams(
+            name="Large",
+            params={"size": 1000},
+        )
+
+        # Use the list of params with the bench decorator
+        @bench([params1, params2, params3])
+        @bench.config(trials=2)
+        def create_sorted_list(size: int) -> list[int]:
+            return sorted(range(size))
+
+        captured = capsys.readouterr()
+
+        # Verify comparison output
+        assert "Benchmark Results" in captured.out
+        assert "create_sorted_list (Small)" in captured.out
+        assert "create_sorted_list (Medium)" in captured.out
+        assert "create_sorted_list (Large)" in captured.out
+        assert "Avg Time" in captured.out
+        # Each parameter set should have been executed
+        assert (
+            "100" not in captured.out
+        )  # Sorted lists don't show return values by default
+
+    def test_bench_param_with_single_item_list(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test using a list with a single BenchParams for parameter testing."""
+        from easybench.decorator import BenchParams
+
+        # Create a single parameter set
+        params = BenchParams(
+            name="Standard",
+            params={"size": 500},
+        )
+
+        # Use a single-item list with the bench decorator
+        @bench([params])  # Note: This is a list containing one item
+        @bench.config(trials=2)
+        def create_sorted_list(size: int) -> list[int]:
+            return sorted(range(size))
+
+        captured = capsys.readouterr()
+
+        # Verify output
+        assert "Benchmark Results" in captured.out
+        assert "create_sorted_list (Standard)" in captured.out
+        assert "Avg Time" in captured.out
+
+    def test_bench_param_combined_output(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test that multiple BenchParams instances produce a single combined output."""
+        from easybench.decorator import BenchParams
+
+        # Create multiple parameter sets
+        params1 = BenchParams(
+            name="Small",
+            params={"size": 100},
+        )
+
+        params2 = BenchParams(
+            name="Medium",
+            params={"size": 500},
+        )
+
+        params3 = BenchParams(
+            name="Large",
+            params={"size": 1000},
+        )
+
+        # Use the list of params with the bench decorator
+        @bench([params1, params2, params3])
+        @bench.config(trials=2)
+        def create_sorted_list(size: int) -> list[int]:
+            return sorted(range(size))
+
+        captured = capsys.readouterr()
+
+        # Verify that only one benchmark results section is displayed
+        benchmark_results_count = captured.out.count("Benchmark Results")
+        assert (
+            benchmark_results_count == 1
+        ), "Expected only one benchmark results section"
+
+        # Verify that all parameter sets appear in the combined output
+        assert "create_sorted_list (Small)" in captured.out
+        assert "create_sorted_list (Medium)" in captured.out
+        assert "create_sorted_list (Large)" in captured.out
+
+        # Verify that individual benchmark runs aren't printed separately
+        separate_small_output = (
+            "Benchmark Results" in captured.out
+            and "create_sorted_list (Small)" in captured.out
+            and "create_sorted_list (Medium)" not in captured.out
+        )
+        assert (
+            not separate_small_output
+        ), "Expected no separate output for Small parameter set"
+
+
+class TestBenchParamsAlias:
+    """Tests for bench.Params alias functionality."""
+
+    def test_bench_params_alias_basic(self, capsys: pytest.CaptureFixture) -> None:
+        """Test that bench.Params can be used as an alias for BenchParams."""
+        params = bench.Params(
+            params={"value": 10},
+        )
+
+        @bench(params)
+        def test_func(value: int) -> int:
+            return value * 2
+
+        captured = capsys.readouterr()
+        assert "Benchmark Results" in captured.out
+        assert "test_func" in captured.out
+        assert "Avg Time" in captured.out
+
+    def test_bench_params_alias_with_config(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test bench.Params with configuration options."""
+        params = bench.Params(
+            params={"value": 10},
+        )
+
+        @bench(params)
+        @bench.config(trials=SINGLE_TRIAL, memory=True)
+        def test_func(value: int) -> int:
+            return value * 2
+
+        captured = capsys.readouterr()
+        assert f"Benchmark Results ({SINGLE_TRIAL} trial)" in captured.out
+        assert "test_func" in captured.out
+        assert "Time" in captured.out
+        assert "Memory" in captured.out
+        assert "Avg Time" not in captured.out  # Single trial format
+
+    def test_bench_params_alias_named(self, capsys: pytest.CaptureFixture) -> None:
+        """Test bench.Params with a name for comparison."""
+        params1 = bench.Params(
+            name="Small",
+            params={"size": 100},
+        )
+
+        params2 = bench.Params(
+            name="Large",
+            params={"size": 1000},
+        )
+
+        @bench([params1, params2])
+        @bench.config(trials=2)
+        def create_sorted_list(size: int) -> list[int]:
+            return sorted(range(size))
+
+        captured = capsys.readouterr()
+        assert "Benchmark Results" in captured.out
+        assert "create_sorted_list (Small)" in captured.out
+        assert "create_sorted_list (Large)" in captured.out
+        assert "Avg Time" in captured.out
+
+    def test_bench_params_alias_with_fn_params(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test bench.Params with function parameters."""
+
+        def get_multiply() -> Callable[[int], int]:
+            def multiply(x: int) -> int:
+                return x * 2
+
+            return multiply
+
+        params = bench.Params(
+            params={"value": 10},
+            fn_params={"operation": get_multiply},
+        )
+
+        @bench(params)
+        def test_func(value: int, operation: Callable[[int], int]) -> int:
+            return operation(value)
+
+        captured = capsys.readouterr()
+        assert "Benchmark Results" in captured.out
+        assert "test_func" in captured.out
+        assert "Avg Time" in captured.out
+
+    def test_bench_params_alias_comparative_benchmark(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test bench.Params for comparative benchmarks with different configs."""
+        # Create params for small, medium and large workloads
+        small = bench.Params(
+            name="Small",
+            params={"data_size": 100},
+        )
+
+        medium = bench.Params(
+            name="Medium",
+            params={"data_size": 500},
+        )
+
+        large = bench.Params(
+            name="Large",
+            params={"data_size": 1000},
+        )
+
+        @bench([small, medium, large])
+        @bench.config(trials=2, show_output=True)
+        def sum_range(data_size: int) -> int:
+            return sum(range(data_size))
+
+        captured = capsys.readouterr()
+
+        assert "Benchmark Results" in captured.out
+        assert "sum_range (Small)" in captured.out
+        assert "sum_range (Medium)" in captured.out
+        assert "sum_range (Large)" in captured.out
+        assert "Return Values" in captured.out
+        assert "4950" in captured.out  # Sum of range(100)
+        assert "124750" in captured.out  # Sum of range(500)
+        assert "499500" in captured.out  # Sum of range(1000)

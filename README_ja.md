@@ -191,6 +191,30 @@ def pop_last(big_list):
 * `memory`: メモリ使用量も測定 (デフォルト: `False`)
 * その他のオプションについては、以下の「設定オプション」を参照
 
+#### **複数パラメータセットによるベンチマーク計測** (`bench.Params`)
+
+1つの関数に関して、複数のパラメータセットでベンチマーク測定を行いたい場合、  
+`bench.Params`で作成したパラメータセットのリストを`@bench`デコレータに渡します:
+
+```python
+from easybench import bench
+
+# パラメータセットを定義
+small = bench.Params(
+    name="Small",                                 # パラメータセット名
+    params={"lst": lambda: list(range(10_000))},  # @bench用パラメータ
+)
+large = bench.Params(
+    name="Large",
+    params={"lst": lambda: list(range(1_000_000))}
+)
+
+# 複数のパラメータセットでベンチマークを測定
+@bench([small, large])
+def pop_first(lst):
+    return lst.pop(0)
+```
+
 #### **実行時ベンチマーク**
 
 必要に応じてベンチマークを実行したい場合は、`.bench()`メソッドを使用します：
