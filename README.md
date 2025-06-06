@@ -458,6 +458,30 @@ To use reporters, set them as a list in the `reporters` parameter of your benchm
     from easybench.reporters import ConsoleReporter, FileReporter
     
     # Multiple output formats at once
+    config = BenchConfig(
+        reporters=[
+            ConsoleReporter(),             # Show in console as a table
+            FileReporter("results.csv"),   # Save as CSV file
+            FileReporter("results.json"),  # Save as JSON file
+        ]
+    )
+    ```
+
+#### Creating Custom Reporters
+
+For advanced use cases, you can create custom reporters:
+
+```python
+from easybench.reporters import (
+    Reporter, TableFormatter, JSONFormatter, CSVFormatter
+)
+
+# Custom reporter example - sends results to a web API
+class WebAPIReporter(Reporter):
+    def __init__(self, api_url, auth_token):
+        super().__init__(JSONFormatter())  # Use JSON format
+        self.api_url = api_url
+        self.auth_token = auth_token
     
     def _send(self, formatted_output):
         # Send formatted results to an API endpoint
