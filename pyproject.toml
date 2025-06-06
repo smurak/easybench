@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "easybench"
 version = "0.1.9"
 description = "A simple and easy-to-use Python benchmarking library"
-readme = "README.md"
+readme = "README-pypi.md"
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
 authors = [
