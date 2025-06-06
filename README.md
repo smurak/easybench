@@ -13,7 +13,7 @@
 
 A simple and easy-to-use Python benchmarking library.
 
-English | [日本語](README_ja.md)
+English | [日本語](https://github.com/smurak/easybench/blob/main/README_ja.md)
 
 ## Features
 
