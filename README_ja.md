@@ -211,8 +211,8 @@ large = bench.Params(
 
 # 複数のパラメータセットでベンチマークを測定
 @bench([small, large])
-def sorted_list(lst):
-    return sorted(lst)
+def pop_first(lst):
+    return lst.pop(0)
 ```
 
 #### **実行時ベンチマーク**

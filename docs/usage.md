@@ -86,8 +86,8 @@ large = bench.Params(
 
 # Benchmark with multiple parameter sets
 @bench([small, large])
-def sorted_list(lst):
-    return sorted(lst)
+def pop_first(lst):
+    return lst.pop(0)
 ```
 
 ### **On-demand benchmarking**
