@@ -888,10 +888,10 @@ class TestBenchParamsDecorator:
 
         params = BenchParams(
             params={"value": 10},
-            config={"trials": SINGLE_TRIAL, "memory": True},
         )
 
         @bench(params)
+        @bench.config(trials=SINGLE_TRIAL, memory=True)
         def test_func(value: int) -> int:
             return value * 2
 
@@ -943,10 +943,10 @@ class TestBenchParamsDecorator:
         params = BenchParams(
             params={"value": 5},
             fn_params={"data": generate_list},
-            config={"trials": MULTIPLE_TRIALS, "memory": True, "show_output": True},
         )
 
         @bench(params)
+        @bench.config(trials=MULTIPLE_TRIALS, memory=True, show_output=True)
         def test_func(value: int, data: list[int]) -> int:
             data.append(value)
             return len(data)
@@ -987,14 +987,14 @@ class TestBenchParamsDecorator:
         """Test reusing the same BenchParams for multiple functions."""
         from easybench.decorator import BenchParams
 
-        params = BenchParams(params={"value": 10}, config={"trials": 2})
+        params = BenchParams(params={"value": 10})
 
         @bench(params)
         def test_func1(value: int) -> int:
             return value * 2
 
         captured1 = capsys.readouterr()
-        assert "Benchmark Results (2 trials)" in captured1.out
+        assert "Benchmark Results (5 trials)" in captured1.out
         assert "test_func1" in captured1.out
 
         @bench(params)  # Reuse the same params
@@ -1002,7 +1002,7 @@ class TestBenchParamsDecorator:
             return value + 5
 
         captured2 = capsys.readouterr()
-        assert "Benchmark Results (2 trials)" in captured2.out
+        assert "Benchmark Results (5 trials)" in captured2.out
         assert "test_func2" in captured2.out
 
     def test_bench_param_with_list(self, capsys: pytest.CaptureFixture) -> None:
@@ -1013,23 +1013,21 @@ class TestBenchParamsDecorator:
         params1 = BenchParams(
             name="Small",
             params={"size": 100},
-            config={"trials": 2},
         )
 
         params2 = BenchParams(
             name="Medium",
             params={"size": 500},
-            config={"trials": 2},
         )
 
         params3 = BenchParams(
             name="Large",
             params={"size": 1000},
-            config={"trials": 2},
         )
 
         # Use the list of params with the bench decorator
         @bench([params1, params2, params3])
+        @bench.config(trials=2)
         def create_sorted_list(size: int) -> list[int]:
             return sorted(range(size))
 
@@ -1057,11 +1055,11 @@ class TestBenchParamsDecorator:
         params = BenchParams(
             name="Standard",
             params={"size": 500},
-            config={"trials": 2},
         )
 
         # Use a single-item list with the bench decorator
         @bench([params])  # Note: This is a list containing one item
+        @bench.config(trials=2)
         def create_sorted_list(size: int) -> list[int]:
             return sorted(range(size))
 
@@ -1071,6 +1069,58 @@ class TestBenchParamsDecorator:
         assert "Benchmark Results" in captured.out
         assert "create_sorted_list (Standard)" in captured.out
         assert "Avg Time" in captured.out
+
+    def test_bench_param_combined_output(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test that multiple BenchParams instances produce a single combined output."""
+        from easybench.decorator import BenchParams
+
+        # Create multiple parameter sets
+        params1 = BenchParams(
+            name="Small",
+            params={"size": 100},
+        )
+
+        params2 = BenchParams(
+            name="Medium",
+            params={"size": 500},
+        )
+
+        params3 = BenchParams(
+            name="Large",
+            params={"size": 1000},
+        )
+
+        # Use the list of params with the bench decorator
+        @bench([params1, params2, params3])
+        @bench.config(trials=2)
+        def create_sorted_list(size: int) -> list[int]:
+            return sorted(range(size))
+
+        captured = capsys.readouterr()
+
+        # Verify that only one benchmark results section is displayed
+        benchmark_results_count = captured.out.count("Benchmark Results")
+        assert (
+            benchmark_results_count == 1
+        ), "Expected only one benchmark results section"
+
+        # Verify that all parameter sets appear in the combined output
+        assert "create_sorted_list (Small)" in captured.out
+        assert "create_sorted_list (Medium)" in captured.out
+        assert "create_sorted_list (Large)" in captured.out
+
+        # Verify that individual benchmark runs aren't printed separately
+        separate_small_output = (
+            "Benchmark Results" in captured.out
+            and "create_sorted_list (Small)" in captured.out
+            and "create_sorted_list (Medium)" not in captured.out
+        )
+        assert (
+            not separate_small_output
+        ), "Expected no separate output for Small parameter set"
 
 
 class TestBenchParamsAlias:
@@ -1098,10 +1148,10 @@ class TestBenchParamsAlias:
         """Test bench.Params with configuration options."""
         params = bench.Params(
             params={"value": 10},
-            config={"trials": SINGLE_TRIAL, "memory": True},
         )
 
         @bench(params)
+        @bench.config(trials=SINGLE_TRIAL, memory=True)
         def test_func(value: int) -> int:
             return value * 2
 
@@ -1117,16 +1167,15 @@ class TestBenchParamsAlias:
         params1 = bench.Params(
             name="Small",
             params={"size": 100},
-            config={"trials": 2},
         )
 
         params2 = bench.Params(
             name="Large",
             params={"size": 1000},
-            config={"trials": 2},
         )
 
         @bench([params1, params2])
+        @bench.config(trials=2)
         def create_sorted_list(size: int) -> list[int]:
             return sorted(range(size))
 
@@ -1171,22 +1220,20 @@ class TestBenchParamsAlias:
         small = bench.Params(
             name="Small",
             params={"data_size": 100},
-            config={"trials": 2, "show_output": True},
         )
 
         medium = bench.Params(
             name="Medium",
             params={"data_size": 500},
-            config={"trials": 2, "show_output": True},
         )
 
         large = bench.Params(
             name="Large",
             params={"data_size": 1000},
-            config={"trials": 2, "show_output": True},
         )
 
         @bench([small, medium, large])
+        @bench.config(trials=2, show_output=True)
         def sum_range(data_size: int) -> int:
             return sum(range(data_size))
 

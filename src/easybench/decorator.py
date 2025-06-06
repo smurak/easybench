@@ -39,14 +39,12 @@ class BenchParams(BaseModel):
         name: Optional name for this parameter set (used for comparison display)
         params: Dictionary of parameters for @bench decorator
         fn_params: Dictionary of parameters for @bench.fn_params decorator
-        config: Dictionary of parameters for @bench.config decorator
 
     Example:
         ```python
         params = BenchParams(
             name="Large dataset",
             params={"item": 123, "big_list": lambda: list(range(1_000_000))},
-            config={"trials": 5, "memory": True}
         )
 
         @bench(params)
@@ -59,7 +57,6 @@ class BenchParams(BaseModel):
     name: str | None = None
     params: dict[str, Any] = {}
     fn_params: dict[str, Any] = {}
-    config: dict[str, Any] = {}
 
     model_config = {
         "arbitrary_types_allowed": True,
@@ -187,16 +184,8 @@ class BenchDecorator:
         if params.name:
             param_name = params.name
 
-        # Create a copy of params with empty reporters for individual runs
-        params_copy = params.model_copy(deep=True)
-        if params_copy.config is None:
-            params_copy.config = {}
-
-        # Set empty reporters for individual runs
-        params_copy.config["reporters"] = []
-
         # Decorate with this parameter set (with empty reporters)
-        decorated_func = self._decorate_with_bench_param(params_copy)(func)
+        decorated_func = self._decorate_with_bench_param(params, reporters=[])(func)
 
         # Extract results from the function
         bench_func = cast("BenchmarkableFunction", decorated_func)
@@ -299,12 +288,14 @@ class BenchDecorator:
     def _decorate_with_bench_param(
         self,
         param: BenchParams,
+        reporters: list[Reporter] | None = None,
     ) -> Callable:
         """
         Set up the function for benchmarking using a BenchParams instance.
 
         Args:
             param: BenchParams instance with benchmark configuration
+            reporters: List of reporters for benchmark
 
         Returns:
             A decorator function that configures the function with the BenchParams
@@ -315,12 +306,8 @@ class BenchDecorator:
             # Initialize benchmark attributes
             func = self._initialize_bench_attributes(func)
 
-            # Apply config parameters
-            if param.config:
-                partial_config = PartialBenchConfig(**param.config)
-                func.bench.bench_config = partial_config.merge_with(
-                    func.bench.bench_config,
-                )
+            if reporters is not None:
+                func.bench.bench_config.reporters = reporters
 
             # Apply function parameters
             if param.fn_params:
