@@ -43,9 +43,8 @@ There are 3 ways to benchmark with `easybench`:
         big_list.append(item)
     ```
 
-> [!TIP]  
-> When you need fresh data for each trial, use a function or lambda to generate new data on demand.  
-> (like `lambda: list(range(1_000_000))` in the above)
+    * When you need fresh data for each trial, use a function or lambda to generate new data on demand.  
+      (like `lambda: list(range(1_000_000))` in the above)
 
 2. `EasyBench` class
 
@@ -181,8 +180,7 @@ def pop_last(big_list):
     big_list.pop()
 ```
 
-> [!TIP]  
-> Place the `@bench.config` decorator before (below) other bench decorators.  
+* Place the `@bench.config` decorator before (below) other bench decorators.  
 
 
 Main configuration options:
@@ -372,15 +370,12 @@ Sorting options (`sort_by`):
 
 #### Memory Measurement Limitations
 
-> [!NOTE]
-> EasyBench uses Python's built-in `tracemalloc` module to measure memory usage.  
-> This has some important limitations:
->
-> - `tracemalloc` only tracks memory allocations made through Python's memory manager
-> - Memory allocated by C extensions (like NumPy, Pandas, or other native libraries) often bypasses Python's memory manager and won't be accurately measured
-> - The reported memory usage reflects Python objects only, not the total process memory consumption
->
-> For applications heavily using C extensions, consider using external profilers like `memory_profiler` or system monitoring tools for more accurate measurements.
+EasyBench uses Python's built-in `tracemalloc` module to measure memory usage.  
+This has some important limitations:
+- `tracemalloc` only tracks memory allocations made through Python's memory manager
+- Memory allocated by C extensions (like NumPy, Pandas, or other native libraries) often bypasses Python's memory manager and won't be accurately measured
+- The reported memory usage reflects Python objects only, not the total process memory consumption
+For applications heavily using C extensions, consider using external profilers like `memory_profiler` or system monitoring tools for more accurate measurements.
 
 ### Command Line Interface (`easybench` command)
 
