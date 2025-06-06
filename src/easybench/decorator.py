@@ -124,12 +124,16 @@ class BenchDecorator:
 
             # Using a list of BenchParams for comparison
             ```python
-            params1 = bench.Params(name="Small", bench={"size": 1000})
-            params2 = bench.Params(name="Large", bench={"size": 10000})
+            params1 = bench.Params(
+                name="Small", params={"lst": lambda: list(range(1000))},
+            )
+            params2 = bench.Params(
+                name="Large", params={"lst": lambda: list(range(10000))},
+            )
 
             @bench([params1, params2])
-            def sorted_list(size):
-                return sorted(range(size))
+            def pop_first(lst):
+                return lst.pop(0)
             ```
 
         Returns:
