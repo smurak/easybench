@@ -15,7 +15,10 @@ import tracemalloc
 import types
 from typing import (
     TYPE_CHECKING,
+    Any,
     Literal,
+    ParamSpec,
+    Protocol,
     TypeAlias,
     TypeVar,
     cast,
@@ -62,6 +65,19 @@ class ResultType(TypedDict):
 
 ResultsType: TypeAlias = dict[str, ResultType]
 FixtureRegistry: TypeAlias = dict[ScopeType, dict[str, object]]
+
+P = ParamSpec("P")
+R_co = TypeVar("R_co", covariant=True)
+
+
+class ParameterizedFunction(Protocol[P, R_co]):
+    """Function with _bench_params."""
+
+    def __call__(self, *args: P.args, **kwds: P.kwargs) -> R_co:
+        """Call method."""
+        ...
+
+    _bench_params: list[BenchParams]
 
 
 class PartialBenchConfig(BaseModel):
@@ -140,6 +156,41 @@ def ensure_full_config(
     return config.merge_with(base_config)
 
 
+class BenchParams(BaseModel):
+    """
+    Class to store parameters for easybench decorators.
+
+    This class allows grouping parameters for various easybench decorators together,
+    making it easier to reuse parameter sets across multiple benchmarks.
+
+    Attributes:
+        name: Optional name for this parameter set (used for comparison display)
+        params: Dictionary of parameters for @bench decorator
+        fn_params: Dictionary of parameters for @bench.fn_params decorator
+
+    Example:
+        ```python
+        params = BenchParams(
+            name="Large dataset",
+            params={"item": 123, "big_list": lambda: list(range(1_000_000))},
+        )
+
+        @bench(params)
+        def add_item(item, big_list):
+            big_list.append(item)
+        ```
+
+    """
+
+    name: str | None = None
+    params: dict[str, Any] = {}
+    fn_params: dict[str, Any] = {}
+
+    model_config = {
+        "arbitrary_types_allowed": True,
+    }
+
+
 # Store fixture objects by scope
 _fixture_registry: FixtureRegistry = {
     "trial": {},  # Run once per trial
@@ -178,11 +229,45 @@ def fixture(
     return decorator
 
 
+def parameterized(params_list: list[BenchParams]) -> Callable:
+    """
+    Create a decorator for parameterized benchmarks in EasyBench classes.
+
+    Example:
+        ```python
+        params1 = BenchParams(name="small", params={"big_list": 1_000})
+        params2 = BenchParams(name="big", params={"big_list": 100_000})
+
+        class BenchList(EasyBench):
+            @parameterized([params1, params2])
+            def bench_append(self, big_list):
+                big_list.append(0)
+        ```
+
+    Args:
+        params_list: List of BenchParams instances with benchmark configurations
+
+    Returns:
+        A decorator function that marks the method for parameterized benchmarking
+
+    """
+
+    def decorator(func: Callable) -> Callable:
+        func = cast("ParameterizedFunction", func)
+        func._bench_params = params_list  # noqa: SLF001
+        return func
+
+    return decorator
+
+
 class EasyBench:
     """Base class for benchmark classes."""
 
     # Default Benchmark Config
     bench_config = BenchConfig()
+
+    Params = BenchParams
+    parameterized = staticmethod(parameterized)
 
     def __init__(self, bench_config: BenchConfig | None = None) -> None:
         """
@@ -279,6 +364,127 @@ class EasyBench:
 
         return complete_config, fixture_registry
 
+    def _run_benchmark_trials(
+        self,
+        method: Callable[..., object],
+        config: BenchConfig,
+        fixture_registry: FixtureRegistry,
+        values: dict[str, object],
+    ) -> ResultType:
+        """
+        Run a single benchmark method for the specified number of trials.
+
+        Args:
+            method: The benchmark method to run
+            config: Benchmark configuration
+            fixture_registry: Registry containing fixtures
+            values: Dictionary to store fixture values
+
+        Returns:
+            Dictionary containing benchmark results
+
+        """
+        capture_output = config.show_output or config.return_output
+        result_dict: ResultType = {"times": []}
+        if config.memory:
+            result_dict["memory"] = []
+        if capture_output:
+            result_dict["output"] = []
+
+        with self._manage_scope("function", values, fixture_registry):
+            for _ in range(config.trials):
+                with self._manage_scope("trial", values, fixture_registry):
+                    # Run the benchmark and record the time, memory, and result
+                    execution_time, memory_usage, func_result = (
+                        self._run_single_benchmark(
+                            method=method,
+                            values=values,
+                            memory=config.memory,
+                            capture_output=capture_output,
+                        )
+                    )
+
+                    result_dict["times"].append(execution_time)
+
+                    if config.memory and memory_usage is not None:
+                        result_dict["memory"].append(memory_usage)
+
+                    if capture_output:
+                        result_dict["output"].append(func_result)
+
+        return result_dict
+
+    def _process_parameterized_method(
+        self,
+        method_name: str,
+        method: Callable[..., object],
+        config: BenchConfig,
+        fixture_registry: FixtureRegistry,
+        values: dict[str, object],
+    ) -> ResultsType:
+        """
+        Process a parameterized benchmark method with multiple parameter sets.
+
+        Args:
+            method_name: Name of the benchmark method
+            method: The benchmark method to run
+            config: Benchmark configuration
+            fixture_registry: Registry containing fixtures
+            values: Dictionary to store fixture values
+
+        Returns:
+            A dictionary of all results
+
+        """
+        all_results: ResultsType = {}
+
+        # Get the parameter sets from the method
+        params_list = getattr(method, "_bench_params", [])
+
+        # Run benchmarks for each parameter set
+        for i, params in enumerate(params_list):
+            # Create a name for this parameter set
+            param_name = f"params_{i+1}"
+            if params.name:
+                param_name = params.name
+
+            result_name = f"{method_name} ({param_name})"
+
+            # Register parameter fixtures
+            param_fixtures = {}
+
+            # Apply function parameters
+            if params.fn_params:
+                for name, value in params.fn_params.items():
+                    param_fixtures[name] = lambda v=value: v
+
+            # Apply bench parameters
+            if params.params:
+                for name, value in params.params.items():
+                    if callable(value) and not isinstance(value, type):
+                        param_fixtures[name] = value
+                    else:
+                        param_fixtures[name] = lambda v=value: v
+
+            # Save original fixtures to restore later
+            original_fixtures = fixture_registry["trial"].copy()
+
+            # Apply parameter fixtures
+            fixture_registry["trial"].update(param_fixtures)
+
+            # Run the benchmark for this parameter set
+            all_results[result_name] = self._run_benchmark_trials(
+                method=method,
+                config=config,
+                fixture_registry=fixture_registry,
+                values=values,
+            )
+
+            # Restore original fixtures
+            fixture_registry["trial"] = original_fixtures
+
+        return all_results
+
     def _run_benchmarks(
         self,
         config: BenchConfig,
@@ -299,38 +505,27 @@ class EasyBench:
         results: ResultsType = {}
         values: dict[str, object] = {}
 
-        capture_output = config.show_output or config.return_output
-
         with self._manage_scope("class", values, fixture_registry):
             for method_name, method in benchmark_methods.items():
-                result_dict: ResultType = {"times": []}
-                if config.memory:
-                    result_dict["memory"] = []
-                if capture_output:
-                    result_dict["output"] = []
-
-                results[method_name] = result_dict
-
-                with self._manage_scope("function", values, fixture_registry):
-                    for _ in range(config.trials):
-                        with self._manage_scope("trial", values, fixture_registry):
-                            # Run the benchmark and record the time, memory, and result
-                            execution_time, memory_usage, func_result = (
-                                self._run_single_benchmark(
-                                    method=method,
-                                    values=values,
-                                    memory=config.memory,
-                                    capture_output=capture_output,
-                                )
-                            )
-
-                            results[method_name]["times"].append(execution_time)
-
-                            if config.memory and memory_usage is not None:
-                                results[method_name]["memory"].append(memory_usage)
-
-                            if capture_output:
-                                results[method_name]["output"].append(func_result)
+                # Check if this method is parameterized
+                if hasattr(method, "_bench_params"):
+                    # Process parameterized method
+                    param_results = self._process_parameterized_method(
+                        method_name=method_name,
+                        method=method,
+                        config=config,
+                        fixture_registry=fixture_registry,
+                        values=values,
+                    )
+                    results.update(param_results)
+                else:
+                    # Regular (non-parameterized) method
+                    results[method_name] = self._run_benchmark_trials(
+                        method=method,
+                        config=config,
+                        fixture_registry=fixture_registry,
+                        values=values,
+                    )
 
         return results
 

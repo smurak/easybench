@@ -313,6 +313,42 @@ class BenchExample(EasyBench):
         pass
 ```
 
+#### パラメータ化されたベンチマーク（`parameterized`デコレータ）
+
+`parameterized`デコレータを使用すると、同じベンチマークメソッドを異なるパラメータセットで実行できます：
+
+```python
+from easybench import EasyBench
+
+class BenchListOperations(EasyBench):
+    # EasyBench.Paramsを使用してパラメータセットを定義
+    small_params = EasyBench.Params(
+        name="小さいリスト",
+        params={"size": 10_000}
+    )
+    
+    large_params = EasyBench.Params(
+        name="大きいリスト",
+        params={"size": 1_000_000}
+    )
+    
+    # parameterizedデコレータにパラメータセットのリストを渡して適用
+    @EasyBench.parameterized([small_params, large_params])
+    def bench_create_list(self, size):
+        return list(range(size))
+```
+
+これにより、ベンチマークメソッドは各パラメータセット毎に実行され、結果にはパラメータセット名が含まれます：
+
+```
+Benchmark Results (5 trials):
+
+Function                     Avg Time (s) Min Time (s) Max Time (s)
+----------------------------------------------------------------
+bench_create_list (小さいリスト)   0.000541     0.000256     0.001111    
+bench_create_list (大きいリスト)   0.052366     0.035805     0.090981    
+```
+
 #### フィクスチャ（`fixture`デコレータ）
 
 複数のベンチマーク関数で共通のテストデータを提供するには、pytestスタイルのフィクスチャを使用できます：

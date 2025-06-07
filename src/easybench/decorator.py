@@ -9,10 +9,9 @@ import inspect
 from collections.abc import Callable
 from typing import Any, ParamSpec, Protocol, TypeVar, cast, overload
 
-from pydantic import BaseModel
-
 from .core import (
     BenchConfig,
+    BenchParams,
     EasyBench,
     FixtureRegistry,
     FunctionBench,
@@ -26,41 +25,6 @@ from .reporters import ConsoleReporter, Reporter
 # Type for decorated functions
 P = ParamSpec("P")
 R_co = TypeVar("R_co", covariant=True)
-
-
-class BenchParams(BaseModel):
-    """
-    Class to store parameters for easybench decorators.
-
-    This class allows grouping parameters for various easybench decorators together,
-    making it easier to reuse parameter sets across multiple benchmarks.
-
-    Attributes:
-        name: Optional name for this parameter set (used for comparison display)
-        params: Dictionary of parameters for @bench decorator
-        fn_params: Dictionary of parameters for @bench.fn_params decorator
-
-    Example:
-        ```python
-        params = BenchParams(
-            name="Large dataset",
-            params={"item": 123, "big_list": lambda: list(range(1_000_000))},
-        )
-
-        @bench(params)
-        def add_item(item, big_list):
-            big_list.append(item)
-        ```
-
-    """
-
-    name: str | None = None
-    params: dict[str, Any] = {}
-    fn_params: dict[str, Any] = {}
-
-    model_config = {
-        "arbitrary_types_allowed": True,
-    }
 
 
 class BenchmarkableFunction(Protocol[P, R_co]):
