@@ -318,22 +318,22 @@ class BenchExample(EasyBench):
 `parameterized`デコレータを使用すると、同じベンチマークメソッドを異なるパラメータセットで実行できます：
 
 ```python
-from easybench import EasyBench
+from easybench import BenchParams, EasyBench, parameterized
 
 class BenchListOperations(EasyBench):
-    # EasyBench.Paramsを使用してパラメータセットを定義
-    small_params = EasyBench.Params(
+    # BenchParamsを使用してパラメータセットを定義
+    small_params = BenchParams(
         name="小さいリスト",
         params={"size": 10_000}
     )
     
-    large_params = EasyBench.Params(
+    large_params = BenchParams(
         name="大きいリスト",
         params={"size": 1_000_000}
     )
     
     # parameterizedデコレータにパラメータセットのリストを渡して適用
-    @EasyBench.parameterized([small_params, large_params])
+    @parameterized([small_params, large_params])
     def bench_create_list(self, size):
         return list(range(size))
 ```
