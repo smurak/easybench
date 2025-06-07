@@ -316,10 +316,7 @@ class BenchDecorator:
             # Apply function parameters
             if param.fn_params:
                 for name, value in param.fn_params.items():
-                    if callable(value) and not isinstance(value, type):
-                        func.fixture_registry["trial"][name] = value
-                    else:
-                        func.fixture_registry["trial"][name] = lambda v=value: v
+                    func.fixture_registry["trial"][name] = lambda v=value: v
 
             # Apply bench parameters
             if param.params:
