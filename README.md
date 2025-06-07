@@ -315,6 +315,42 @@ class BenchExample(EasyBench):
         pass
 ```
 
+#### Parameterized Benchmarks (`parameterized` decorator)
+
+You can run the same benchmark method with different parameter sets using the `parameterized` decorator:
+
+```python
+from easybench import EasyBench
+
+class BenchListOperations(EasyBench):
+    # Define parameter sets with EasyBench.Params
+    small_params = EasyBench.Params(
+        name="Small List",
+        params={"size": 10_000}
+    )
+    
+    large_params = EasyBench.Params(
+        name="Large List",
+        params={"size": 1_000_000}
+    )
+    
+    # Apply parameterized decorator with a list of parameter sets
+    @EasyBench.parameterized([small_params, large_params])
+    def bench_create_list(self, size):
+        return list(range(size))
+```
+
+This will run the benchmark with each parameter set and include the parameter set name in the results:
+
+```
+Benchmark Results (5 trials):
+
+Function                         Avg Time (s) Min Time (s) Max Time (s)
+--------------------------------------------------------------------
+bench_create_list (Small List)   0.000442     0.000309     0.000855    
+bench_create_list (Large List)   0.092680     0.062617     0.129535    
+```
+
 #### Fixtures (`fixture` decorator)
 
 To provide common test data, you can use pytest-style fixtures:
