@@ -336,6 +336,9 @@ class BenchListOperations(EasyBench):
     @parameterized([small_params, large_params])
     def bench_create_list(self, size):
         return list(range(size))
+
+if __name__ == "__main__":
+    BenchListOperations().bench()
 ```
 
 これにより、ベンチマークメソッドは各パラメータセット毎に実行され、結果にはパラメータセット名が含まれます：
