@@ -70,7 +70,7 @@ P = ParamSpec("P")
 R_co = TypeVar("R_co", covariant=True)
 
 
-class ParameterizedFunction(Protocol[P, R_co]):
+class ParametrizedFunction(Protocol[P, R_co]):
     """Function with _bench_params."""
 
     def __call__(self, *args: P.args, **kwds: P.kwargs) -> R_co:
@@ -253,7 +253,7 @@ def parametrize(params_list: list[BenchParams]) -> Callable:
     """
 
     def decorator(func: Callable) -> Callable:
-        func = cast("ParameterizedFunction", func)
+        func = cast("ParametrizedFunction", func)
         func._bench_params = params_list  # noqa: SLF001
         return func
 

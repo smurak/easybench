@@ -1208,7 +1208,7 @@ class TestEasyBenchScopeManager:
             pass
 
 
-class TestParameterizedDecorator:
+class TestParametrizedDecorator:
     """Tests for the parametrize decorator in EasyBench classes."""
 
     def test_basic_parametrize_usage(

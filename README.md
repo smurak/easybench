@@ -315,7 +315,7 @@ class BenchExample(EasyBench):
         pass
 ```
 
-#### Parameterized Benchmarks (`parametrize` decorator)
+#### Parametrized Benchmarks (`parametrize` decorator)
 
 You can run the same benchmark method with different parameter sets using the `parametrize` decorator:
 
