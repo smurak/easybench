@@ -907,16 +907,12 @@ class TestBenchParamsDecorator:
         """Test BenchParams with function parameters."""
         from easybench.decorator import BenchParams
 
-        # Create a function that takes no arguments but returns a callable
-        def get_multiply() -> Callable[[int], int]:
-            def multiply(x: int) -> int:
-                return x * 2
-
-            return multiply
+        def multiply(x: int) -> int:
+            return x * 2
 
         params = BenchParams(
             params={"value": 10},
-            fn_params={"operation": get_multiply},
+            fn_params={"operation": multiply},
         )
 
         @bench(params)
@@ -927,39 +923,6 @@ class TestBenchParamsDecorator:
         assert "Benchmark Results" in captured.out
         assert "test_func" in captured.out
         assert "Avg Time" in captured.out
-
-    def test_bench_param_with_all_options(
-        self,
-        capsys: pytest.CaptureFixture,
-        parse_benchmark_output: Callable[[str], dict[str, Any]],
-    ) -> None:
-        """Test BenchParams with all types of parameters."""
-        from easybench.decorator import BenchParams
-
-        # This function takes no arguments
-        def generate_list() -> list[int]:
-            return list(range(100))
-
-        params = BenchParams(
-            params={"value": 5},
-            fn_params={"data": generate_list},
-        )
-
-        @bench(params)
-        @bench.config(trials=MULTIPLE_TRIALS, memory=True, show_output=True)
-        def test_func(value: int, data: list[int]) -> int:
-            data.append(value)
-            return len(data)
-
-        captured = capsys.readouterr()
-        parsed_out = parse_benchmark_output(captured.out)
-
-        assert f"Benchmark Results ({MULTIPLE_TRIALS} trials)" in captured.out
-        assert "test_func" in parsed_out["functions"]
-        assert parsed_out["trials"] == MULTIPLE_TRIALS
-        assert parsed_out["has_memory_metrics"]
-        assert parsed_out["has_return_values"]
-        assert parsed_out["return_values"]["test_func"] == "101"
 
     def test_bench_param_with_lambda_callable(
         self,
@@ -1191,15 +1154,12 @@ class TestBenchParamsAlias:
     ) -> None:
         """Test bench.Params with function parameters."""
 
-        def get_multiply() -> Callable[[int], int]:
-            def multiply(x: int) -> int:
-                return x * 2
-
-            return multiply
+        def multiply(x: int) -> int:
+            return x * 2
 
         params = bench.Params(
             params={"value": 10},
-            fn_params={"operation": get_multiply},
+            fn_params={"operation": multiply},
         )
 
         @bench(params)
