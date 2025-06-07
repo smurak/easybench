@@ -42,8 +42,6 @@ class BenchmarkableFunction(Protocol[P, R_co]):
 class BenchDecorator:
     """Decorator for benchmarking functions."""
 
-    Params = BenchParams
-
     def _initialize_bench_attributes(self, func: Callable) -> BenchmarkableFunction:
         """
         Initialize benchmark attributes on a function if they don't exist.
@@ -88,10 +86,10 @@ class BenchDecorator:
 
             # Using a list of BenchParams for comparison
             ```python
-            params1 = bench.Params(
+            params1 = BenchParams(
                 name="Small", params={"lst": lambda: list(range(1000))},
             )
-            params2 = bench.Params(
+            params2 = BenchParams(
                 name="Large", params={"lst": lambda: list(range(10000))},
             )
 
