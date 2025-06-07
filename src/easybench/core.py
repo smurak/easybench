@@ -229,9 +229,9 @@ def fixture(
     return decorator
 
 
-def parameterized(params_list: list[BenchParams]) -> Callable:
+def parametrize(params_list: list[BenchParams]) -> Callable:
     """
-    Create a decorator for parameterized benchmarks in EasyBench classes.
+    Create a decorator for parametrized benchmarks in EasyBench classes.
 
     Example:
         ```python
@@ -239,7 +239,7 @@ def parameterized(params_list: list[BenchParams]) -> Callable:
         params2 = BenchParams(name="big", params={"big_list": 100_000})
 
         class BenchList(EasyBench):
-            @parameterized([params1, params2])
+            @parametrize([params1, params2])
             def bench_append(self, big_list):
                 big_list.append(0)
         ```
@@ -248,7 +248,7 @@ def parameterized(params_list: list[BenchParams]) -> Callable:
         params_list: List of BenchParams instances with benchmark configurations
 
     Returns:
-        A decorator function that marks the method for parameterized benchmarking
+        A decorator function that marks the method for parametrized benchmarking
 
     """
 
@@ -411,7 +411,7 @@ class EasyBench:
 
         return result_dict
 
-    def _process_parameterized_method(
+    def _process_parametrized_method(
         self,
         method_name: str,
         method: Callable[..., object],
@@ -420,7 +420,7 @@ class EasyBench:
         values: dict[str, object],
     ) -> ResultsType:
         """
-        Process a parameterized benchmark method with multiple parameter sets.
+        Process a parametrized benchmark method with multiple parameter sets.
 
         Args:
             method_name: Name of the benchmark method
@@ -504,10 +504,10 @@ class EasyBench:
 
         with self._manage_scope("class", values, fixture_registry):
             for method_name, method in benchmark_methods.items():
-                # Check if this method is parameterized
+                # Check if this method is parametrized
                 if hasattr(method, "_bench_params"):
-                    # Process parameterized method
-                    param_results = self._process_parameterized_method(
+                    # Process parametrized method
+                    param_results = self._process_parametrized_method(
                         method_name=method_name,
                         method=method,
                         config=config,
@@ -516,7 +516,7 @@ class EasyBench:
                     )
                     results.update(param_results)
                 else:
-                    # Regular (non-parameterized) method
+                    # Regular (non-parametrized) method
                     results[method_name] = self._run_benchmark_trials(
                         method=method,
                         config=config,

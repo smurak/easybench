@@ -23,7 +23,7 @@ from easybench.core import (
     FixtureRegistry,
     PartialBenchConfig,
     ScopeType,
-    parameterized,
+    parametrize,
 )
 
 # Constants to replace magic numbers
@@ -1209,20 +1209,20 @@ class TestEasyBenchScopeManager:
 
 
 class TestParameterizedDecorator:
-    """Tests for the parameterized decorator in EasyBench classes."""
+    """Tests for the parametrize decorator in EasyBench classes."""
 
-    def test_basic_parameterized_usage(
+    def test_basic_parametrize_usage(
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test the parameterized decorator with a single parameter set."""
+        """Test the parametrize decorator with a single parameter set."""
         # Define a simple parameter set
         params = BenchParams(params={"value": 42})
 
         class SimpleParamBench(EasyBench):
             bench_config = BenchConfig(trials=2)
 
-            @parameterized([params])
+            @parametrize([params])
             def bench_test(self, value: int) -> int:
                 return value
 
@@ -1233,15 +1233,15 @@ class TestParameterizedDecorator:
         assert "bench_test (params_1)" in captured.out
         assert "Benchmark Results" in captured.out
 
-    def test_parameterized_with_name(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """Test parameterized decorator with named parameter sets."""
+    def test_parametrize_with_name(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test parametrize decorator with named parameter sets."""
         # Define parameter set with a name
         params = BenchParams(name="CustomName", params={"value": 42})
 
         class NamedParamBench(EasyBench):
             bench_config = BenchConfig(trials=2)
 
-            @parameterized([params])
+            @parametrize([params])
             def bench_test(self, value: int) -> int:
                 return value
 
@@ -1252,11 +1252,11 @@ class TestParameterizedDecorator:
         assert "bench_test (CustomName)" in captured.out
         assert "Benchmark Results" in captured.out
 
-    def test_parameterized_multiple_sets(
+    def test_parametrize_multiple_sets(
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test parameterized decorator with multiple parameter sets."""
+        """Test parametrize decorator with multiple parameter sets."""
         # Define multiple parameter sets
         small = BenchParams(name="Small", params={"size": 100})
         medium = BenchParams(name="Medium", params={"size": 500})
@@ -1265,7 +1265,7 @@ class TestParameterizedDecorator:
         class MultiParamBench(EasyBench):
             bench_config = BenchConfig(trials=1)
 
-            @parameterized([small, medium, large])
+            @parametrize([small, medium, large])
             def bench_process(self, size: int) -> list[int]:
                 return list(range(size))
 
@@ -1278,18 +1278,18 @@ class TestParameterizedDecorator:
         assert "bench_process (Large)" in captured.out
         assert "Benchmark Results" in captured.out
 
-    def test_parameterized_with_lambda(
+    def test_parametrize_with_lambda(
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test parameterized decorator with lambda function parameters."""
+        """Test parametrize decorator with lambda function parameters."""
         # Define parameter set with lambda
         params = BenchParams(params={"get_data": lambda: list(range(100))})
 
         class LambdaParamBench(EasyBench):
             bench_config = BenchConfig(trials=1)
 
-            @parameterized([params])
+            @parametrize([params])
             def bench_process(self, get_data: list[int]) -> int:
                 return sum(get_data)
 
@@ -1300,11 +1300,11 @@ class TestParameterizedDecorator:
         assert "bench_process (params_1)" in captured.out
         assert "Benchmark Results" in captured.out
 
-    def test_parameterized_with_function_params(
+    def test_parametrize_with_function_params(
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test parameterized decorator with function parameters."""
+        """Test parametrize decorator with function parameters."""
         from collections.abc import Callable
 
         def multiply_by_two(x: int) -> int:
@@ -1319,7 +1319,7 @@ class TestParameterizedDecorator:
         class FunctionParamBench(EasyBench):
             bench_config = BenchConfig(trials=1)
 
-            @parameterized([params])
+            @parametrize([params])
             def bench_transform(
                 self,
                 value: int,
@@ -1334,11 +1334,11 @@ class TestParameterizedDecorator:
         assert "bench_transform (params_1)" in captured.out
         assert "Benchmark Results" in captured.out
 
-    def test_parameterized_with_multiple_fixtures(
+    def test_parametrize_with_multiple_fixtures(
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test parameterized decorator with multiple fixture parameters."""
+        """Test parametrize decorator with multiple fixture parameters."""
 
         # Create a fixture
         @fixture(scope="trial")
@@ -1351,7 +1351,7 @@ class TestParameterizedDecorator:
         class MultiFixtureBench(EasyBench):
             bench_config = BenchConfig(trials=1, show_output=True)
 
-            @parameterized([params])
+            @parametrize([params])
             def bench_calculate(self, base_value: int, extra_value: int) -> int:
                 return base_value + extra_value
 
@@ -1363,12 +1363,12 @@ class TestParameterizedDecorator:
         assert "Return Values" in captured.out
         assert "15" in captured.out  # 10 + 5
 
-    def test_parameterized_with_memory_tracking(
+    def test_parametrize_with_memory_tracking(
         self,
         capsys: pytest.CaptureFixture[str],
         allocate_memory: Callable[[int], list[int]],
     ) -> None:
-        """Test parameterized decorator with memory tracking."""
+        """Test parametrize decorator with memory tracking."""
         # Define parameter sets with different memory usage
         small = BenchParams(name="Small", params={"kb": 100})
         large = BenchParams(name="Large", params={"kb": 500})
@@ -1376,7 +1376,7 @@ class TestParameterizedDecorator:
         class MemoryParamBench(EasyBench):
             bench_config = BenchConfig(trials=2, memory=True)
 
-            @parameterized([small, large])
+            @parametrize([small, large])
             def bench_allocate(self, kb: int) -> list[int]:
                 return allocate_memory(kb)
 
@@ -1389,11 +1389,11 @@ class TestParameterizedDecorator:
         assert "Avg Mem" in captured.out
         assert "Peak Mem" in captured.out
 
-    def test_parameterized_with_generator_fixture(
+    def test_parametrize_with_generator_fixture(
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test parameterized decorator with generator fixtures."""
+        """Test parametrize decorator with generator fixtures."""
         from collections.abc import Generator
 
         # Define parameter set with generator
@@ -1406,7 +1406,7 @@ class TestParameterizedDecorator:
         class GeneratorParamBench(EasyBench):
             bench_config = BenchConfig(trials=1, show_output=True)
 
-            @parameterized([params])
+            @parametrize([params])
             def bench_use_value(self, value: int) -> int:
                 return value * 2
 
@@ -1418,8 +1418,8 @@ class TestParameterizedDecorator:
         assert "Return Values" in captured.out
         assert "84" in captured.out  # 42 * 2
 
-    def test_parameterized_isolation(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """Test that parameterized runs are properly isolated."""
+    def test_parametrize_isolation(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that parametrize runs are properly isolated."""
         # Define parameter sets that modify state
         set1 = BenchParams(name="First", params={"data": lambda: [10]})
         set2 = BenchParams(name="Second", params={"data": lambda: [20]})
@@ -1427,7 +1427,7 @@ class TestParameterizedDecorator:
         class IsolationParamBench(EasyBench):
             bench_config = BenchConfig(trials=1, show_output=True)
 
-            @parameterized([set1, set2])
+            @parametrize([set1, set2])
             def bench_modify(self, data: list[int]) -> int:
                 data.append(5)  # Modify the data
                 return sum(data)
@@ -1442,11 +1442,11 @@ class TestParameterizedDecorator:
         assert "15" in captured.out  # 10 + 5
         assert "25" in captured.out  # 20 + 5
 
-    def test_parameterized_with_class_config(
+    def test_parametrize_with_class_config(
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test parameterized decorator inherits class configuration."""
+        """Test parametrize decorator inherits class configuration."""
         # Define parameter sets
         param1 = BenchParams(name="A", params={"x": 1})
         param2 = BenchParams(name="B", params={"x": 2})
@@ -1455,7 +1455,7 @@ class TestParameterizedDecorator:
             # Set a specific configuration at class level
             bench_config = BenchConfig(trials=3, memory=True, show_output=True)
 
-            @parameterized([param1, param2])
+            @parametrize([param1, param2])
             def bench_test(self, x: int) -> int:
                 return x * 10
 
