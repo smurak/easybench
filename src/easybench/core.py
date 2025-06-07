@@ -266,9 +266,6 @@ class EasyBench:
     # Default Benchmark Config
     bench_config = BenchConfig()
 
-    Params = BenchParams
-    parameterized = staticmethod(parameterized)
-
     def __init__(self, bench_config: BenchConfig | None = None) -> None:
         """
         Initialize the benchmark class with optional configuration.

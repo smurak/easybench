@@ -66,20 +66,20 @@ Main configuration options:
 * `memory`: Also measure memory usage (default: `False`)
 * For other options, see "Configuration Options" below
 
-### **Multiple parameter sets** (`bench.Params`)
+### **Multiple parameter sets** (`BenchParams`)
 
 When you want to benchmark a function with multiple parameter sets,
-you can pass a list of parameter sets created with `bench.Params` to the `@bench` decorator:
+you can pass a list of parameter sets created with `BenchParams` to the `@bench` decorator:
 
 ```python
-from easybench import bench
+from easybench import bench, BenchParams
 
 # Define parameter sets
-small = bench.Params(
+small = BenchParams(
     name="Small",                                 # Parameter set name
     params={"lst": lambda: list(range(10_000))},  # Parameters for @bench
 )
-large = bench.Params(
+large = BenchParams(
     name="Large",
     params={"lst": lambda: list(range(1_000_000))}
 )
@@ -193,22 +193,22 @@ class BenchExample(EasyBench):
 You can run the same benchmark method with different parameter sets using the `parameterized` decorator:
 
 ```python
-from easybench import EasyBench
+from easybench import BenchParams, EasyBench, parameterized
 
 class BenchListOperations(EasyBench):
-    # Define parameter sets with EasyBench.Params
-    small_params = EasyBench.Params(
+    # Define parameter sets with BenchParams
+    small_params = BenchParams(
         name="Small List",
         params={"size": 10_000}
     )
     
-    large_params = EasyBench.Params(
+    large_params = BenchParams(
         name="Large List",
         params={"size": 1_000_000}
     )
     
     # Apply parameterized decorator with a list of parameter sets
-    @EasyBench.parameterized([small_params, large_params])
+    @parameterized([small_params, large_params])
     def bench_create_list(self, size):
         return list(range(size))
 ```

@@ -191,20 +191,20 @@ def pop_last(big_list):
 * `memory`: メモリ使用量も測定 (デフォルト: `False`)
 * その他のオプションについては、以下の「設定オプション」を参照
 
-#### **複数パラメータセットによるベンチマーク計測** (`bench.Params`)
+#### **複数パラメータセットによるベンチマーク計測** (`BenchParams`)
 
 1つの関数に関して、複数のパラメータセットでベンチマーク測定を行いたい場合、  
-`bench.Params`で作成したパラメータセットのリストを`@bench`デコレータに渡します:
+`BenchParams`で作成したパラメータセットのリストを`@bench`デコレータに渡します:
 
 ```python
-from easybench import bench
+from easybench import bench, BenchParams
 
 # パラメータセットを定義
-small = bench.Params(
+small = BenchParams(
     name="Small",                                 # パラメータセット名
     params={"lst": lambda: list(range(10_000))},  # @bench用パラメータ
 )
-large = bench.Params(
+large = BenchParams(
     name="Large",
     params={"lst": lambda: list(range(1_000_000))}
 )
@@ -318,22 +318,22 @@ class BenchExample(EasyBench):
 `parameterized`デコレータを使用すると、同じベンチマークメソッドを異なるパラメータセットで実行できます：
 
 ```python
-from easybench import EasyBench
+from easybench import BenchParams, EasyBench, parameterized
 
 class BenchListOperations(EasyBench):
-    # EasyBench.Paramsを使用してパラメータセットを定義
-    small_params = EasyBench.Params(
+    # BenchParamsを使用してパラメータセットを定義
+    small_params = BenchParams(
         name="小さいリスト",
         params={"size": 10_000}
     )
     
-    large_params = EasyBench.Params(
+    large_params = BenchParams(
         name="大きいリスト",
         params={"size": 1_000_000}
     )
     
     # parameterizedデコレータにパラメータセットのリストを渡して適用
-    @EasyBench.parameterized([small_params, large_params])
+    @parameterized([small_params, large_params])
     def bench_create_list(self, size):
         return list(range(size))
 ```
