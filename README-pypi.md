@@ -311,12 +311,12 @@ class BenchExample(EasyBench):
         pass
 ```
 
-#### Parameterized Benchmarks (`parameterized` decorator)
+#### Parameterized Benchmarks (`parameterize` decorator)
 
-You can run the same benchmark method with different parameter sets using the `parameterized` decorator:
+You can run the same benchmark method with different parameter sets using the `parameterize` decorator:
 
 ```python
-from easybench import BenchParams, EasyBench, parameterized
+from easybench import BenchParams, EasyBench, parameterize
 
 class BenchListOperations(EasyBench):
     # Define parameter sets with BenchParams
@@ -330,8 +330,8 @@ class BenchListOperations(EasyBench):
         params={"size": 1_000_000}
     )
     
-    # Apply parameterized decorator with a list of parameter sets
-    @parameterized([small_params, large_params])
+    # Apply parameterize decorator with a list of parameter sets
+    @parameterize([small_params, large_params])
     def bench_create_list(self, size):
         return list(range(size))
 

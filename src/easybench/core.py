@@ -229,7 +229,7 @@ def fixture(
     return decorator
 
 
-def parameterized(params_list: list[BenchParams]) -> Callable:
+def parameterize(params_list: list[BenchParams]) -> Callable:
     """
     Create a decorator for parameterized benchmarks in EasyBench classes.
 
@@ -239,7 +239,7 @@ def parameterized(params_list: list[BenchParams]) -> Callable:
         params2 = BenchParams(name="big", params={"big_list": 100_000})
 
         class BenchList(EasyBench):
-            @parameterized([params1, params2])
+            @parameterize([params1, params2])
             def bench_append(self, big_list):
                 big_list.append(0)
         ```
