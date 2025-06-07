@@ -338,6 +338,9 @@ class BenchListOperations(EasyBench):
     @parameterized([small_params, large_params])
     def bench_create_list(self, size):
         return list(range(size))
+
+if __name__ == "__main__":
+    BenchListOperations().bench()
 ```
 
 This will run the benchmark with each parameter set and include the parameter set name in the results:
