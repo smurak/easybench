@@ -201,7 +201,7 @@ class TableFormatter(Formatter):
                 f"{'Min Time (s)'} {'Max Time (s)'}"
             )
             if config.memory:
-                header += f" Avg Mem ({self.memory_unit}) Peak Mem ({self.memory_unit})"
+                header += f" Avg Mem ({self.memory_unit}) Max Mem ({self.memory_unit})"
         return header
 
     def _calculate_dash_length(self, config: BenchConfig) -> int:
@@ -378,7 +378,7 @@ class CSVFormatter(Formatter):
                 header.extend(
                     [
                         f"Avg Memory ({self.memory_unit})",
-                        f"Peak Memory ({self.memory_unit})",
+                        f"Max Memory ({self.memory_unit})",
                     ],
                 )
 
@@ -497,7 +497,7 @@ class DataFrameFormatter(Formatter):
                             f"Avg Memory ({self.memory_unit})": (
                                 self.convert_memory_unit(stat["avg_memory"])
                             ),
-                            f"Peak Memory ({self.memory_unit})": (
+                            f"Max Memory ({self.memory_unit})": (
                                 self.convert_memory_unit(stat["max_memory"])
                             ),
                         },

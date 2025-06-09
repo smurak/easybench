@@ -136,7 +136,7 @@ class TestEasyBenchOutput:
         parsed_out = parse_benchmark_output(captured.out)
         assert parsed_out["has_memory_metrics"]
         assert "Avg Mem" in captured.out
-        assert "Peak Mem" in captured.out
+        assert "Max Mem" in captured.out
 
     def test_return_values_display(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Test that function return values are displayed when show_output=True."""
@@ -1387,7 +1387,7 @@ class TestParametrizedDecorator:
         assert "bench_allocate (Small)" in captured.out
         assert "bench_allocate (Large)" in captured.out
         assert "Avg Mem" in captured.out
-        assert "Peak Mem" in captured.out
+        assert "Max Mem" in captured.out
 
     def test_parametrize_with_generator_fixture(
         self,

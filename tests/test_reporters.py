@@ -47,7 +47,7 @@ TEST_SLOWER_TIME = 0.3
 TEST_AVG_TIME = 0.2
 TEST_MEMORY_VALUE = 1.0
 TEST_AVG_MEMORY = 2.0
-TEST_PEAK_MEMORY = 3.0
+TEST_MAX_MEMORY = 3.0
 TEST_METRIC_MIN = 0.05
 TEST_METRIC_MAX = 0.15
 TEST_FLOAT_VALUE = 0.1
@@ -148,7 +148,7 @@ class TestTableFormatter:
                     "min": TEST_TIME_VALUE,
                     "max": TEST_SLOWER_TIME,
                     "avg_memory": TEST_AVG_MEMORY * 1024,
-                    "max_memory": TEST_PEAK_MEMORY * 1024,
+                    "max_memory": TEST_MAX_MEMORY * 1024,
                 },
             ),
         }
@@ -159,7 +159,7 @@ class TestTableFormatter:
         assert "Benchmark Results (3 trials)" in output
         assert "Function" in output
         assert "Avg Mem (KB)" in output
-        assert "Peak Mem (KB)" in output
+        assert "Max Mem (KB)" in output
         assert "test_func" in output
 
     def test_format_with_return_values(self) -> None:
@@ -385,7 +385,7 @@ class TestCSVFormatter:
                     "min": TEST_TIME_VALUE,
                     "max": TEST_SLOWER_TIME,
                     "avg_memory": TEST_AVG_MEMORY * 1024,
-                    "max_memory": TEST_PEAK_MEMORY * 1024,
+                    "max_memory": TEST_MAX_MEMORY * 1024,
                 },
             ),
         }
@@ -404,12 +404,12 @@ class TestCSVFormatter:
             "Min Time (s)",
             "Max Time (s)",
             "Avg Memory (KB)",
-            "Peak Memory (KB)",
+            "Max Memory (KB)",
         ]
         assert rows[1][0] == "test_func"
         assert float(rows[1][1]) == TEST_AVG_TIME
         assert float(rows[1][4]) == TEST_AVG_MEMORY
-        assert float(rows[1][5]) == TEST_PEAK_MEMORY
+        assert float(rows[1][5]) == TEST_MAX_MEMORY
 
     def test_format_with_memory_unit(self) -> None:
         """Test formatting results with different memory units."""
@@ -478,7 +478,7 @@ class TestJSONFormatter:
                     "min": TEST_TIME_VALUE,
                     "max": TEST_SLOWER_TIME,
                     "avg_memory": TEST_AVG_MEMORY * 1024,
-                    "max_memory": TEST_PEAK_MEMORY * 1024,
+                    "max_memory": TEST_MAX_MEMORY * 1024,
                 },
             ),
         }
@@ -489,7 +489,7 @@ class TestJSONFormatter:
 
         assert data["config"]["memory"] is True
         assert data["results"]["test_func"]["avg_memory"] == TEST_AVG_MEMORY
-        assert data["results"]["test_func"]["max_memory"] == TEST_PEAK_MEMORY
+        assert data["results"]["test_func"]["max_memory"] == TEST_MAX_MEMORY
 
     def test_format_with_output(self) -> None:
         """Test JSON formatting with function outputs."""
@@ -525,7 +525,7 @@ class TestJSONFormatter:
                     "min": TEST_TIME_VALUE,
                     "max": TEST_SLOWER_TIME,
                     "avg_memory": TEST_AVG_MEMORY * 1024 * 1024,
-                    "max_memory": TEST_PEAK_MEMORY * 1024 * 1024,
+                    "max_memory": TEST_MAX_MEMORY * 1024 * 1024,
                 },
             ),
         }
@@ -536,7 +536,7 @@ class TestJSONFormatter:
 
         assert data["config"]["memory_unit"] == "MB"
         assert data["results"]["test_func"]["avg_memory"] == TEST_AVG_MEMORY
-        assert data["results"]["test_func"]["max_memory"] == TEST_PEAK_MEMORY
+        assert data["results"]["test_func"]["max_memory"] == TEST_MAX_MEMORY
 
 
 class TestSimpleFormatter:
@@ -637,7 +637,7 @@ class TestSimpleFormatter:
                 {
                     "avg": TEST_TIME_VALUE,
                     "avg_memory": TEST_AVG_MEMORY * 1024,
-                    "max_memory": TEST_PEAK_MEMORY * 1024,
+                    "max_memory": TEST_MAX_MEMORY * 1024,
                 },
             ),
         }
@@ -836,7 +836,7 @@ class TestDataFrameFormatter:
                     "min": TEST_TIME_VALUE,
                     "max": TEST_SLOWER_TIME,
                     "avg_memory": TEST_AVG_MEMORY * 1024,
-                    "max_memory": TEST_PEAK_MEMORY * 1024,
+                    "max_memory": TEST_MAX_MEMORY * 1024,
                 },
             ),
         }
@@ -845,9 +845,9 @@ class TestDataFrameFormatter:
         output = formatter.format(results, stats, config)
 
         assert "Avg Memory (KB)" in output.columns
-        assert "Peak Memory (KB)" in output.columns
+        assert "Max Memory (KB)" in output.columns
         assert output["Avg Memory (KB)"].iloc[0] == TEST_AVG_MEMORY
-        assert output["Peak Memory (KB)"].iloc[0] == TEST_PEAK_MEMORY
+        assert output["Max Memory (KB)"].iloc[0] == TEST_MAX_MEMORY
 
     @pytest.mark.skipif(
         "pandas" not in pytest.importorskip("pandas").__name__,
