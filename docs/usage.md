@@ -64,6 +64,9 @@ Main configuration options:
 
 * `trials`: Number of trials (default: `5`)
 * `memory`: Also measure memory usage (default: `False`)
+  * `False`: Disable memory measurement
+  * `True`: Show memory in kilobytes
+  * `"B"`, `"KB"`, `"MB"`, `"GB"`: Show memory in bytes, kilobytes, megabytes, or gigabytes
 * For other options, see "Configuration Options" below
 
 ### **Multiple parameter sets** (`BenchParams`)
@@ -274,7 +277,7 @@ class MyBenchmark(EasyBench):
         trials=5,            # Number of trials
         sort_by="avg",       # Sort criterion
         reverse=False,       # Sort order (False=ascending, True=descending)
-        memory=True,         # Enable memory measurement
+        memory=True,         # Enable memory measurement (True or "B"/"KB"/"MB"/"GB")
         color=True,          # Use color output in results
         show_output=False,   # Display function return values
         reporters=[]         # Custom reporters (see explanation below)
@@ -289,6 +292,15 @@ Sorting options (`sort_by`):
 - `"max"`: Maximum execution time
 - `"avg_memory"`: Average memory usage (when `memory=True`)
 - `"max_memory"`: Maximum memory usage (when `memory=True`)
+
+Memory measurement options (`memory`):
+
+- `False`: Disable memory measurement (default)
+- `True`: Enable memory measurement and display in kilobytes
+- `"B"`: Display memory usage in bytes
+- `"KB"`: Display memory usage in kilobytes
+- `"MB"`: Display memory usage in megabytes
+- `"GB"`: Display memory usage in gigabytes
 
 ### Memory Measurement Limitations
 
