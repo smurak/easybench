@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 
 from .reporters import (
     ConsoleReporter,
+    MemoryUnit,
     Reporter,
 )
 
@@ -99,7 +100,7 @@ class PartialBenchConfig(BaseModel):
     trials: int | None = None
     sort_by: SortType | None = None
     reverse: bool | None = None
-    memory: bool | None = None
+    memory: bool | MemoryUnit | None = None
     color: bool | None = None
     show_output: bool | None = None
     return_output: bool | None = None
@@ -132,7 +133,7 @@ class BenchConfig(PartialBenchConfig):
     trials: int = 5
     sort_by: SortType = "def"
     reverse: bool = False
-    memory: bool = False
+    memory: bool | MemoryUnit = False
     color: bool = True
     show_output: bool = False
     return_output: bool = False
@@ -407,7 +408,7 @@ class EasyBench:
                         self._run_single_benchmark(
                             method=method,
                             values=values,
-                            memory=config.memory,
+                            memory=bool(config.memory),
                             capture_output=capture_output,
                         )
                     )
