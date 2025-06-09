@@ -107,6 +107,7 @@ result = append_item(3, list(range(1_000_000)))
 result = append_item.bench(3, list(range(1_000_000)))
 print(result)  # 10000001
 ```
+
 * By default, the benchmark runs for `1` trial.
 * To run multiple trials, specify the `bench_trials` parameter:
   ```python
@@ -117,6 +118,8 @@ print(result)  # 10000001
   result = append_item.bench(3, [1,2,3], bench_trials=10)
   print(result)  # 4
   ```
+
+---
 
 ## Class-based Benchmarks (`EasyBench` class)
 
@@ -150,6 +153,7 @@ if __name__ == "__main__":
 ```
 
 How to use the class-based approach:
+
 1. Create a class that inherits from `EasyBench`
 2. Configure benchmark settings with the `bench_config` class variable
 3. Prepare for each trial in the `setup_trial` method
@@ -297,6 +301,8 @@ Sorting options (`sort_by`):
     - The reported memory usage reflects Python objects only, not the total process memory consumption
    
     For applications heavily using C extensions, consider using external profilers like `memory_profiler` or system monitoring tools for more accurate measurements.
+
+---
 
 ## Command Line Interface (`easybench` command)
 
