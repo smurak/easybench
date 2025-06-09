@@ -403,12 +403,22 @@ class MyBenchmark(EasyBench):
 ```
 
 Sorting options (`sort_by`):
+
 - `"def"`: Definition order (default)
 - `"avg"`: Average execution time
 - `"min"`: Minimum execution time
 - `"max"`: Maximum execution time
 - `"avg_memory"`: Average memory usage (when `memory=True`)
 - `"max_memory"`: Maximum memory usage (when `memory=True`)
+
+Memory measurement options (`memory`):
+
+- `False`: Disable memory measurement (default)
+- `True`: Enable memory measurement and display in kilobytes
+- `"B"`: Display memory usage in bytes
+- `"KB"`: Display memory usage in kilobytes
+- `"MB"`: Display memory usage in megabytes
+- `"GB"`: Display memory usage in gigabytes
 
 #### Memory Measurement Limitations
 
