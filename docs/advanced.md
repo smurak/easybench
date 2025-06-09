@@ -18,6 +18,7 @@ To use reporters, set them as a list in the `reporters` parameter of your benchm
     
     # Multiple output formats at once
     config = BenchConfig(
+        memory="MB",         # Show memory usage in megabytes
         reporters=[
             ConsoleReporter(),             # Show in console as a table
             FileReporter("results.csv"),   # Save as CSV file

@@ -188,7 +188,10 @@ def pop_last(big_list):
 主な設定オプション：
 
 * `trials`: 試行回数 (デフォルト: `5`)
-* `memory`: メモリ使用量も測定 (デフォルト: `False`)
+* `memory`: メモリ使用量も測定
+  * `False`: メモリ測定を無効化 (デフォルト)
+  * `True`: キロバイト単位で表示
+  * `"B"`, `"KB"`, `"MB"`, `"GB"`: バイト、キロバイト、メガバイト、ギガバイト単位で表示
 * その他のオプションについては、以下の「設定オプション」を参照
 
 #### **複数パラメータセットによるベンチマーク計測** (`BenchParams`)
@@ -394,7 +397,7 @@ class MyBenchmark(EasyBench):
         trials=5,            # 試行回数
         sort_by="avg",       # ソート基準
         reverse=False,       # ソート順序（False=昇順、True=降順）
-        memory=True,         # メモリ測定を有効化
+        memory="MB",         # メモリ測定を有効化し、メガバイト単位で表示
         color=True,          # 結果にカラー出力を使用
         show_output=False,   # 関数の戻り値をベンチマーク結果に表示
         reporters=[]         # カスタムレポーター (後述の解説を参照)
