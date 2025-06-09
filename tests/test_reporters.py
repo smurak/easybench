@@ -33,6 +33,7 @@ from easybench.reporters import (
     Formatted,
     Formatter,
     JSONFormatter,
+    MemoryUnit,
     MetricType,
     Reporter,
     StreamReporter,
@@ -258,6 +259,34 @@ class TestTableFormatter:
         assert "0.150000" in result
         assert "\033[31m" in result  # Red color code
 
+    def test_format_with_memory_unit(self) -> None:
+        """Test formatting results with different memory units."""
+        unit = MemoryUnit("MB")
+        formatter = TableFormatter(memory_unit=unit)
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "times": [TEST_TIME_VALUE],
+                "memory": [1024 * 1024],  # 1 MB in bytes
+            },
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_TIME_VALUE,
+                    "avg_memory": 1024 * 1024,  # 1 MB in bytes
+                    "max_memory": 2 * 1024 * 1024,  # 2 MB in bytes
+                },
+                memory=True,
+            ),
+        }
+        config = BenchConfig(trials=1, memory=True)
+
+        output = formatter.format(results, stats, config)
+
+        assert "Benchmark Results (1 trial)" in output
+        assert "Memory (MB)" in output
+        assert "1.000000" in output  # 1 MB displayed
+
 
 class TestCSVFormatter:
     """Tests for the CSVFormatter class."""
@@ -382,6 +411,35 @@ class TestCSVFormatter:
         assert float(rows[1][4]) == TEST_AVG_MEMORY
         assert float(rows[1][5]) == TEST_PEAK_MEMORY
 
+    def test_format_with_memory_unit(self) -> None:
+        """Test formatting results with different memory units."""
+        unit = MemoryUnit("MB")
+        formatter = CSVFormatter(memory_unit=unit)
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "times": [TEST_TIME_VALUE],
+                "memory": [1024 * 1024],  # 1 MB in bytes
+            },
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_TIME_VALUE,
+                    "avg_memory": 1024 * 1024,  # 1 MB in bytes
+                },
+                memory=True,
+            ),
+        }
+        config = BenchConfig(trials=1, memory=True)
+
+        output = formatter.format(results, stats, config)
+
+        reader = csv.reader(io.StringIO(output))
+        rows = list(reader)
+
+        assert rows[0] == ["Function", "Time (s)", "Memory (MB)"]
+        assert float(rows[1][2]) == 1.0  # 1 MB
+
 
 class TestJSONFormatter:
     """Tests for the JSONFormatter class."""
@@ -449,6 +507,36 @@ class TestJSONFormatter:
 
         assert "output" in data["results"]["test_func"]
         assert data["results"]["test_func"]["output"] == ["result"]
+
+    def test_format_with_memory_unit(self) -> None:
+        """Test formatting results with different memory units."""
+        unit = MemoryUnit("MB")
+        formatter = JSONFormatter(memory_unit=unit)
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "times": [TEST_TIME_VALUE],
+                "memory": [1024 * 1024],  # 1 MB in bytes
+            },
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                    "avg_memory": TEST_AVG_MEMORY * 1024 * 1024,
+                    "max_memory": TEST_PEAK_MEMORY * 1024 * 1024,
+                },
+            ),
+        }
+        config = BenchConfig(trials=3, memory=True)
+
+        output = formatter.format(results, stats, config)
+        data = json.loads(output)
+
+        assert data["config"]["memory_unit"] == "MB"
+        assert data["results"]["test_func"]["avg_memory"] == TEST_AVG_MEMORY
+        assert data["results"]["test_func"]["max_memory"] == TEST_PEAK_MEMORY
 
 
 class TestSimpleFormatter:
@@ -817,6 +905,35 @@ class TestDataFrameFormatter:
                 formatter.format(results, stats, config)
         finally:
             builtins.__import__ = original_import
+
+    def test_format_with_memory_unit(self) -> None:
+        """Test formatting results with different memory units."""
+        unit = MemoryUnit("MB")
+        formatter = DataFrameFormatter(memory_unit=unit)
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "times": [TEST_TIME_VALUE],
+                "memory": [1024 * 1024],  # 1 MB in bytes
+            },
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_TIME_VALUE,
+                    "avg_memory": 1024 * 1024,  # 1 MB in bytes
+                },
+                memory=True,
+            ),
+        }
+        config = BenchConfig(trials=1, memory=True)
+
+        # Skip test if pandas is not installed
+        try:
+            output = formatter.format(results, stats, config)
+            assert "Memory (MB)" in output.columns
+            assert output["Memory (MB)"].iloc[0] == 1.0  # 1 MB
+        except ImportError:
+            pytest.skip("pandas is not installed")
 
 
 class TestReporters:
