@@ -298,7 +298,7 @@ class TestBenchDecoratorOutput:
         assert "Min Time" in captured.out
         assert "Max Time" in captured.out
         assert "Avg Mem" in captured.out
-        assert "Peak Mem" in captured.out
+        assert "Max Mem" in captured.out
 
     def test_bench_decorator_display_config_no_memory(
         self,
@@ -317,7 +317,7 @@ class TestBenchDecoratorOutput:
         assert "Min Time" in captured.out
         assert "Max Time" in captured.out
         assert "Avg Mem" not in captured.out
-        assert "Peak Mem" not in captured.out
+        assert "Max Mem" not in captured.out
 
     def test_bench_decorator_bench_method(self, capsys: pytest.CaptureFixture) -> None:
         """Test direct invocation of the bench method on a decorated function."""
