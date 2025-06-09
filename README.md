@@ -409,7 +409,7 @@ Sorting options (`sort_by`):
 - `"min"`: Minimum execution time
 - `"max"`: Maximum execution time
 - `"avg_memory"`: Average memory usage (when `memory=True`)
-- `"peak_memory"`: Peak memory usage (when `memory=True`)
+- `"max_memory"`: Maximum memory usage (when `memory=True`)
 
 #### Memory Measurement Limitations
 
@@ -445,7 +445,7 @@ easybench [--trials N] [--memory] [--sort-by METRIC] [--reverse] [--no-color] [-
 
 - `--trials N`: Number of trials (default: 5)
 - `--memory`: Enable memory measurement
-- `--sort-by METRIC`: Sort criterion (def/avg/min/max/avg_memory/peak_memory)
+- `--sort-by METRIC`: Sort criterion (def/avg/min/max/avg_memory/max_memory)
 - `--reverse`: Sort results in descending order
 - `--no-color`: Disable colored output
 - `--show-output`: Display function return values

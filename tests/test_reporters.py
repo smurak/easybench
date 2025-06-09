@@ -23,7 +23,7 @@ from typing import TypeVar, get_args
 
 import pytest
 
-from easybench.core import BenchConfig, ResultType, SortType
+from easybench.core import BenchConfig, ResultType, StatType
 from easybench.reporters import (
     CallbackReporter,
     ConsoleReporter,
@@ -33,6 +33,8 @@ from easybench.reporters import (
     Formatted,
     Formatter,
     JSONFormatter,
+    MemoryUnit,
+    MetricType,
     Reporter,
     StreamReporter,
     TableFormatter,
@@ -58,6 +60,28 @@ ImportReturnT = TypeVar("ImportReturnT")
 DataFrameLike = dict[str, list[str | float]] | Mapping[str, Sequence[str | float | int]]
 
 
+def complete_stat(
+    dic: dict[str, float],
+    memory: bool = False,  # noqa: FBT002, FBT001
+) -> StatType:
+    """Complete dictionaries for StatType."""
+    stat: StatType = {
+        "avg": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+    }
+    if memory:
+        stat.update(
+            {
+                "avg_memory": 0.0,
+                "max_memory": 0.0,
+            },
+        )
+
+    stat.update(dic)  # type: ignore [literal-required, typeddict-item]
+    return stat
+
+
 class TestTableFormatter:
     """Tests for the TableFormatter class."""
 
@@ -67,7 +91,11 @@ class TestTableFormatter:
         results: dict[str, ResultType] = {
             "test_func": {"times": [TEST_TIME_VALUE], "memory": [1024]},
         }
-        stats = {"test_func": {"time": TEST_TIME_VALUE, "memory": TEST_MEMORY_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {"avg": TEST_TIME_VALUE, "avg_memory": TEST_MEMORY_VALUE},
+            ),
+        }
         config = BenchConfig(trials=1, memory=True)
 
         output = formatter.format(results, stats, config)
@@ -84,12 +112,14 @@ class TestTableFormatter:
         results: dict[str, ResultType] = {
             "test_func": {"times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME]},
         }
-        stats = {
-            "test_func": {
-                "avg": TEST_AVG_TIME,
-                "min": TEST_TIME_VALUE,
-                "max": TEST_SLOWER_TIME,
-            },
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                },
+            ),
         }
         config = BenchConfig(trials=3)
 
@@ -111,14 +141,16 @@ class TestTableFormatter:
                 "memory": [1024, 2048, 3072],
             },
         }
-        stats = {
-            "test_func": {
-                "avg": TEST_AVG_TIME,
-                "min": TEST_TIME_VALUE,
-                "max": TEST_SLOWER_TIME,
-                "avg_memory": TEST_AVG_MEMORY,
-                "peak_memory": TEST_PEAK_MEMORY,
-            },
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                    "avg_memory": TEST_AVG_MEMORY * 1024,
+                    "max_memory": TEST_PEAK_MEMORY * 1024,
+                },
+            ),
         }
         config = BenchConfig(trials=3, memory=True)
 
@@ -136,7 +168,9 @@ class TestTableFormatter:
         results: dict[str, ResultType] = {
             "test_func": {"times": [TEST_TIME_VALUE], "output": ["result"]},
         }
-        stats = {"test_func": {"time": TEST_TIME_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
         config = BenchConfig(trials=1, show_output=True)
 
         output = formatter.format(results, stats, config)
@@ -154,12 +188,14 @@ class TestTableFormatter:
                 "output": [1, 2, 3],
             },
         }
-        stats = {
-            "test_func": {
-                "avg": TEST_AVG_TIME,
-                "min": TEST_TIME_VALUE,
-                "max": TEST_SLOWER_TIME,
-            },
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                },
+            ),
         }
         config = BenchConfig(trials=3, show_output=True)
 
@@ -223,6 +259,34 @@ class TestTableFormatter:
         assert "0.150000" in result
         assert "\033[31m" in result  # Red color code
 
+    def test_format_with_memory_unit(self) -> None:
+        """Test formatting results with different memory units."""
+        unit = MemoryUnit("MB")
+        formatter = TableFormatter(memory_unit=unit)
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "times": [TEST_TIME_VALUE],
+                "memory": [1024 * 1024],  # 1 MB in bytes
+            },
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_TIME_VALUE,
+                    "avg_memory": 1024 * 1024,  # 1 MB in bytes
+                    "max_memory": 2 * 1024 * 1024,  # 2 MB in bytes
+                },
+                memory=True,
+            ),
+        }
+        config = BenchConfig(trials=1, memory=True)
+
+        output = formatter.format(results, stats, config)
+
+        assert "Benchmark Results (1 trial)" in output
+        assert "Memory (MB)" in output
+        assert "1.000000" in output  # 1 MB displayed
+
 
 class TestCSVFormatter:
     """Tests for the CSVFormatter class."""
@@ -231,7 +295,9 @@ class TestCSVFormatter:
         """Test formatting single trial results as CSV."""
         formatter = CSVFormatter()
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
-        stats = {"test_func": {"time": TEST_TIME_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
         config = BenchConfig(trials=1)
 
         output = formatter.format(results, stats, config)
@@ -251,12 +317,14 @@ class TestCSVFormatter:
         results: dict[str, ResultType] = {
             "test_func": {"times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME]},
         }
-        stats = {
-            "test_func": {
-                "avg": TEST_AVG_TIME,
-                "min": TEST_TIME_VALUE,
-                "max": TEST_SLOWER_TIME,
-            },
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                },
+            ),
         }
         config = BenchConfig(trials=3)
 
@@ -279,7 +347,14 @@ class TestCSVFormatter:
         results: dict[str, ResultType] = {
             "test_func": {"times": [TEST_TIME_VALUE], "memory": [1024]},
         }
-        stats = {"test_func": {"time": TEST_TIME_VALUE, "memory": TEST_MEMORY_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_TIME_VALUE,
+                    "avg_memory": TEST_MEMORY_VALUE * 1024,
+                },
+            ),
+        }
         config = BenchConfig(trials=1, memory=True)
 
         output = formatter.format(results, stats, config)
@@ -303,14 +378,16 @@ class TestCSVFormatter:
                 "memory": [1024, 2048, 3072],
             },
         }
-        stats = {
-            "test_func": {
-                "avg": TEST_AVG_TIME,
-                "min": TEST_TIME_VALUE,
-                "max": TEST_SLOWER_TIME,
-                "avg_memory": TEST_AVG_MEMORY,
-                "peak_memory": TEST_PEAK_MEMORY,
-            },
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                    "avg_memory": TEST_AVG_MEMORY * 1024,
+                    "max_memory": TEST_PEAK_MEMORY * 1024,
+                },
+            ),
         }
         config = BenchConfig(trials=3, memory=True)
 
@@ -334,6 +411,35 @@ class TestCSVFormatter:
         assert float(rows[1][4]) == TEST_AVG_MEMORY
         assert float(rows[1][5]) == TEST_PEAK_MEMORY
 
+    def test_format_with_memory_unit(self) -> None:
+        """Test formatting results with different memory units."""
+        unit = MemoryUnit("MB")
+        formatter = CSVFormatter(memory_unit=unit)
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "times": [TEST_TIME_VALUE],
+                "memory": [1024 * 1024],  # 1 MB in bytes
+            },
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_TIME_VALUE,
+                    "avg_memory": 1024 * 1024,  # 1 MB in bytes
+                },
+                memory=True,
+            ),
+        }
+        config = BenchConfig(trials=1, memory=True)
+
+        output = formatter.format(results, stats, config)
+
+        reader = csv.reader(io.StringIO(output))
+        rows = list(reader)
+
+        assert rows[0] == ["Function", "Time (s)", "Memory (MB)"]
+        assert float(rows[1][2]) == 1.0  # 1 MB
+
 
 class TestJSONFormatter:
     """Tests for the JSONFormatter class."""
@@ -342,7 +448,9 @@ class TestJSONFormatter:
         """Test basic JSON formatting."""
         formatter = JSONFormatter()
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
-        stats = {"test_func": {"time": TEST_TIME_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
         config = BenchConfig(trials=1)
 
         output = formatter.format(results, stats, config)
@@ -352,7 +460,7 @@ class TestJSONFormatter:
         assert "results" in data
         assert data["config"]["trials"] == 1
         assert "test_func" in data["results"]
-        assert data["results"]["test_func"]["time"] == TEST_TIME_VALUE
+        assert data["results"]["test_func"]["avg"] == TEST_TIME_VALUE
 
     def test_format_with_memory(self) -> None:
         """Test JSON formatting with memory metrics."""
@@ -363,14 +471,16 @@ class TestJSONFormatter:
                 "memory": [1024, 2048, 3072],
             },
         }
-        stats = {
-            "test_func": {
-                "avg": TEST_AVG_TIME,
-                "min": TEST_TIME_VALUE,
-                "max": TEST_SLOWER_TIME,
-                "avg_memory": TEST_AVG_MEMORY,
-                "peak_memory": TEST_PEAK_MEMORY,
-            },
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                    "avg_memory": TEST_AVG_MEMORY * 1024,
+                    "max_memory": TEST_PEAK_MEMORY * 1024,
+                },
+            ),
         }
         config = BenchConfig(trials=3, memory=True)
 
@@ -379,7 +489,7 @@ class TestJSONFormatter:
 
         assert data["config"]["memory"] is True
         assert data["results"]["test_func"]["avg_memory"] == TEST_AVG_MEMORY
-        assert data["results"]["test_func"]["peak_memory"] == TEST_PEAK_MEMORY
+        assert data["results"]["test_func"]["max_memory"] == TEST_PEAK_MEMORY
 
     def test_format_with_output(self) -> None:
         """Test JSON formatting with function outputs."""
@@ -387,7 +497,9 @@ class TestJSONFormatter:
         results: dict[str, ResultType] = {
             "test_func": {"times": [TEST_TIME_VALUE], "output": ["result"]},
         }
-        stats = {"test_func": {"time": TEST_TIME_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
         config = BenchConfig(trials=1, show_output=True)
 
         output = formatter.format(results, stats, config)
@@ -395,6 +507,36 @@ class TestJSONFormatter:
 
         assert "output" in data["results"]["test_func"]
         assert data["results"]["test_func"]["output"] == ["result"]
+
+    def test_format_with_memory_unit(self) -> None:
+        """Test formatting results with different memory units."""
+        unit = MemoryUnit("MB")
+        formatter = JSONFormatter(memory_unit=unit)
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "times": [TEST_TIME_VALUE],
+                "memory": [1024 * 1024],  # 1 MB in bytes
+            },
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                    "avg_memory": TEST_AVG_MEMORY * 1024 * 1024,
+                    "max_memory": TEST_PEAK_MEMORY * 1024 * 1024,
+                },
+            ),
+        }
+        config = BenchConfig(trials=3, memory=True)
+
+        output = formatter.format(results, stats, config)
+        data = json.loads(output)
+
+        assert data["config"]["memory_unit"] == "MB"
+        assert data["results"]["test_func"]["avg_memory"] == TEST_AVG_MEMORY
+        assert data["results"]["test_func"]["max_memory"] == TEST_PEAK_MEMORY
 
 
 class TestSimpleFormatter:
@@ -404,7 +546,7 @@ class TestSimpleFormatter:
         """Test initialization with valid metrics."""
         from easybench.reporters import SimpleFormatter
 
-        for metric in get_args(SortType):
+        for metric in get_args(MetricType):
             if metric == "def":
                 continue
             formatter = SimpleFormatter(metric=metric)
@@ -418,16 +560,18 @@ class TestSimpleFormatter:
             ValueError,
             match="'def' is not a valid metric for Simple formatter",
         ):
-            SimpleFormatter(metric="def")
+            SimpleFormatter(metric="def")  # type: ignore [arg-type]
 
     def test_format_single_trial(self) -> None:
         """Test formatting with single trial results."""
         from easybench.reporters import SimpleFormatter
 
-        metric: SortType = "avg"
+        metric: MetricType = "avg"
         formatter = SimpleFormatter(metric=metric)
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
-        stats = {"test_func": {"time": TEST_TIME_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
         config = BenchConfig(trials=1)
 
         output = formatter.format(results, stats, config)
@@ -441,12 +585,14 @@ class TestSimpleFormatter:
         results: dict[str, ResultType] = {
             "test_func": {"times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME]},
         }
-        stats = {
-            "test_func": {
-                "avg": TEST_AVG_TIME,
-                "min": TEST_TIME_VALUE,
-                "max": TEST_SLOWER_TIME,
-            },
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                },
+            ),
         }
         config = BenchConfig(trials=3)
 
@@ -461,12 +607,14 @@ class TestSimpleFormatter:
         results: dict[str, ResultType] = {
             "test_func": {"times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME]},
         }
-        stats = {
-            "test_func": {
-                "avg": TEST_AVG_TIME,
-                "min": TEST_TIME_VALUE,
-                "max": TEST_SLOWER_TIME,
-            },
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                },
+            ),
         }
         config = BenchConfig(trials=3)
 
@@ -484,12 +632,14 @@ class TestSimpleFormatter:
                 "memory": [1024],
             },
         }
-        stats = {
-            "test_func": {
-                "time": TEST_TIME_VALUE,
-                "avg_memory": TEST_AVG_MEMORY,
-                "peak_memory": TEST_PEAK_MEMORY,
-            },
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_TIME_VALUE,
+                    "avg_memory": TEST_AVG_MEMORY * 1024,
+                    "max_memory": TEST_PEAK_MEMORY * 1024,
+                },
+            ),
         }
         config = BenchConfig(trials=1, memory=True)
 
@@ -505,9 +655,9 @@ class TestSimpleFormatter:
             "test_func1": {"times": [TEST_TIME_VALUE]},
             "test_func2": {"times": [TEST_SLOW_TIME]},
         }
-        stats = {
-            "test_func1": {"avg": TEST_TIME_VALUE},
-            "test_func2": {"avg": TEST_SLOW_TIME},
+        stats: dict[str, StatType] = {
+            "test_func1": complete_stat({"avg": TEST_TIME_VALUE}),
+            "test_func2": complete_stat({"avg": TEST_SLOW_TIME}),
         }
         config = BenchConfig(trials=1)
 
@@ -524,7 +674,9 @@ class TestSimpleFormatter:
 
         formatter = SimpleFormatter(metric="avg")
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
-        stats = {"test_func": {"time": TEST_TIME_VALUE}}  # No 'avg' key
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }  # No 'avg' key
         config = BenchConfig(trials=1)
 
         output = formatter.format(results, stats, config)
@@ -550,7 +702,9 @@ class TestSimpleFormatter:
         results: dict[str, ResultType] = {
             "test_func": {"times": [TEST_TIME_VALUE]},
         }
-        stats = {"test_func": {"avg": TEST_TIME_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
         config = BenchConfig(trials=1)
 
         output = formatter.format(results, stats, config)
@@ -569,9 +723,9 @@ class TestSimpleFormatter:
             "test_func1": {"times": [TEST_TIME_VALUE]},
             "test_func2": {"times": [TEST_SLOW_TIME]},
         }
-        stats = {
-            "test_func1": {"avg": TEST_TIME_VALUE},
-            "test_func2": {"avg": TEST_SLOW_TIME},
+        stats: dict[str, StatType] = {
+            "test_func1": complete_stat({"avg": TEST_TIME_VALUE}),
+            "test_func2": complete_stat({"avg": TEST_SLOW_TIME}),
         }
         config = BenchConfig(trials=1)
 
@@ -600,9 +754,9 @@ class TestSimpleFormatter:
             "test_func1": {"times": [TEST_TIME_VALUE]},
             "test_func2": {"times": [TEST_SLOW_TIME]},
         }
-        stats = {
-            "test_func1": {"avg": TEST_TIME_VALUE},
-            "test_func2": {"avg": TEST_SLOW_TIME},
+        stats: dict[str, StatType] = {
+            "test_func1": complete_stat({"avg": TEST_TIME_VALUE}),
+            "test_func2": complete_stat({"avg": TEST_SLOW_TIME}),
         }
         config = BenchConfig(trials=1)
 
@@ -623,9 +777,9 @@ class TestSimpleFormatter:
             "test_func1": {"times": [TEST_TIME_VALUE]},
             "test_func2": {"times": [TEST_SLOW_TIME]},
         }
-        stats = {
-            "test_func1": {"avg": TEST_TIME_VALUE},
-            "test_func2": {"avg": TEST_SLOW_TIME},
+        stats: dict[str, StatType] = {
+            "test_func1": complete_stat({"avg": TEST_TIME_VALUE}),
+            "test_func2": complete_stat({"avg": TEST_SLOW_TIME}),
         }
         config = BenchConfig(trials=1)
 
@@ -648,7 +802,9 @@ class TestDataFrameFormatter:
 
         formatter = DataFrameFormatter()
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
-        stats = {"test_func": {"time": TEST_TIME_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
         config = BenchConfig(trials=1)
 
         output = formatter.format(results, stats, config)
@@ -673,14 +829,16 @@ class TestDataFrameFormatter:
                 "memory": [1024, 2048, 3072],
             },
         }
-        stats = {
-            "test_func": {
-                "avg": TEST_AVG_TIME,
-                "min": TEST_TIME_VALUE,
-                "max": TEST_SLOWER_TIME,
-                "avg_memory": TEST_AVG_MEMORY,
-                "peak_memory": TEST_PEAK_MEMORY,
-            },
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                    "avg_memory": TEST_AVG_MEMORY * 1024,
+                    "max_memory": TEST_PEAK_MEMORY * 1024,
+                },
+            ),
         }
         config = BenchConfig(trials=3, memory=True)
 
@@ -701,7 +859,9 @@ class TestDataFrameFormatter:
         results: dict[str, ResultType] = {
             "test_func": {"times": [TEST_TIME_VALUE], "output": ["result"]},
         }
-        stats = {"test_func": {"time": TEST_TIME_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
         config = BenchConfig(trials=1, show_output=True)
 
         output = formatter.format(results, stats, config)
@@ -713,7 +873,9 @@ class TestDataFrameFormatter:
         """Test handling of missing pandas import."""
         formatter = DataFrameFormatter()
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
-        stats = {"test_func": {"time": TEST_TIME_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
         config = BenchConfig(trials=1)
 
         # Mock pandas import failure
@@ -744,6 +906,35 @@ class TestDataFrameFormatter:
         finally:
             builtins.__import__ = original_import
 
+    def test_format_with_memory_unit(self) -> None:
+        """Test formatting results with different memory units."""
+        unit = MemoryUnit("MB")
+        formatter = DataFrameFormatter(memory_unit=unit)
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "times": [TEST_TIME_VALUE],
+                "memory": [1024 * 1024],  # 1 MB in bytes
+            },
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": TEST_TIME_VALUE,
+                    "avg_memory": 1024 * 1024,  # 1 MB in bytes
+                },
+                memory=True,
+            ),
+        }
+        config = BenchConfig(trials=1, memory=True)
+
+        # Skip test if pandas is not installed
+        try:
+            output = formatter.format(results, stats, config)
+            assert "Memory (MB)" in output.columns
+            assert output["Memory (MB)"].iloc[0] == 1.0  # 1 MB
+        except ImportError:
+            pytest.skip("pandas is not installed")
+
 
 class TestReporters:
     """Tests for reporter classes."""
@@ -770,7 +961,9 @@ class TestReporters:
 
         # Test data
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
-        stats = {"test_func": {"time": TEST_TIME_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
         config = BenchConfig(trials=1)
 
         # Call report which should call _send
@@ -896,7 +1089,9 @@ class TestReporters:
 
         # Test data
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
-        stats = {"test_func": {"time": TEST_TIME_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
         config = BenchConfig(trials=1)
 
         # Call the report method
@@ -925,7 +1120,9 @@ class TestSimpleConsoleReporter:
 
         reporter = SimpleConsoleReporter(metric="avg")
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
-        stats = {"test_func": {"avg": TEST_TIME_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
         config = BenchConfig(trials=1)
 
         reporter.report(results, stats, config)
@@ -945,7 +1142,9 @@ class TestSimpleConsoleReporter:
 
         reporter = SimpleConsoleReporter(metric="avg", item_format=custom_format)
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
-        stats = {"test_func": {"avg": TEST_TIME_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
         config = BenchConfig(trials=1)
 
         reporter.report(results, stats, config)
@@ -967,9 +1166,9 @@ class TestSimpleConsoleReporter:
             "test_func1": {"times": [TEST_TIME_VALUE]},
             "test_func2": {"times": [TEST_SLOW_TIME]},
         }
-        stats = {
-            "test_func1": {"avg": TEST_TIME_VALUE},
-            "test_func2": {"avg": TEST_SLOW_TIME},
+        stats: dict[str, StatType] = {
+            "test_func1": complete_stat({"avg": TEST_TIME_VALUE}),
+            "test_func2": complete_stat({"avg": TEST_SLOW_TIME}),
         }
         config = BenchConfig(trials=1)
 
@@ -987,7 +1186,9 @@ class TestSimpleConsoleReporter:
         output_file = io.StringIO()
         reporter = SimpleStreamReporter(metric="avg", file=output_file)
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
-        stats = {"test_func": {"avg": TEST_TIME_VALUE}}
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
         config = BenchConfig(trials=1)
 
         reporter.report(results, stats, config)

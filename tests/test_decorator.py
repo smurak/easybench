@@ -741,7 +741,7 @@ class TestBenchDecoratorMemory:
         )
         assert (
             kb_size
-            <= parsed_out["functions"]["allocate_memory_"]["peak_memory"]
+            <= parsed_out["functions"]["allocate_memory_"]["max_memory"]
             < kb_size * 2
         )
 
@@ -772,7 +772,7 @@ class TestBenchDecoratorMemory:
         assert parsed_out["has_memory_metrics"]
 
         assert parsed_out["functions"]["no_allocate_memory"]["avg_memory"] < kb_size
-        assert parsed_out["functions"]["no_allocate_memory"]["peak_memory"] < kb_size
+        assert parsed_out["functions"]["no_allocate_memory"]["max_memory"] < kb_size
 
     def test_bench_decorator_memory_before2(
         self,
@@ -801,7 +801,7 @@ class TestBenchDecoratorMemory:
         assert parsed_out["has_memory_metrics"]
 
         assert parsed_out["functions"]["no_allocate_memory"]["avg_memory"] < kb_size
-        assert parsed_out["functions"]["no_allocate_memory"]["peak_memory"] < kb_size
+        assert parsed_out["functions"]["no_allocate_memory"]["max_memory"] < kb_size
 
     def test_bench_decorator_memory_after(
         self,
@@ -830,7 +830,7 @@ class TestBenchDecoratorMemory:
         assert parsed_out["has_memory_metrics"]
 
         assert parsed_out["functions"]["no_allocate_memory"]["avg_memory"] < kb_size
-        assert parsed_out["functions"]["no_allocate_memory"]["peak_memory"] < kb_size
+        assert parsed_out["functions"]["no_allocate_memory"]["max_memory"] < kb_size
 
     def test_memory_comparison(
         self,

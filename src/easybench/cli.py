@@ -180,7 +180,7 @@ def cli_main() -> None:
     )
     parser.add_argument(
         "--sort-by",
-        choices=["def", "avg", "min", "max", "avg_memory", "peak_memory"],
+        choices=["def", "avg", "min", "max", "avg_memory", "max_memory"],
         help="Sort results by the specified metric",
     )
     parser.add_argument("--reverse", action="store_true", help="Reverse the sort order")

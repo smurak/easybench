@@ -334,7 +334,7 @@ class TestEasyBenchMemory:
         )
         assert (
             kb_size
-            <= parsed_out["functions"]["bench_allocate"]["peak_memory"]
+            <= parsed_out["functions"]["bench_allocate"]["max_memory"]
             < kb_size * 2
         )
 
@@ -950,8 +950,8 @@ class TestEasyBenchConfig:
         assert parsed_out["color"]["avg_memory"]["green"] == "bench_small_memory"
         assert parsed_out["color"]["avg_memory"]["red"] == "bench_large_memory"
 
-        assert parsed_out["color"]["peak_memory"]["green"] == "bench_small_memory"
-        assert parsed_out["color"]["peak_memory"]["red"] == "bench_large_memory"
+        assert parsed_out["color"]["max_memory"]["green"] == "bench_small_memory"
+        assert parsed_out["color"]["max_memory"]["red"] == "bench_large_memory"
 
 
 class TestFunctionBench:
