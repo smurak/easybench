@@ -103,7 +103,7 @@ def _get_benchmark_columns(*, is_single_trial: bool, has_memory: bool) -> list[s
     else:
         columns = ["function", "avg", "min", "max"]
         if has_memory:
-            columns.extend(["avg_memory", "peak_memory"])
+            columns.extend(["avg_memory", "max_memory"])
     return columns
 
 

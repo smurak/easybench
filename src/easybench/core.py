@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 ScopeType = Literal["trial", "function", "class"]
 
 # Sort type
-SortType = Literal["def", "avg", "min", "max", "avg_memory", "peak_memory"]
+SortType = Literal["def", "avg", "min", "max", "avg_memory", "max_memory"]
 
 # Generic types
 T = TypeVar("T")
@@ -63,7 +63,18 @@ class ResultType(TypedDict):
     output: NotRequired[list[object]]
 
 
+class StatType(TypedDict):
+    """Type of benchmark statistics."""
+
+    avg: float
+    min: float
+    max: float
+    avg_memory: NotRequired[float]
+    max_memory: NotRequired[float]
+
+
 ResultsType: TypeAlias = dict[str, ResultType]
+StatsType: TypeAlias = dict[str, StatType]
 FixtureRegistry: TypeAlias = dict[ScopeType, dict[str, object]]
 
 P = ParamSpec("P")
@@ -350,7 +361,7 @@ class EasyBench:
         # If sorting by memory metrics is requested,
         # ensure memory measurement is enabled
         if (
-            complete_config.sort_by in ("avg_memory", "peak_memory")
+            complete_config.sort_by in ("avg_memory", "max_memory")
             and not complete_config.memory
         ):
             complete_config.memory = True
@@ -856,11 +867,7 @@ class EasyBench:
             return
 
         # Calculate statistics
-        stats = self._calculate_statistics(
-            results,
-            trials=config.trials,
-            memory=config.memory,
-        )
+        stats = self._calculate_statistics(results)
 
         # Use each reporter to report the results
         for reporter in config.reporters:
@@ -873,47 +880,34 @@ class EasyBench:
     def _calculate_statistics(
         self,
         results: ResultsType,
-        *,
-        trials: int,
-        memory: bool,
-    ) -> dict[str, dict[str, float]]:
+    ) -> StatsType:
         """
         Calculate statistics from benchmark results.
 
         Args:
             results: Dictionary of benchmark results
-            trials: Number of trials executed
-            memory: Whether memory usage was measured
 
         Returns:
             Dictionary of calculated statistics
 
         """
-        stats = {}
+        stats: StatsType = {}
         for method_name, data in results.items():
             times = data["times"]
 
-            if trials == 1:
-                # For single trial, just store the single value
-                stats[method_name] = {"time": times[0]}
-                if memory:
-                    stats[method_name]["memory"] = (
-                        data["memory"][0] / 1024
-                    )  # Convert to KB
-            else:
-                avg_time = sum(times) / len(times)
-                min_time = min(times)
-                max_time = max(times)
+            stats[method_name] = {
+                "avg": sum(times) / len(times),
+                "min": min(times),
+                "max": max(times),
+            }
 
-                stats[method_name] = {"avg": avg_time, "min": min_time, "max": max_time}
-
-                if memory:
-                    memory_values = data["memory"]
-                    avg_memory = sum(memory_values) / len(memory_values) / 1024
-                    peak_memory = max(memory_values) / 1024
-                    stats[method_name].update(
-                        {"avg_memory": avg_memory, "peak_memory": peak_memory},
-                    )
+            if "memory" in data:
+                memory_values = data["memory"]
+                avg_memory = sum(memory_values) / len(memory_values)
+                max_memory = max(memory_values)
+                stats[method_name].update(
+                    {"avg_memory": avg_memory, "max_memory": max_memory},
+                )
 
         return stats
 

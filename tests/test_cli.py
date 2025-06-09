@@ -771,7 +771,7 @@ class TestCliArguments:
 
     def test_sort_by_options(self, cli_setup: dict[str, MagicMock]) -> None:
         """Test different sort_by options."""
-        sort_options = ["avg", "min", "max", "avg_memory", "peak_memory", "def"]
+        sort_options = ["avg", "min", "max", "avg_memory", "max_memory", "def"]
 
         for sort_option in sort_options:
             # Setup mocks

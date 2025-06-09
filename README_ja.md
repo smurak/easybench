@@ -407,7 +407,7 @@ class MyBenchmark(EasyBench):
 - `"min"`: 最小実行時間
 - `"max"`: 最大実行時間
 - `"avg_memory"`: 平均メモリ使用量 (`memory=True`の場合)
-- `"peak_memory"`: ピークメモリ使用量 (`memory=True`の場合)
+- `"max_memory"`: 最大メモリ使用量 (`memory=True`の場合)
 
 #### メモリ測定の制限
 
@@ -443,7 +443,7 @@ easybench [--trials N] [--memory] [--sort-by METRIC] [--reverse] [--no-color] [-
 
 - `--trials N`: 試行回数 (デフォルト: 5)
 - `--memory`: メモリ測定を有効化
-- `--sort-by METRIC`: ソート基準 (def/avg/min/max/avg_memory/peak_memory)
+- `--sort-by METRIC`: ソート基準 (def/avg/min/max/avg_memory/max_memory)
 - `--reverse`: 結果を降順でソート
 - `--no-color`: カラー出力を無効化
 - `--show-output`: 関数の戻り値を表示
