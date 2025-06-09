@@ -49,43 +49,42 @@ class MemoryUnit(str, Enum):
         """Convert unit to string."""
         return self.value
 
+    def convert_bytes(self, byte_size: float) -> float:
+        """
+        Convert byte size to this memory unit.
+
+        Args:
+            byte_size (float): The size in bytes.
+
+        Returns:
+            float: The converted size in this memory unit.
+
+        """
+        unit_divisors = {
+            MemoryUnit.BYTES: 1,
+            MemoryUnit.KILOBYTES: 1024,
+            MemoryUnit.MEGABYTES: 1024**2,
+            MemoryUnit.GIGABYTES: 1024**3,
+        }
+
+        divisor = unit_divisors[self]
+        return byte_size / divisor
+
+    @classmethod
+    def from_config(cls, config: BenchConfig) -> MemoryUnit:
+        """Get memory unit from config."""
+        unit = MemoryUnit.KILOBYTES
+
+        if isinstance(config.memory, str):
+            unit = MemoryUnit(config.memory.upper())
+        elif isinstance(config.memory, MemoryUnit):
+            unit = config.memory
+
+        return unit
+
 
 class Formatter(ABC):
     """Base class for all result formatters."""
-
-    def __init__(self, memory_unit: MemoryUnit = MemoryUnit.KILOBYTES) -> None:
-        """
-        Initialize formatter with memory unit configuration.
-
-        Args:
-            memory_unit: Unit to use for memory display (default: KB)
-
-        """
-        self.memory_unit = memory_unit
-
-    def convert_memory_unit(self, bytes_value: float) -> float:
-        """
-        Convert memory value from bytes to the specified unit.
-
-        Args:
-            bytes_value: Memory value in bytes
-
-        Returns:
-            Memory value in the specified unit
-
-        """
-        match self.memory_unit:
-            case MemoryUnit.BYTES:
-                return bytes_value
-            case MemoryUnit.KILOBYTES:
-                return bytes_value / 1024
-            case MemoryUnit.MEGABYTES:
-                return bytes_value / (1024 * 1024)
-            case MemoryUnit.GIGABYTES:
-                return bytes_value / (1024 * 1024 * 1024)
-            case _:
-                msg = f"Invalid memory_unit: {self.memory_unit}"
-                raise ValueError(msg)
 
     @abstractmethod
     def format(
@@ -191,17 +190,18 @@ class TableFormatter(Formatter):
 
     def _format_header(self, config: BenchConfig) -> str:
         """Format the header row."""
+        memory_unit = MemoryUnit.from_config(config)
         if config.trials == 1:
             header = f"{'Function':<{self.max_name_len + 2}} {'Time (s)':<11}"
             if config.memory:
-                header += f" Memory ({self.memory_unit})"
+                header += f" Memory ({memory_unit})"
         else:
             header = (
                 f"{'Function':<{self.max_name_len + 2}} {'Avg Time (s)'} "
                 f"{'Min Time (s)'} {'Max Time (s)'}"
             )
             if config.memory:
-                header += f" Avg Mem ({self.memory_unit}) Max Mem ({self.memory_unit})"
+                header += f" Avg Mem ({memory_unit}) Max Mem ({memory_unit})"
         return header
 
     def _calculate_dash_length(self, config: BenchConfig) -> int:
@@ -217,12 +217,13 @@ class TableFormatter(Formatter):
         config: BenchConfig,
     ) -> None:
         """Format results for a single trial benchmark."""
+        memory_unit = MemoryUnit.from_config(config)
         for method_name in self.sorted_methods:
             stat = stats[method_name]
             time_val = f"{stat['avg']:.6f}".ljust(12)
             line = f"{method_name}".ljust(self.max_name_len + 2) + f" {time_val}"
             if config.memory:
-                mem_val = f"{self.convert_memory_unit(stat['avg_memory']):.6f}".ljust(
+                mem_val = f"{memory_unit.convert_bytes(stat['avg_memory']):.6f}".ljust(
                     12,
                 )
                 line += f" {mem_val}"
@@ -242,6 +243,7 @@ class TableFormatter(Formatter):
         max_min = max(stat["min"] for stat in stats.values())
         min_max = min(stat["max"] for stat in stats.values())
         max_max = max(stat["max"] for stat in stats.values())
+        memory_unit = MemoryUnit.from_config(config)
 
         if config.memory:
             min_avg_memory = min(stat["avg_memory"] for stat in stats.values())
@@ -280,15 +282,15 @@ class TableFormatter(Formatter):
             if config.memory:
                 # Format memory values with proper coloring and conversion
                 avg_mem = self._format_metric(
-                    self.convert_memory_unit(stat["avg_memory"]),
-                    self.convert_memory_unit(min_avg_memory),
-                    self.convert_memory_unit(max_avg_memory),
+                    memory_unit.convert_bytes(stat["avg_memory"]),
+                    memory_unit.convert_bytes(min_avg_memory),
+                    memory_unit.convert_bytes(max_avg_memory),
                     color=color,
                 )
                 peak_mem = self._format_metric(
-                    self.convert_memory_unit(stat["max_memory"]),
-                    self.convert_memory_unit(min_max_memory),
-                    self.convert_memory_unit(max_max_memory),
+                    memory_unit.convert_bytes(stat["max_memory"]),
+                    memory_unit.convert_bytes(min_max_memory),
+                    memory_unit.convert_bytes(max_max_memory),
                     color=color,
                 )
                 line += f" {avg_mem} {peak_mem}"
@@ -363,6 +365,7 @@ class CSVFormatter(Formatter):
         config: BenchConfig,
     ) -> str:
         """Format results as CSV."""
+        memory_unit = MemoryUnit.from_config(config)
         _ = results  # unused but avoids ARG002
         output = StringIO()
         writer = csv.writer(output)
@@ -371,14 +374,14 @@ class CSVFormatter(Formatter):
         if config.trials == 1:
             header = ["Function", "Time (s)"]
             if config.memory:
-                header.append(f"Memory ({self.memory_unit})")
+                header.append(f"Memory ({memory_unit})")
         else:
             header = ["Function", "Avg Time (s)", "Min Time (s)", "Max Time (s)"]
             if config.memory:
                 header.extend(
                     [
-                        f"Avg Memory ({self.memory_unit})",
-                        f"Max Memory ({self.memory_unit})",
+                        f"Avg Memory ({memory_unit})",
+                        f"Max Memory ({memory_unit})",
                     ],
                 )
 
@@ -390,14 +393,14 @@ class CSVFormatter(Formatter):
             if config.trials == 1:
                 row = [method_name, stat["avg"]]
                 if config.memory:
-                    row.append(self.convert_memory_unit(stat["avg_memory"]))
+                    row.append(memory_unit.convert_bytes(stat["avg_memory"]))
             else:
                 row = [method_name, stat["avg"], stat["min"], stat["max"]]
                 if config.memory:
                     row.extend(
                         [
-                            self.convert_memory_unit(stat["avg_memory"]),
-                            self.convert_memory_unit(stat["max_memory"]),
+                            memory_unit.convert_bytes(stat["avg_memory"]),
+                            memory_unit.convert_bytes(stat["max_memory"]),
                         ],
                     )
 
@@ -416,13 +419,14 @@ class JSONFormatter(Formatter):
         config: BenchConfig,
     ) -> str:
         """Format results as JSON."""
+        memory_unit = MemoryUnit.from_config(config)
         output_data: dict[str, dict[str, Any]] = {
             "config": {
                 "trials": config.trials,
                 "memory": config.memory,
                 "sort_by": config.sort_by,
                 "reverse": config.reverse,
-                "memory_unit": self.memory_unit,
+                "memory_unit": memory_unit,
             },
             "results": {},
         }
@@ -433,9 +437,9 @@ class JSONFormatter(Formatter):
             # Convert memory values to the specified unit
             if config.memory:
                 if "avg_memory" in stat:
-                    stat["avg_memory"] = self.convert_memory_unit(stat["avg_memory"])
+                    stat["avg_memory"] = memory_unit.convert_bytes(stat["avg_memory"])
                 if "max_memory" in stat:
-                    stat["max_memory"] = self.convert_memory_unit(stat["max_memory"])
+                    stat["max_memory"] = memory_unit.convert_bytes(stat["max_memory"])
 
             output_data["results"][method_name] = stat
 
@@ -462,6 +466,7 @@ class DataFrameFormatter(Formatter):
 
         Memory values are converted to the specified unit.
         """
+        memory_unit = MemoryUnit.from_config(config)
         try:
             import pandas as pd
         except ImportError as err:
@@ -480,7 +485,7 @@ class DataFrameFormatter(Formatter):
             if config.trials == 1:
                 row["Time (s)"] = stat["avg"]
                 if config.memory:
-                    row[f"Memory ({self.memory_unit})"] = self.convert_memory_unit(
+                    row[f"Memory ({memory_unit})"] = memory_unit.convert_bytes(
                         stat["avg_memory"],
                     )
             else:
@@ -494,11 +499,11 @@ class DataFrameFormatter(Formatter):
                 if config.memory:
                     row.update(
                         {
-                            f"Avg Memory ({self.memory_unit})": (
-                                self.convert_memory_unit(stat["avg_memory"])
+                            f"Avg Memory ({memory_unit})": (
+                                memory_unit.convert_bytes(stat["avg_memory"])
                             ),
-                            f"Max Memory ({self.memory_unit})": (
-                                self.convert_memory_unit(stat["max_memory"])
+                            f"Max Memory ({memory_unit})": (
+                                memory_unit.convert_bytes(stat["max_memory"])
                             ),
                         },
                     )
@@ -521,7 +526,6 @@ class SimpleFormatter(Formatter):
         metric: MetricType = "avg",
         item_format: Callable[[str, float], str] | None = None,
         list_format: Callable[[list[str]], str] | None = None,
-        memory_unit: MemoryUnit = MemoryUnit.KILOBYTES,
     ) -> None:
         """
         Initialize with a metric to output.
@@ -531,10 +535,8 @@ class SimpleFormatter(Formatter):
             item_format: Optional function to format individual values
                          Takes method_name and value as arguments
             list_format: Optional function to join multiple values
-            memory_unit: Unit for memory display (default: KB)
 
         """
-        super().__init__(memory_unit=memory_unit)
         self.metric = metric
         if metric not in ("avg", "min", "max", "avg_memory", "max_memory"):
             msg = f"'{metric}' is not a valid metric for Simple formatter"
@@ -562,6 +564,7 @@ class SimpleFormatter(Formatter):
             Simple metrics as a string with memory values converted to specified unit
 
         """
+        memory_unit = MemoryUnit.from_config(config)
         values = []
         _ = results
 
@@ -574,7 +577,7 @@ class SimpleFormatter(Formatter):
                 value = stat[self.metric]
                 # Convert if it's a memory metric
                 if self.metric in ("avg_memory", "max_memory"):
-                    value = self.convert_memory_unit(value)
+                    value = memory_unit.convert_bytes(value)
 
             if value is not None:
                 values.append(self.item_format(method_name, value))

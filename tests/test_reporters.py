@@ -261,8 +261,7 @@ class TestTableFormatter:
 
     def test_format_with_memory_unit(self) -> None:
         """Test formatting results with different memory units."""
-        unit = MemoryUnit("MB")
-        formatter = TableFormatter(memory_unit=unit)
+        formatter = TableFormatter()
         results: dict[str, ResultType] = {
             "test_func": {
                 "times": [TEST_TIME_VALUE],
@@ -279,7 +278,7 @@ class TestTableFormatter:
                 memory=True,
             ),
         }
-        config = BenchConfig(trials=1, memory=True)
+        config = BenchConfig(trials=1, memory="MB")  # type: ignore [arg-type]
 
         output = formatter.format(results, stats, config)
 
@@ -414,7 +413,7 @@ class TestCSVFormatter:
     def test_format_with_memory_unit(self) -> None:
         """Test formatting results with different memory units."""
         unit = MemoryUnit("MB")
-        formatter = CSVFormatter(memory_unit=unit)
+        formatter = CSVFormatter()
         results: dict[str, ResultType] = {
             "test_func": {
                 "times": [TEST_TIME_VALUE],
@@ -430,7 +429,7 @@ class TestCSVFormatter:
                 memory=True,
             ),
         }
-        config = BenchConfig(trials=1, memory=True)
+        config = BenchConfig(trials=1, memory=unit)
 
         output = formatter.format(results, stats, config)
 
@@ -511,7 +510,7 @@ class TestJSONFormatter:
     def test_format_with_memory_unit(self) -> None:
         """Test formatting results with different memory units."""
         unit = MemoryUnit("MB")
-        formatter = JSONFormatter(memory_unit=unit)
+        formatter = JSONFormatter()
         results: dict[str, ResultType] = {
             "test_func": {
                 "times": [TEST_TIME_VALUE],
@@ -529,7 +528,7 @@ class TestJSONFormatter:
                 },
             ),
         }
-        config = BenchConfig(trials=3, memory=True)
+        config = BenchConfig(trials=3, memory=unit)
 
         output = formatter.format(results, stats, config)
         data = json.loads(output)
@@ -909,7 +908,7 @@ class TestDataFrameFormatter:
     def test_format_with_memory_unit(self) -> None:
         """Test formatting results with different memory units."""
         unit = MemoryUnit("MB")
-        formatter = DataFrameFormatter(memory_unit=unit)
+        formatter = DataFrameFormatter()
         results: dict[str, ResultType] = {
             "test_func": {
                 "times": [TEST_TIME_VALUE],
@@ -925,7 +924,7 @@ class TestDataFrameFormatter:
                 memory=True,
             ),
         }
-        config = BenchConfig(trials=1, memory=True)
+        config = BenchConfig(trials=1, memory=unit)
 
         # Skip test if pandas is not installed
         try:
