@@ -459,7 +459,7 @@ class BoxplotFormatter(PlotFormatter):
 
     def _set_axis_labels(self, ax: plt.Axes, unit: str) -> None:
         """Set appropriate axis labels based on orientation and measurement type."""
-        label_text = "Time (s)" if unit == "seconds" else f"Memory ({unit})"
+        label_text = "Time (seconds)" if unit == "seconds" else f"Memory ({unit})"
 
         if self.orientation == "horizontal":
             ax.set_xlabel(label_text)
