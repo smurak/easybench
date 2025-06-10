@@ -17,12 +17,17 @@
 
 ## 特徴
 
-- 3種類のベンチマークスタイル（デコレータ、クラスベース、コマンドライン）
+- 3種類の柔軟なベンチマークスタイル（デコレータ、クラスベース、コマンドライン）
 - 実行時間とメモリ使用量の両方を計測可能（[制限事項を参照](#メモリ測定の制限)）
+- ボックスプロットによるベンチマーク結果の可視化で分布や外れ値を分析
+- パラメータ化されたベンチマークで同一関数を異なる入力サイズで比較
 - pytestライクなフィクスチャシステムでテストデータを簡単にセットアップ
-- カスタマイズ可能なベンチマーク設定
+- 完全なライフサイクルフック（setup/teardown）で細かいベンチマーク制御が可能
+- 通常の関数実行とベンチマーク付き実行をオンデマンドで切り替え
+- ソートやフォーマットオプションなど、カスタマイズ可能なベンチマーク設定
 - 複数のベンチマークを一度に実行するコマンドラインツール
 - 複数の出力形式（テキストテーブル、CSV、JSON、pandas.DataFrame）に対応
+- カスタム出力先のための拡張可能なレポーティングシステム
 
 ## インストール
 
@@ -545,6 +550,91 @@ bench_config = BenchConfig(
     ]
 )
 ```
+
+### ボックスプロットによる可視化 (`BoxplotFormatter`)
+
+ベンチマーク結果をボックスプロット（箱ひげ図）として視覚化することができます。  
+これは複数試行間の分布や外れ値を分析するのに役立ちます。
+
+```python
+from easybench import BenchConfig, EasyBench
+from easybench.visualization import BoxplotFormatter, PlotReporter
+
+
+class BenchList(EasyBench):
+    bench_config = BenchConfig(
+        memory=True,
+        trials=100,
+        reporters=[
+            PlotReporter(
+                BoxplotFormatter(
+                    showfliers=True,        # 外れ値を表示するかどうか
+                    log_scale=True,         # 対数スケールを使用
+                    engine="seaborn",       # プロットエンジンとしてseabornを使用
+                    orientation="horizontal", # ボックスプロットの方向（水平または垂直）
+                    width=0.5,              # ボックスの幅（seabornのboxplotに直接渡される）
+                    linewidth=0.5,          # ラインの太さ（seabornのboxplotに直接渡される）
+                )
+            )
+        ],
+    )
+
+    def setup_trial(self):
+        self.big_list = list(range(1_000_000))
+
+    def bench_append(self):
+        self.big_list.append(-1)
+
+    def bench_insert_start(self):
+        self.big_list.insert(0, -1)
+
+    def bench_insert_middle(self):
+        self.big_list.insert(len(self.big_list) // 2, -1)
+
+    def bench_pop(self):
+        self.big_list.pop()
+
+    def bench_pop_zero(self):
+        self.big_list.pop(0)
+
+
+if __name__ == "__main__":
+    import seaborn as sns
+
+    # seabornのスタイル設定（オプション）
+    sns.set_theme(style="darkgrid", palette="Set2")
+    BenchList().bench()
+```
+
+![Boxplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_boxplot.png)
+
+#### `BoxplotFormatter` の主なオプション
+
+- `showfliers`: 外れ値を表示するかどうか（デフォルト: `True`）
+- `log_scale`: 対数スケールを使用するかどうか（デフォルト: `False`）
+- `y_limit`: Y軸の範囲を指定する（例: `(0, 0.01)`）
+- `trim_outliers`: 外れ値をトリミングするパーセンタイル（0.0〜0.5）
+- `winsorize_outliers`: 外れ値を強制的に範囲内に収めるパーセンタイル（0.0〜0.5）
+- `figsize`: 図のサイズ（デフォルト: `(10, 6)`）
+- `engine`: プロットエンジン（`"matplotlib"` または `"seaborn"`）
+- `orientation`: ボックスプロットの方向（`"vertical"` または `"horizontal"`）
+
+#### `PlotReporter` のオプション
+
+- `formatter`: 使用するプロットフォーマッタ（例: `BoxplotFormatter`）
+- `show`: プロットを画面に表示するかどうか（デフォルト: `True`）
+- `save_path`: プロットを保存するファイルパス
+- `dpi`: 画像の解像度（デフォルト: `100`）
+
+> [!NOTE]
+> ボックスプロットを使用するには、`matplotlib`をインストールする必要があります:
+> ```bash
+> pip install matplotlib
+> ```
+> seabornエンジンを使用する場合は、追加で`seaborn`もインストールしてください:
+> ```bash
+> pip install seaborn
+> ```
 
 ## ライセンス
 
