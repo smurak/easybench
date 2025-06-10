@@ -563,7 +563,6 @@ from easybench.visualization import BoxplotFormatter, PlotReporter
 
 class BenchList(EasyBench):
     bench_config = BenchConfig(
-        memory=True,
         trials=100,
         reporters=[
             PlotReporter(
