@@ -509,7 +509,7 @@ There are three ways to specify reporters:
    - `"console"`: Standard tabular console output
    - `"simple"`: Simple console output
    - `"plot"`: Visualization with boxplot
-   - `"output.csv"` or `"results.json"`: File output (path ending with .csv or .json)
+   - `"*.csv"` or `"*.json"`: File output
 
 2. **With arguments**: Specify in the format `(reporter_name, parameter_dict)`
 
