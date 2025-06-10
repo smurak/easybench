@@ -20,7 +20,7 @@ except ImportError as err:
     raise ImportError(error_msg) from err
 
 from .core import BenchConfig, ResultsType, StatsType
-from .reporters import Formatted, Formatter, Reporter
+from .reporters import Formatted, Formatter, MemoryUnit, Reporter
 
 # Constants for magic values
 MAX_PERCENTILE_THRESHOLD = 0.5
@@ -113,23 +113,79 @@ class BoxplotFormatter(PlotFormatter):
 
         """
         # Extract and preprocess data
-        data, labels = self._preprocess_data(results, stats, config)
+        time_data, labels = self._preprocess_data(results, stats, config)
 
-        # Create figure and axis
-        fig, ax = plt.subplots(figsize=self.figsize)
+        # Create figure and axes based on memory tracking
+        if config.memory:
+            # Create a figure with two subplots when memory tracking is enabled
+            fig, (ax_time, ax_mem) = plt.subplots(
+                2,
+                1,
+                figsize=(self.figsize[0], self.figsize[1] * 1.8),
+            )
 
-        # Create boxplot with appropriate engine
-        box_data = [data[method] for method in labels]
-        if self.engine == "seaborn":
-            self._create_seaborn_boxplot(ax, box_data, labels)
-        else:  # matplotlib is the default
-            self._create_matplotlib_boxplot(ax, box_data, labels)
+            # Process time data
+            box_data_time = [time_data[method] for method in labels]
+            if self.engine == "seaborn":
+                self._create_seaborn_boxplot(ax_time, box_data_time, labels)
+            else:
+                self._create_matplotlib_boxplot(ax_time, box_data_time, labels)
 
-        # Apply styling to plot
-        self._apply_styling(ax, config, labels)
+            # Apply styling to time plot
+            self._apply_styling(ax_time, config, labels, title_suffix="")
+
+            # Process memory data using dedicated method
+            self._process_memory_subplot(ax_mem, results, config, labels)
+        else:
+            # Original behavior for timing-only plots
+            fig, ax = plt.subplots(figsize=self.figsize)
+            box_data = [time_data[method] for method in labels]
+            if self.engine == "seaborn":
+                self._create_seaborn_boxplot(ax, box_data, labels)
+            else:
+                self._create_matplotlib_boxplot(ax, box_data, labels)
+            self._apply_styling(ax, config, labels)
 
         plt.tight_layout()
         return fig
+
+    def _process_memory_subplot(
+        self,
+        ax: plt.Axes,
+        results: ResultsType,
+        config: BenchConfig,
+        labels: list[str],
+    ) -> None:
+        """
+        Process and create memory usage subplot.
+
+        Args:
+            ax: The matplotlib axes for the memory subplot
+            results: Dictionary mapping benchmark names to result data
+            stats: Dictionary of calculated statistics
+            config: Benchmark configuration
+            labels: List of method names to include
+
+        """
+        # Extract memory data
+        memory_data = self._preprocess_memory_data(results, config, labels)
+        box_data_mem = [memory_data[method] for method in labels]
+
+        # Create memory plot
+        if self.engine == "seaborn":
+            self._create_seaborn_boxplot(ax, box_data_mem, labels)
+        else:
+            self._create_matplotlib_boxplot(ax, box_data_mem, labels)
+
+        # Apply styling to memory plot with proper unit
+        memory_unit = MemoryUnit.from_config(config)
+        self._apply_styling(
+            ax,
+            config,
+            labels,
+            title_suffix="Memory Usage",
+            unit=str(memory_unit),
+        )
 
     def _preprocess_data(
         self,
@@ -197,6 +253,81 @@ class BoxplotFormatter(PlotFormatter):
                 labels.append(method_name)
 
         return data, labels
+
+    def _preprocess_memory_data(
+        self,
+        results: ResultsType,
+        config: BenchConfig,
+        labels: list[str],
+    ) -> dict[str, list[float]]:
+        """Extract and preprocess memory usage data."""
+        memory_data: dict[str, list[float]] = {}
+        memory_unit = MemoryUnit.from_config(config)
+
+        # Process each method's memory data
+        for method_name in labels:
+            if "memory" in results[method_name]:
+                # Convert memory values to the specified unit
+                memory_values = [
+                    memory_unit.convert_bytes(value)
+                    for value in results[method_name]["memory"]
+                ]
+
+                # Apply outlier handling if needed
+                if (
+                    self.trim_outliers is not None
+                    and MIN_PERCENTILE_THRESHOLD
+                    < self.trim_outliers
+                    < MAX_PERCENTILE_THRESHOLD
+                ):
+                    try:
+                        import numpy as np
+
+                        lower = float(
+                            np.percentile(memory_values, self.trim_outliers * 100),
+                        )
+                        upper = float(
+                            np.percentile(
+                                memory_values,
+                                100 - self.trim_outliers * 100,
+                            ),
+                        )
+                        memory_values = [
+                            m for m in memory_values if lower <= m <= upper
+                        ]
+                    except ImportError:
+                        pass  # Fallback to using raw values if numpy is not available
+
+                if (
+                    self.winsorize_outliers is not None
+                    and MIN_PERCENTILE_THRESHOLD
+                    < self.winsorize_outliers
+                    < MAX_PERCENTILE_THRESHOLD
+                ):
+                    try:
+                        import numpy as np
+
+                        lower = float(
+                            np.percentile(memory_values, self.winsorize_outliers * 100),
+                        )
+                        upper = float(
+                            np.percentile(
+                                memory_values,
+                                100 - self.winsorize_outliers * 100,
+                            ),
+                        )
+                        memory_values = [
+                            min(max(float(m), lower), upper) for m in memory_values
+                        ]
+                    except ImportError:
+                        pass  # Fallback to using raw values if numpy is not available
+
+                memory_data[method_name] = memory_values
+            else:
+                # Use placeholder if no memory data available
+                memory_data[method_name] = [0.0]
+
+        return memory_data
 
     def _create_matplotlib_boxplot(
         self,
@@ -283,33 +414,65 @@ class BoxplotFormatter(PlotFormatter):
         ax: plt.Axes,
         config: BenchConfig,
         labels: list[str],
+        title_suffix: str = "",
+        unit: str = "seconds",
     ) -> None:
         """Apply common styling to the plot."""
-        # Apply log scale if requested
-        if self.orientation == "horizontal":
-            # For horizontal boxplot, apply log scale to x-axis
-            if self.log_scale:
+        # Set the scale (log or linear)
+        self._set_axis_scale(ax)
+
+        # Set axis limits if provided
+        self._set_axis_limits(ax)
+
+        # Set the plot title
+        title = self._get_plot_title(config.trials, title_suffix)
+        ax.set_title(title)
+
+        # Set appropriate axis labels
+        self._set_axis_labels(ax, unit)
+
+        # Apply label rotation if needed
+        self._apply_label_rotation(ax, labels)
+
+    def _set_axis_scale(self, ax: plt.Axes) -> None:
+        """Set the axis scale (log or linear) based on orientation."""
+        if self.log_scale:
+            if self.orientation == "horizontal":
                 ax.set_xscale("log")
-
-            # Apply x-axis limits if provided
-            if self.y_limit is not None:
-                ax.set_xlim(self.y_limit)
-
-            # Set labels and title
-            ax.set_title(f"Benchmark Results ({config.trials} trials)")
-            ax.set_xlabel("Time (seconds)")
-        else:
-            # For vertical boxplot (original behavior)
-            if self.log_scale:
+            else:
                 ax.set_yscale("log")
 
-            if self.y_limit is not None:
+    def _set_axis_limits(self, ax: plt.Axes) -> None:
+        """Set axis limits if provided."""
+        if self.y_limit is not None:
+            if self.orientation == "horizontal":
+                ax.set_xlim(self.y_limit)
+            else:
                 ax.set_ylim(self.y_limit)
 
-            ax.set_title(f"Benchmark Results ({config.trials} trials)")
-            ax.set_ylabel("Time (seconds)")
+    def _get_plot_title(self, trials: int, title_suffix: str = "") -> str:
+        """Generate the plot title."""
+        base_title = f"Benchmark Results ({trials} trials)"
+        if title_suffix:
+            return f"{title_suffix} {base_title}"
+        return base_title
 
-            if len(labels) > self.label_rotation_threshold:
+    def _set_axis_labels(self, ax: plt.Axes, unit: str) -> None:
+        """Set appropriate axis labels based on orientation and measurement type."""
+        label_text = "Time (s)" if unit == "seconds" else f"Memory ({unit})"
+
+        if self.orientation == "horizontal":
+            ax.set_xlabel(label_text)
+        else:
+            ax.set_ylabel(label_text)
+
+    def _apply_label_rotation(self, ax: plt.Axes, labels: list[str]) -> None:
+        """Apply rotation to axis labels if needed."""
+        if len(labels) > self.label_rotation_threshold:
+            if self.orientation == "horizontal":
+                pass  # Currently no rotation for horizontal orientation
+            else:
+                # For vertical plots, rotate x-tick labels
                 plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
 
 

@@ -13,6 +13,7 @@ import warnings
 from importlib.util import find_spec
 from unittest import mock
 
+import matplotlib.pyplot as plt
 import pytest
 
 from easybench.core import BenchConfig, ResultType, StatType
@@ -353,6 +354,228 @@ class TestBoxplotFormatter:
         # Ensure tick settings were called
         mock_axes.set_xticks.assert_called_once()
         mock_axes.set_xticklabels.assert_called_once()
+
+    def test_format_with_memory_enabled(
+        self,
+    ) -> None:
+        """Test formatting with memory metrics enabled."""
+        # Modify sample results and stats to include memory data
+        memory_results: dict[str, ResultType] = {
+            "test_func1": {
+                "times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME],
+                "memory": [1024, 2048, 3072],
+            },
+            "test_func2": {
+                "times": [TEST_SLOWER_TIME, TEST_TIME_VALUE, TEST_SLOW_TIME],
+                "memory": [2048, 1024, 3072],
+            },
+        }
+
+        memory_stats = {
+            "test_func1": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                    "avg_memory": 2048,
+                    "max_memory": 3072,
+                },
+                memory=True,
+            ),
+            "test_func2": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                    "avg_memory": 2048,
+                    "max_memory": 3072,
+                },
+                memory=True,
+            ),
+        }
+
+        # Create a config with memory enabled
+        memory_config = BenchConfig(trials=3, memory=True)
+
+        formatter = BoxplotFormatter()
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("matplotlib.pyplot.subplots") as mock_subplots,
+            mock.patch.object(plt, "tight_layout"),
+        ):
+            # Create mock axes for time and memory subplots
+            mock_ax_time = mock.MagicMock()
+            mock_ax_mem = mock.MagicMock()
+            mock_fig = mock.MagicMock()
+            mock_subplots.return_value = (mock_fig, (mock_ax_time, mock_ax_mem))
+
+            # Call format with memory enabled
+            fig = formatter.format(memory_results, memory_stats, memory_config)
+
+            # Verify subplots were created (2 plots for time and memory)
+            mock_subplots.assert_called_once()
+            args, kwargs = mock_subplots.call_args
+            assert args == (2, 1)  # 2 rows, 1 column
+
+            # Verify boxplot was called for both time and memory plots
+            assert mock_ax_time.boxplot.call_count == 1
+            assert mock_ax_mem.boxplot.call_count == 1
+
+            # Verify memory subplot had styling applied
+            mock_ax_mem.set_title.assert_called_once()
+
+            assert fig is not None
+
+    def test_preprocess_memory_data(
+        self,
+    ) -> None:
+        """Test memory data preprocessing functionality."""
+        # Create sample results with memory data
+        memory_results: dict[str, ResultType] = {
+            "test_func1": {
+                "times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME],
+                "memory": [1024, 2048, 3072],  # Memory in bytes
+            },
+            "test_func2": {
+                "times": [TEST_SLOWER_TIME, TEST_TIME_VALUE, TEST_SLOW_TIME],
+                "memory": [2048, 1024, 3072],  # Memory in bytes
+            },
+        }
+
+        # Create a config with memory enabled
+        memory_config = BenchConfig(trials=3, memory=True)
+
+        formatter = BoxplotFormatter()
+        labels = ["test_func1", "test_func2"]
+
+        # Call _preprocess_memory_data directly
+        memory_data = formatter._preprocess_memory_data(
+            memory_results,
+            memory_config,
+            labels,
+        )
+
+        # Verify memory data was correctly preprocessed
+        assert "test_func1" in memory_data
+        assert "test_func2" in memory_data
+        assert memory_data["test_func1"] == [1.0, 2.0, 3.0]  # Converted to KB
+        assert memory_data["test_func2"] == [2.0, 1.0, 3.0]  # Converted to KB
+
+    def test_format_with_memory_units(
+        self,
+    ) -> None:
+        """Test formatting with different memory units."""
+        # Modify sample results and stats to include memory data
+        memory_results: dict[str, ResultType] = {
+            "test_func1": {
+                "times": [TEST_TIME_VALUE],
+                "memory": [1024 * 1024],  # 1 MB in bytes
+            },
+        }
+
+        memory_stats = {
+            "test_func1": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                    "avg_memory": 1024 * 1024,  # 1 MB in bytes
+                    "max_memory": 1024 * 1024,  # 1 MB in bytes
+                },
+                memory=True,
+            ),
+        }
+
+        # Create a config with memory in MB
+        memory_config = BenchConfig(trials=1, memory="MB")  # type: ignore [arg-type]
+
+        formatter = BoxplotFormatter()
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("matplotlib.pyplot.subplots") as mock_subplots,
+            mock.patch.object(plt, "tight_layout"),
+        ):
+            # Create mock axes for time and memory subplots
+            mock_ax_time = mock.MagicMock()
+            mock_ax_mem = mock.MagicMock()
+            mock_fig = mock.MagicMock()
+            mock_subplots.return_value = (mock_fig, (mock_ax_time, mock_ax_mem))
+
+            # Call format with memory enabled
+            formatter.format(memory_results, memory_stats, memory_config)
+
+            # Verify memory subplot styling with MB unit
+            memory_styling_call = [
+                call
+                for call in mock_ax_mem.set_title.call_args_list
+                if "Memory Usage" in str(call)
+            ]
+            assert len(memory_styling_call) > 0
+
+            # Verify proper axis label was set (with MB)
+            if formatter.orientation == "horizontal":
+                # For horizontal orientation, xlabel contains the unit
+                assert mock_ax_mem.set_xlabel.call_count > 0
+                label_call = mock_ax_mem.set_xlabel.call_args[0][0]
+                assert "MB" in label_call
+            else:
+                # For vertical orientation, ylabel contains the unit
+                assert mock_ax_mem.set_ylabel.call_count > 0
+                label_call = mock_ax_mem.set_ylabel.call_args[0][0]
+                assert "MB" in label_call
+
+    def test_process_memory_subplot(
+        self,
+    ) -> None:
+        """Test the _process_memory_subplot method."""
+        # Create sample results with memory data
+        memory_results: dict[str, ResultType] = {
+            "test_func1": {
+                "times": [TEST_TIME_VALUE],
+                "memory": [1024],  # 1 KB in bytes
+            },
+            "test_func2": {
+                "times": [TEST_TIME_VALUE],
+                "memory": [2048],  # 2 KB in bytes
+            },
+        }
+
+        # Create a config with memory enabled
+        memory_config = BenchConfig(trials=1, memory=True)
+
+        formatter = BoxplotFormatter()
+        labels = ["test_func1", "test_func2"]
+
+        # Mock matplotlib axes
+        mock_ax = mock.MagicMock()
+
+        # Call _process_memory_subplot directly
+        formatter._process_memory_subplot(
+            mock_ax,
+            memory_results,
+            memory_config,
+            labels,
+        )
+
+        # Verify boxplot was created
+        mock_ax.boxplot.assert_called_once()
+
+        # Verify styling was applied
+        mock_ax.set_title.assert_called_once()
+
+        # Verify ticks and tick labels were set based on orientation
+        if formatter.orientation == "horizontal":
+            mock_ax.set_yticks.assert_called_once()
+            mock_ax.set_yticklabels.assert_called_once()
+        else:
+            mock_ax.set_xticks.assert_called_once()
+            mock_ax.set_xticklabels.assert_called_once()
 
 
 class TestPlotReporter:
