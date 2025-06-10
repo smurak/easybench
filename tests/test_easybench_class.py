@@ -1132,6 +1132,91 @@ class TestEasyBenchConfiguration:
         assert isinstance(reporter, ConsoleReporter)
         assert isinstance(reporter.formatter, TableFormatter)
 
+    def test_validate_and_convert_reporters_none(self) -> None:
+        """Test that None input returns None."""
+        from easybench.core import PartialBenchConfig
+
+        result = PartialBenchConfig.validate_and_convert_reporters(None)
+        assert result is None
+
+    def test_validate_and_convert_reporters_strings(self) -> None:
+        """Test converting a list of reporter strings."""
+        from easybench.core import PartialBenchConfig
+        from easybench.reporters import ConsoleReporter, SimpleConsoleReporter
+
+        reporters = ["console", "simple"]
+        result = PartialBenchConfig.validate_and_convert_reporters(reporters)
+
+        assert result is not None
+        assert len(result) == len(reporters)
+        assert isinstance(result[0], ConsoleReporter)
+        assert isinstance(result[1], SimpleConsoleReporter)
+
+    def test_validate_and_convert_reporters_with_kwargs(self) -> None:
+        """Test converting a reporter specification with kwargs."""
+        from easybench.core import PartialBenchConfig
+        from easybench.reporters import SimpleConsoleReporter
+
+        # Create a tuple of (name, kwargs)
+        reporter_spec = [("simple", {"item_format": lambda n, v: f"{n}: {v}"})]
+        result = PartialBenchConfig.validate_and_convert_reporters(reporter_spec)
+
+        assert result is not None
+        assert len(result) == 1
+        assert isinstance(result[0], SimpleConsoleReporter)
+
+    def test_validate_and_convert_reporters_with_instances(self) -> None:
+        """Test that Reporter instances are kept as-is."""
+        from easybench.core import PartialBenchConfig
+        from easybench.reporters import ConsoleReporter, TableFormatter
+
+        # Create a reporter instance
+        reporter = ConsoleReporter(TableFormatter())
+        reporters = [reporter]
+
+        result = PartialBenchConfig.validate_and_convert_reporters(reporters)
+
+        assert result is not None
+        assert len(result) == 1
+        assert result[0] is reporter  # Should be the exact same instance
+
+    def test_validate_and_convert_reporters_mixed(self) -> None:
+        """Test converting a mixed list of reporter specifications."""
+        from easybench.core import PartialBenchConfig
+        from easybench.reporters import (
+            ConsoleReporter,
+            SimpleConsoleReporter,
+            TableFormatter,
+        )
+
+        # Create a reporter instance
+        reporter = ConsoleReporter(TableFormatter())
+
+        # Mix of string, tuple, and instance
+        reporters = ["simple", ("console", {}), reporter]
+
+        result = PartialBenchConfig.validate_and_convert_reporters(reporters)
+
+        assert result is not None
+        assert len(result) == len(reporters)
+        assert isinstance(result[0], SimpleConsoleReporter)
+        assert isinstance(result[1], ConsoleReporter)
+        assert result[2] is reporter  # Should be the exact same instance
+
+    def test_validate_and_convert_reporters_not_list(self) -> None:
+        """Test that non-list input raises TypeError."""
+        from easybench.core import PartialBenchConfig
+
+        with pytest.raises(TypeError, match="reporters must be a list"):
+            PartialBenchConfig.validate_and_convert_reporters("console")  # type: ignore [arg-type]
+
+    def test_validate_and_convert_reporters_invalid_item(self) -> None:
+        """Test that invalid item in list raises TypeError."""
+        from easybench.core import PartialBenchConfig
+
+        with pytest.raises(TypeError, match="Invalid reporter type:"):
+            PartialBenchConfig.validate_and_convert_reporters([123])
+
 
 class TestEasyBenchScopeManager:
     """Tests for the ScopeManager class in EasyBench."""

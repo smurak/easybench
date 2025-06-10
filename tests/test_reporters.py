@@ -1194,3 +1194,89 @@ class TestSimpleConsoleReporter:
         output_file.seek(0)
         content = output_file.read()
         assert content.strip() == str(TEST_TIME_VALUE)
+
+
+class TestGetReporter:
+    """Tests for the get_reporter function."""
+
+    def test_get_console_reporter(self) -> None:
+        """Test getting a console reporter."""
+        from easybench.core import get_reporter
+        from easybench.reporters import ConsoleReporter
+
+        reporter = get_reporter("console")
+        assert isinstance(reporter, ConsoleReporter)
+
+    def test_get_simple_reporter(self) -> None:
+        """Test getting a simple reporter."""
+        from easybench.core import get_reporter
+        from easybench.reporters import SimpleConsoleReporter
+
+        reporter = get_reporter("simple")
+        assert isinstance(reporter, SimpleConsoleReporter)
+
+    def test_get_plot_reporter(self) -> None:
+        """Test getting a plot reporter."""
+        from easybench.core import get_reporter
+        from easybench.visualization import PlotReporter
+
+        reporter = get_reporter("plot")
+        assert isinstance(reporter, PlotReporter)
+
+    def test_get_reporter_with_kwargs(self) -> None:
+        """Test getting a reporter with custom kwargs."""
+        from easybench.core import get_reporter
+        from easybench.reporters import ConsoleReporter, TableFormatter
+
+        # Create a custom formatter to pass through kwargs
+        custom_formatter = TableFormatter()
+        reporter = get_reporter("console", {"formatter": custom_formatter})
+
+        assert isinstance(reporter, ConsoleReporter)
+        assert reporter.formatter is custom_formatter
+
+    def test_get_reporter_with_invalid_name(self) -> None:
+        """Test getting a reporter with an invalid name."""
+        from easybench.core import get_reporter
+
+        with pytest.raises(ValueError, match="Unknown reporter type:"):
+            get_reporter("invalid_name")
+
+    def test_get_file_reporter(self, tmp_path: Path) -> None:
+        """Test getting a file reporter with 'file' name."""
+        from easybench.core import get_reporter
+        from easybench.reporters import FileReporter
+
+        output_path = tmp_path / "results.txt"
+        reporter = get_reporter("file", {"path": str(output_path)})
+
+        assert isinstance(reporter, FileReporter)
+        assert reporter.path == output_path
+
+    def test_get_reporter_from_file_extension(self, tmp_path: Path) -> None:
+        """Test getting a file reporter from file extension."""
+        from easybench.core import get_reporter
+        from easybench.reporters import CSVFormatter, FileReporter, JSONFormatter
+
+        # Test CSV file extension
+        csv_path = str(tmp_path / "results.csv")
+        csv_reporter = get_reporter(csv_path)
+
+        assert isinstance(csv_reporter, FileReporter)
+        assert csv_reporter.path == Path(csv_path)
+        assert isinstance(csv_reporter.formatter, CSVFormatter)
+
+        # Test JSON file extension
+        json_path = str(tmp_path / "results.json")
+        json_reporter = get_reporter(json_path)
+
+        assert isinstance(json_reporter, FileReporter)
+        assert json_reporter.path == Path(json_path)
+        assert isinstance(json_reporter.formatter, JSONFormatter)
+
+        # Test with formatter override
+        custom_formatter = CSVFormatter()
+        json_with_csv = get_reporter(json_path, {"formatter": custom_formatter})
+
+        assert isinstance(json_with_csv, FileReporter)
+        assert json_with_csv.formatter is custom_formatter

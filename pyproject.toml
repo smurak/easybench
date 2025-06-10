@@ -29,6 +29,9 @@ dev = [
     "mypy",
     "pandas-stubs",
     "types-seaborn",
+    "matplotlib",
+    "seaborn",
+    "pandas",
 ]
 test = [
     "pytest",
