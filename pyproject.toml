@@ -28,6 +28,7 @@ dev = [
     "black",
     "mypy",
     "pandas-stubs",
+    "types-seaborn",
 ]
 test = [
     "pytest",
@@ -58,6 +59,8 @@ dev = [
   "pandas-stubs>=2.2.3.250527",
   "pytest-cov>=6.1.1",
   "ruff>=0.11.11",
+  "seaborn>=0.13.2",
+  "types-seaborn>=0.13.2.20250516",
 ]
 
 [tool.ruff]

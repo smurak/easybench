@@ -15,12 +15,17 @@ A simple and easy-to-use Python benchmarking library.
 
 ## Features
 
-- Three benchmarking styles (decorator, class-based, and command-line)
+- Three flexible benchmarking styles (decorator, class-based, and command-line)
 - Measure both execution time and estimated memory usage ([see limitations](#memory-measurement-limitations))
+- Visualization of benchmark results as boxplots for analyzing distribution and outliers
+- Parametrized benchmarks to compare the same function with different input sizes
 - A pytest-like fixture system for easy test data setup
-- Customizable benchmark configuration
+- Complete lifecycle hooks (setup/teardown) for fine-grained benchmark control
+- Switch between normal function execution and benchmarked execution on demand
+- Customizable benchmark configuration with sorting and formatting options
 - Command-line tool to run multiple benchmarks at once
 - Multiple output formats (text tables, CSV, JSON, pandas.DataFrame)
+- Extensible reporting system for custom output destinations
 
 ## Installation
 
@@ -541,6 +546,93 @@ bench_config = BenchConfig(
         WebAPIReporter("https://api.example.com/benchmarks", "my_token")
     ]
 )
+```
+
+### Boxplot Visualization (`BoxplotFormatter`)
+
+You can visualize benchmark results as boxplots, which is useful for analyzing distribution and outliers across multiple trials:
+
+```python
+from easybench import BenchConfig, EasyBench
+from easybench.visualization import BoxplotFormatter, PlotReporter
+
+
+class BenchList(EasyBench):
+    bench_config = BenchConfig(
+        memory=True,
+        trials=100,
+        reporters=[
+            PlotReporter(
+                BoxplotFormatter(
+                    showfliers=True,           # Show outliers
+                    log_scale=True,            # Use logarithmic scale
+                    engine="seaborn",          # Use seaborn as plotting engine
+                    orientation="horizontal",  # Horizontal or vertical orientation
+                    width=0.5,                 # Box width (passed directly to seaborn's boxplot)
+                    linewidth=0.5,             # Line width (passed directly to seaborn's boxplot)
+                )
+            )
+        ],
+    )
+
+    def setup_trial(self):
+        self.big_list = list(range(1_000_000))
+
+    def bench_append(self):
+        self.big_list.append(-1)
+
+    def bench_insert_start(self):
+        self.big_list.insert(0, -1)
+
+    def bench_insert_middle(self):
+        self.big_list.insert(len(self.big_list) // 2, -1)
+
+    def bench_pop(self):
+        self.big_list.pop()
+
+    def bench_pop_zero(self):
+        self.big_list.pop(0)
+
+
+if __name__ == "__main__":
+    import seaborn as sns
+
+    # Optional seaborn style settings
+    sns.set_theme(style="darkgrid", palette="Set2")
+    BenchList().bench()
+```
+
+![Boxplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_boxplot.png)
+
+### Main `BoxplotFormatter` options
+
+- `showfliers`: Whether to show outliers (default: `True`)
+- `log_scale`: Whether to use logarithmic scale (default: `False`)
+- `y_limit`: Specify Y-axis range (e.g., `(0, 0.01)`)
+- `trim_outliers`: Percentile for trimming outliers (0.0 to 0.5)
+- `winsorize_outliers`: Percentile for winsorizing outliers (0.0 to 0.5)
+- `figsize`: Figure size (default: `(10, 6)`)
+- `engine`: Plotting engine (`"matplotlib"` or `"seaborn"`)
+- `orientation`: Boxplot orientation (`"vertical"` or `"horizontal"`)
+
+### `PlotReporter` options
+
+- `formatter`: Plot formatter to use (e.g., `BoxplotFormatter`)
+- `show`: Whether to display the plot on screen (default: `True`)
+- `save_path`: File path to save the plot
+- `dpi`: Image resolution (default: `100`)
+
+
+To use boxplots, you need to install `matplotlib`:
+
+```bash
+pip install matplotlib
+```
+
+If you want to use the seaborn engine, also install `seaborn`:
+
+```bash
+pip install seaborn
 ```
 
 ## License

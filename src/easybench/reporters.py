@@ -28,12 +28,13 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     import pandas as pd
+    from matplotlib.figure import Figure
 
     from .core import BenchConfig, ResultsType, StatsType
 
 T = TypeVar("T")
 
-Formatted: TypeAlias = "str | pd.DataFrame"
+Formatted: TypeAlias = "str | pd.DataFrame | Figure"
 MetricType = Literal["avg", "min", "max", "avg_memory", "max_memory"]
 
 
