@@ -7,7 +7,7 @@ This package provides tools for benchmarking Python code with an easy-to-use int
 from .core import BenchConfig, BenchParams, EasyBench, fixture, parametrize
 from .decorator import bench
 
-__version__ = "0.1.15"
+__version__ = "0.1.16"
 
 __all__ = [
     "BenchConfig",
