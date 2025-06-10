@@ -74,23 +74,7 @@ def get_reporter(name: str, kwargs: dict | None = None) -> Reporter:
         case "plot":
             from .visualization import BoxplotFormatter, PlotReporter
 
-            if not kwargs:
-                import seaborn as sns
-
-                sns.set_theme(style="darkgrid", palette="Set2")
-
-                kwargs["engine"] = "seaborn"
-
-                if "width" not in kwargs:
-                    kwargs["width"] = 0.5
-                if "linewidth" not in kwargs:
-                    kwargs["linewidth"] = 0.5
-
-            if "log_scale" not in kwargs:
-                kwargs["log_scale"] = True
-
             return PlotReporter(BoxplotFormatter(**kwargs))
-
         case _:
             err = f"Unknown reporter type: {name}"
             raise ValueError(err)
