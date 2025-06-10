@@ -101,7 +101,7 @@ class TestBoxplotFormatter:
         formatter = BoxplotFormatter()
         assert formatter.showfliers is True
         assert formatter.log_scale is False
-        assert formatter.y_limit is None
+        assert formatter.data_limit is None
         assert formatter.figsize == (10, 6)
         assert formatter.engine == "matplotlib"
         assert formatter.orientation == "horizontal"
@@ -111,7 +111,7 @@ class TestBoxplotFormatter:
         formatter = BoxplotFormatter(
             showfliers=False,
             log_scale=True,
-            y_limit=(0.0, 1.0),
+            data_limit=(0.0, 1.0),
             trim_outliers=DEFAULT_TRIM_OUTLIERS,
             winsorize_outliers=None,
             figsize=(8, 4),
@@ -121,7 +121,7 @@ class TestBoxplotFormatter:
         )
         assert formatter.showfliers is False
         assert formatter.log_scale is True
-        assert formatter.y_limit == (0.0, 1.0)
+        assert formatter.data_limit == (0.0, 1.0)
         assert formatter.trim_outliers == DEFAULT_TRIM_OUTLIERS
         assert formatter.winsorize_outliers is None
         assert formatter.figsize == (8, 4)
