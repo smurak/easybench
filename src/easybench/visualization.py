@@ -58,7 +58,7 @@ class BoxplotFormatter(PlotFormatter):
         self,
         showfliers: bool = True,
         log_scale: bool = False,
-        y_limit: tuple[float, float] | None = None,
+        data_limit: tuple[float, float] | None = None,
         trim_outliers: float | None = None,
         winsorize_outliers: float | None = None,
         figsize: tuple[int, int] = (10, 6),
@@ -73,7 +73,7 @@ class BoxplotFormatter(PlotFormatter):
         Args:
             showfliers: Whether to show outliers in the boxplot (default: True)
             log_scale: Whether to use logarithmic scale for y-axis (default: False)
-            y_limit: Optional tuple of (min, max) for y-axis limits
+            data_limit: Optional tuple of (min, max) for data axis limits
             trim_outliers: Optional percentile for trimming outliers (0.0-0.5)
             winsorize_outliers: Optional percentile for winsorizing outliers (0.0-0.5)
             figsize: Figure size (default: (10, 6))
@@ -84,7 +84,7 @@ class BoxplotFormatter(PlotFormatter):
 
         """
         self.log_scale = log_scale
-        self.y_limit = y_limit
+        self.data_limit = data_limit
         self.trim_outliers = trim_outliers
         self.winsorize_outliers = winsorize_outliers
         self.figsize = figsize
@@ -444,11 +444,11 @@ class BoxplotFormatter(PlotFormatter):
 
     def _set_axis_limits(self, ax: plt.Axes) -> None:
         """Set axis limits if provided."""
-        if self.y_limit is not None:
+        if self.data_limit is not None:
             if self.orientation == "horizontal":
-                ax.set_xlim(self.y_limit)
+                ax.set_xlim(self.data_limit)
             else:
-                ax.set_ylim(self.y_limit)
+                ax.set_ylim(self.data_limit)
 
     def _get_plot_title(self, trials: int, title_suffix: str = "") -> str:
         """Generate the plot title."""
