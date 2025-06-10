@@ -31,6 +31,7 @@ DEFAULT_LABEL_ROTATION_THRESHOLD = 5
 NUM_TEST_FUNCTIONS = 2
 DEFAULT_DPI = 100
 CUSTOM_DPI = 200
+EXPECTED_CALL_COUNT = 2  # Number of times boxplot is called during fallback tests
 
 
 def complete_stat(
@@ -274,6 +275,84 @@ class TestBoxplotFormatter:
 
             # Verify seaborn.boxplot was called
             mock_boxplot.assert_called_once()
+
+    def test_create_matplotlib_boxplot_horizontal_fallback(self) -> None:
+        """
+        Test fallback to vert parameter when orientation isn't supported.
+
+        Tests the horizontal orientation case.
+        """
+        formatter = BoxplotFormatter(orientation="horizontal")
+
+        # Create mock Axes
+        mock_axes = mock.MagicMock()
+
+        # Make the first boxplot call raise TypeError to simulate orientation
+        # not being supported
+        mock_axes.boxplot.side_effect = [TypeError("orientation not supported"), None]
+
+        formatter._create_matplotlib_boxplot(
+            mock_axes,
+            [[0.1, 0.2, 0.3], [0.2, 0.3, 0.4]],
+            ["test1", "test2"],
+        )
+
+        # Check that boxplot was called twice (first with orientation, then with vert)
+        assert mock_axes.boxplot.call_count == EXPECTED_CALL_COUNT
+
+        # First call should have used orientation
+        args, kwargs = mock_axes.boxplot.call_args_list[0]
+        assert "orientation" in kwargs
+        assert kwargs["orientation"] == "horizontal"
+
+        # Second call should have used vert
+        args, kwargs = mock_axes.boxplot.call_args_list[1]
+        assert "orientation" not in kwargs
+        assert "vert" in kwargs
+        assert kwargs["vert"] is False  # horizontal means vert=False
+
+        # Ensure tick settings were called
+        mock_axes.set_yticks.assert_called_once()
+        mock_axes.set_yticklabels.assert_called_once()
+
+    def test_create_matplotlib_boxplot_vertical_fallback(self) -> None:
+        """
+        Test fallback to vert parameter when orientation isn't supported.
+
+        Tests the vertical orientation case.
+        """
+        formatter = BoxplotFormatter(orientation="vertical")
+
+        # Create mock Axes
+        mock_axes = mock.MagicMock()
+
+        # Make the first boxplot call raise TypeError to simulate orientation
+        # not being supported
+        mock_axes.boxplot.side_effect = [TypeError("orientation not supported"), None]
+
+        formatter._create_matplotlib_boxplot(
+            mock_axes,
+            [[0.1, 0.2, 0.3], [0.2, 0.3, 0.4]],
+            ["test1", "test2"],
+        )
+
+        # Check that boxplot was called twice (first with orientation, then with vert)
+        assert mock_axes.boxplot.call_count == EXPECTED_CALL_COUNT
+
+        # First call should have used orientation
+        args, kwargs = mock_axes.boxplot.call_args_list[0]
+        assert "orientation" in kwargs
+        assert kwargs["orientation"] == "vertical"
+
+        # Second call should have used vert
+        args, kwargs = mock_axes.boxplot.call_args_list[1]
+        assert "orientation" not in kwargs
+        assert "vert" in kwargs
+        assert kwargs["vert"] is True  # vertical means vert=True
+
+        # Ensure tick settings were called
+        mock_axes.set_xticks.assert_called_once()
+        mock_axes.set_xticklabels.assert_called_once()
 
 
 class TestPlotReporter:

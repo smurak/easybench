@@ -206,22 +206,40 @@ class BoxplotFormatter(PlotFormatter):
     ) -> None:
         """Create a boxplot using matplotlib."""
         if self.orientation == "horizontal":
-            ax.boxplot(
-                box_data,
-                showfliers=self.showfliers,
-                orientation=self.orientation,
-                **self.boxplot_kwargs,  # type: ignore[arg-type]
-            )
+            try:
+                ax.boxplot(
+                    box_data,
+                    showfliers=self.showfliers,
+                    orientation=self.orientation,
+                    **self.boxplot_kwargs,  # type: ignore[arg-type]
+                )
+            except TypeError:
+                # Fall back to vert parameter if orientation is not supported
+                ax.boxplot(
+                    box_data,
+                    showfliers=self.showfliers,
+                    vert=(self.orientation == "vertical"),
+                    **self.boxplot_kwargs,  # type: ignore[arg-type]
+                )
             # Set y-tick positions explicitly before setting labels
             ax.set_yticks(range(1, len(labels) + 1))
             ax.set_yticklabels(labels)
         else:
-            ax.boxplot(
-                box_data,
-                showfliers=self.showfliers,
-                orientation=self.orientation,
-                **self.boxplot_kwargs,  # type: ignore[arg-type]
-            )
+            try:
+                ax.boxplot(
+                    box_data,
+                    showfliers=self.showfliers,
+                    orientation=self.orientation,
+                    **self.boxplot_kwargs,  # type: ignore[arg-type]
+                )
+            except TypeError:
+                # Fall back to vert parameter if orientation is not supported
+                ax.boxplot(
+                    box_data,
+                    showfliers=self.showfliers,
+                    vert=(self.orientation == "vertical"),
+                    **self.boxplot_kwargs,  # type: ignore[arg-type]
+                )
             # Set x-tick positions explicitly before setting labels
             ax.set_xticks(range(1, len(labels) + 1))
             ax.set_xticklabels(labels)
