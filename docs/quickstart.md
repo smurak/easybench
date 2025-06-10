@@ -91,3 +91,7 @@ There are 3 ways to benchmark with `easybench`:
 * Multiple benchmarks
 
     ![EasyBench Benchmark Result](https://raw.githubusercontent.com/smurak/easybench/main/images/easybench_screenshot.png)
+
+* Boxplot Visualization
+
+    ![Boxplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_boxplot.png)

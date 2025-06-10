@@ -128,6 +128,10 @@ pip install easybench
 
   ![EasyBench Benchmark Result](https://raw.githubusercontent.com/smurak/easybench/main/images/easybench_screenshot.png)
 
+* ボックスプロットによる視覚化
+
+  ![Boxplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_boxplot.png)
+
 
 ## 使用方法
 
