@@ -503,20 +503,40 @@ EasyBench uses a mechanism called **Reporter** to output benchmark results. By d
 
 To use reporters, set them as a list in the `reporters` parameter of your benchmark configuration (`BenchConfig` or `@bench.config`). Since `reporters` is a list, you can specify multiple output methods simultaneously.
 
+There are three ways to specify reporters:
+
+1. **As a string**: Specify the reporter name as a string
+   - `"console"`: Standard tabular console output
+   - `"simple"`: Simple console output
+   - `"plot"`: Visualization with boxplot
+   - `"output.csv"` or `"results.json"`: File output (path ending with .csv or .json)
+
+2. **With arguments**: Specify in the format `(reporter_name, parameter_dict)`
+
+3. **As Reporter objects**: Directly specify an instance of a Reporter class
+
 * Usage example
 
     ```python
     from easybench import BenchConfig
-    from easybench.reporters import ConsoleReporter, FileReporter
+    from easybench.reporters import FileReporter
     
-    # Multiple output formats at once
+    # Multiple output formats with different specification methods
     config = BenchConfig(
         reporters=[
-            ConsoleReporter(),             # Show in console as a table
-            FileReporter("results.csv"),   # Save as CSV file
-            FileReporter("results.json"),  # Save as JSON file
+            "console",                                  # Specified as string
+            ("simple", {"metric": "min"}),              # Specified with arguments
+            ("plot", {"log_scale": False}),             # Plot with arguments
+            "results.csv",                              # Specified as file path
+            FileReporter("results.json"),               # Specified as object
         ]
     )
+    
+    # Simpler configurations
+    bench_config = BenchConfig(reporters=["console"])       # Console output only
+    bench_config = BenchConfig(reporters=["plot"])          # Boxplot only
+
+    bench_config = BenchConfig(reporters=["output.csv"])    # CSV file output only
     ```
 
 #### Creating Custom Reporters

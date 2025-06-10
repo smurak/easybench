@@ -30,7 +30,7 @@ else:
     from typing_extensions import NotRequired, TypedDict
 
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -38,8 +38,10 @@ if TYPE_CHECKING:
 
 from .reporters import (
     ConsoleReporter,
+    FileReporter,
     MemoryUnit,
     Reporter,
+    SimpleConsoleReporter,
 )
 
 # Configure logger
@@ -54,6 +56,44 @@ SortType = Literal["def", "avg", "min", "max", "avg_memory", "max_memory"]
 # Generic types
 T = TypeVar("T")
 V = TypeVar("V")
+
+
+def get_reporter(name: str, kwargs: dict | None = None) -> Reporter:
+    """Convert string to reporter."""
+    kwargs = kwargs or {}
+
+    match name.lower():
+        case "console":
+            return ConsoleReporter(**kwargs)
+        case "simple":
+            return SimpleConsoleReporter(**kwargs)
+        case "file":
+            return FileReporter(**kwargs)
+        case _ if name.endswith((".csv", ".json")):
+            return FileReporter(name, **kwargs)
+        case "plot":
+            from .visualization import BoxplotFormatter, PlotReporter
+
+            if not kwargs:
+                import seaborn as sns
+
+                sns.set_theme(style="darkgrid", palette="Set2")
+
+                kwargs["engine"] = "seaborn"
+
+                if "width" not in kwargs:
+                    kwargs["width"] = 0.5
+                if "linewidth" not in kwargs:
+                    kwargs["linewidth"] = 0.5
+
+            if "log_scale" not in kwargs:
+                kwargs["log_scale"] = True
+
+            return PlotReporter(BoxplotFormatter(**kwargs))
+
+        case _:
+            err = f"Unknown reporter type: {name}"
+            raise ValueError(err)
 
 
 class ResultType(TypedDict):
@@ -125,6 +165,38 @@ class PartialBenchConfig(BaseModel):
                 setattr(result, field_name, field_value)
 
         return result
+
+    @field_validator("reporters", mode="before")
+    @classmethod
+    def validate_and_convert_reporters(cls, v: list | None) -> list[Reporter] | None:
+        """Validate and convert reporters."""
+        if v is None:
+            return None
+        if not isinstance(v, list):
+            msg = "reporters must be a list"
+            raise TypeError(msg)
+
+        converted_reporters: list[Reporter] = []
+        for item in v:
+            if isinstance(item, str):
+                # Convert string to reporter
+                reporter = get_reporter(item)
+                converted_reporters.append(reporter)
+            elif (
+                isinstance(item, (tuple, list))
+                and isinstance(item[0], str)
+                and isinstance(item[1], dict)
+            ):
+                reporter = get_reporter(item[0], item[1])
+                converted_reporters.append(reporter)
+            elif isinstance(item, Reporter):
+                # すでにReporterオブジェクトの場合はそのまま
+                converted_reporters.append(item)
+            else:
+                msg = f"Invalid reporter type: {type(item)}"
+                raise TypeError(msg)
+
+        return converted_reporters
 
 
 class BenchConfig(PartialBenchConfig):

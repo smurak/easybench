@@ -508,20 +508,40 @@ EasyBenchでは、**レポーター**（Reporter）という仕組みを使用�
 
 レポーターを使用するには、ベンチマーク設定（`BenchConfig`または`@bench.config`）の`reporters`パラメータにリストとして設定します。`reporters`はリスト形式のため、複数の出力方法を同時に指定できます。
 
+レポーターを指定する方法は以下の3つがあります：
+
+1. **文字列で指定**：レポーター名を文字列として指定する
+   - `"console"`: 標準的なテーブル形式のコンソール出力
+   - `"simple"`: シンプルなコンソール出力
+   - `"plot"`: ボックスプロットによる可視化
+   - `"output.csv"` または `"results.json"`: ファイル出力（.csvまたは.jsonで終わるパス）
+
+2. **引数付きで指定**：`(レポーター名, パラメータ辞書)`の形式で指定する
+
+3. **Reporterオブジェクトで指定**：Reporterクラスのインスタンスを直接指定する
+
 * 使用例
 
     ```python
     from easybench import BenchConfig
-    from easybench.reporters import ConsoleReporter, FileReporter
+    from easybench.reporters import FileReporter
     
-    # 複数の出力形式を同時に使用
-    config = BenchConfig(
+    # 様々なレポーター設定
+    bench_config = BenchConfig(
+        trials=10,
         reporters=[
-            ConsoleReporter(),             # コンソールにテーブル形式で出力
-            FileReporter("results.csv"),   # CSVとしてファイル保存
-            FileReporter("results.json"),  # JSONとしてファイル保存
+            "console",                                  # 文字列で指定
+            ("simple", {"metric": "min"}),              # 引数付きで指定
+            ("plot", {"log_scale": False}),             # 引数付きでプロット指定
+            "results.csv",                              # ファイルパスで指定
+            FileReporter("results.csv"),                # オブジェクトで指定
         ]
     )
+    
+    # より単純な設定
+    bench_config = BenchConfig(reporters=["console"])       # コンソール出力のみ
+    bench_config = BenchConfig(reporters=["plot"])          # ボックスプロットのみ
+    bench_config = BenchConfig(reporters=["output.csv"])    # CSVファイル出力のみ
     ```
 
 #### カスタムレポーターの作成
