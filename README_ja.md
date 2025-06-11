@@ -437,8 +437,10 @@ class MyBenchmark(EasyBench):
 `loops_per_trial`パラメータを使用すると、1回の時間測定（試行）で関数を実行する回数を指定できます：
 
 ```python
-@bench.config(trials=5, loops_per_trial=1000)
+# 長さ100のリストに1を1000回追加して平均時間を測定する、それを500回繰り返す
+# (1000回のループで同じリストが使用されることに注意)
 @bench(small_list=lambda: list(range(100)))
+@bench.config(trials=500, loops_per_trial=1000)
 def append_item(small_list):
     small_list.append(1)
 ```

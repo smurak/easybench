@@ -437,8 +437,10 @@ In environments with poor timer resolution (e.g., certain virtual machines or sy
 The `loops_per_trial` parameter allows you to specify how many times a function should be executed in a single timing measurement (trial):
 
 ```python
-@bench.config(trials=5, loops_per_trial=1000)
+# Measure the average time to append 1 to a list of length 100 1000 times, repeated for 500 trials
+# (Note that the same list is used within each of the 1000 loops)
 @bench(small_list=lambda: list(range(100)))
+@bench.config(trials=500, loops_per_trial=1000)
 def append_item(small_list):
     small_list.append(1)
 ```
