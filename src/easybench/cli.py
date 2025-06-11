@@ -148,8 +148,8 @@ def cli_main() -> None:
     Execute the main command line interface for easybench.
 
     Usage:
-    easybench [`--trials N`] [`--memory`] [`--sort-by METRIC`] [`--reverse`]
-    [`--show-output`] [`path`]
+    easybench [`--trials N`] [`--loops-per-trial N`] [`--memory`] [`--sort-by METRIC`]
+    [`--reverse`] [`--show-output`] [`path`]
     """
     default_config = BenchConfig()
     parser = argparse.ArgumentParser(
@@ -171,6 +171,15 @@ def cli_main() -> None:
         help=(
             "Number of trials to run for each benchmark "
             f"(default: {default_config.trials})"
+        ),
+    )
+    parser.add_argument(
+        "--loops-per-trial",
+        type=int,
+        default=None,
+        help=(
+            "Number of loops to run per trial for improved precision "
+            f"(default: {default_config.loops_per_trial})"
         ),
     )
     parser.add_argument(
@@ -201,6 +210,7 @@ def cli_main() -> None:
         # Create config from CLI arguments
         config = PartialBenchConfig(
             trials=args.trials,
+            loops_per_trial=args.loops_per_trial,
             memory=args.memory or None,
             sort_by=args.sort_by,
             reverse=args.reverse or None,

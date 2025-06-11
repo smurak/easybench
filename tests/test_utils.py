@@ -90,7 +90,7 @@ class TestGetBenchEnv:
 
     def test_measure_timer_overhead(self) -> None:
         """Test that measure_timer_overhead returns a positive float value."""
-        overhead = measure_timer_overhead(iterations=10000)
+        overhead = measure_timer_overhead(iterations=1_000_000)
         assert isinstance(overhead, float)
         assert overhead > 0
 

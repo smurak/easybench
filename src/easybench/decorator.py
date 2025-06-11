@@ -405,6 +405,7 @@ class BenchDecorator:
         self,
         *,
         trials: int | None = None,
+        loops_per_trial: int | None = None,
         sort_by: SortType | None = None,
         reverse: bool | None = None,
         memory: bool | None = None,
@@ -423,7 +424,7 @@ class BenchDecorator:
                 item=123,
                 big_list=lambda: list(range(1_000_000)),
             )
-            @bench.config(trials=5, memory=True)
+            @bench.config(trials=5, loops_per_trial=10, memory=True)
             def add_item(item, big_list):
                 big_list.append(item)
             ```

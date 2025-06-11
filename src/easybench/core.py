@@ -122,6 +122,7 @@ class PartialBenchConfig(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
     trials: int | None = None
+    loops_per_trial: int | None = None
     sort_by: SortType | None = None
     reverse: bool | None = None
     memory: bool | MemoryUnit | None = None
@@ -182,11 +183,21 @@ class PartialBenchConfig(BaseModel):
 
         return converted_reporters
 
+    @field_validator("loops_per_trial", mode="before")
+    @classmethod
+    def validate_loops_per_trial(cls, v: int | None) -> int | None:
+        """Validate loops_per_trial."""
+        if v is not None and v < 1:
+            msg = "loops_per_trial must be at least 1"
+            raise ValueError(msg)
+        return v
+
 
 class BenchConfig(PartialBenchConfig):
     """Complete configuration for EasyBench with required values."""
 
     trials: int = 5
+    loops_per_trial: int = 1
     sort_by: SortType = "def"
     reverse: bool = False
     memory: bool | MemoryUnit = False
@@ -466,6 +477,7 @@ class EasyBench:
                             values=values,
                             memory=bool(config.memory),
                             capture_output=capture_output,
+                            loops_per_trial=config.loops_per_trial,
                         )
                     )
 
@@ -816,6 +828,7 @@ class EasyBench:
         values: dict[str, object],
         memory: bool = False,
         capture_output: bool = False,
+        loops_per_trial: int = 1,
     ) -> tuple[float, float | None, object | None]:
         """
         Run a single benchmark method with the required fixtures.
@@ -825,6 +838,7 @@ class EasyBench:
             values: Dictionary containing fixture values
             memory: Whether to measure memory usage
             capture_output: Whether to capture and return function result
+            loops_per_trial: Number of loops per trial
 
         Returns:
             A tuple containing:
@@ -852,10 +866,11 @@ class EasyBench:
             before_current, _ = tracemalloc.get_traced_memory()
 
             start_time = time.perf_counter()
-            if capture_output:
-                result = method(**fixture_args)
-            else:
-                method(**fixture_args)
+            for i in range(loops_per_trial):
+                if capture_output or i == 0:
+                    result = method(**fixture_args)
+                else:
+                    method(**fixture_args)
             end_time = time.perf_counter()
 
             # get memory usage
@@ -865,13 +880,14 @@ class EasyBench:
             tracemalloc.stop()
         else:
             start_time = time.perf_counter()
-            if capture_output:
-                result = method(**fixture_args)
-            else:
-                method(**fixture_args)
+            for i in range(loops_per_trial):
+                if capture_output or i == 0:
+                    result = method(**fixture_args)
+                else:
+                    method(**fixture_args)
             end_time = time.perf_counter()
 
-        return end_time - start_time, memory_usage, result
+        return (end_time - start_time) / loops_per_trial, memory_usage, result
 
     def _discover_benchmark_methods(self) -> dict[str, Callable[..., object]]:
         """
