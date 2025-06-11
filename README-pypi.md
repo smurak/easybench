@@ -449,7 +449,7 @@ How `loops_per_trial` works:
 - This provides more accurate measurements for very fast operations where individual timing would be affected by timer resolution limits
 
 When to use:
-- For very fast operations (nanoseconds)
+- For very fast operations (microsecond or nanoseconds)
 - In environments with poor timer precision
 - When you notice high variability in timing results for simple operations
 
