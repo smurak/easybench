@@ -1084,3 +1084,37 @@ class TestBenchParamsDecorator:
         assert (
             not separate_small_output
         ), "Expected no separate output for Small parameter set"
+
+    def test_bench_decorator_loops_per_trial(
+        self,
+        capsys: pytest.CaptureFixture,
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test configuring loops per trial with the bench decorator."""
+        loops_count = 3  # Use a custom number of loops per trial
+
+        @bench.config(loops_per_trial=loops_count)
+        def test_loops() -> int:
+            return 10
+
+        captured = capsys.readouterr()
+        assert "Benchmark Results" in captured.out
+
+        # Create another test with explicit parameter to verify
+        # that the configuration is applied properly
+        test_value = 0
+
+        @bench.config(loops_per_trial=loops_count)
+        def count_loops() -> int:
+            nonlocal test_value
+            test_value += 1
+            return test_value
+
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # With DEFAULT_TRIALS (5) and loops_per_trial=3, we expect
+        # test_value to be 5*3 = 15 after the benchmark runs
+        # (Each trial runs the function 3 times)
+        assert test_value == DEFAULT_TRIALS * loops_count
+        assert "count_loops" in parsed_out["functions"]

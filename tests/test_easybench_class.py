@@ -1555,3 +1555,42 @@ class TestParametrizedDecorator:
         assert "Return Values" in captured.out
         assert "10" in captured.out  # 1 * 10
         assert "20" in captured.out  # 2 * 10
+
+    def test_loops_per_trial_configuration(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test configuring and overriding loops per trial."""
+        loop_count = 0
+        trials = 2
+        loops_per_trial = 3
+
+        class LoopsBench(EasyBench):
+            # Set loops_per_trial in the configuration
+            bench_config = BenchConfig(trials=trials, loops_per_trial=loops_per_trial)
+
+            def bench_count_loops(self) -> int:
+                nonlocal loop_count
+                loop_count += 1
+                return loop_count
+
+        # Create an instance and run with the default configuration
+        bench1 = LoopsBench()
+        bench1.bench()
+
+        # With 2 trials and 3 loops per trial, we expect 6 calls
+        assert loop_count == trials * loops_per_trial
+
+        # Reset counter and override loops_per_trial at runtime
+        loop_count = 0
+
+        loops_per_trial2 = 2
+        bench2 = LoopsBench()
+        # Override to 2 loops per trial
+        bench2.bench(trials=trials, loops_per_trial=loops_per_trial2)
+
+        # With 2 trials and 2 loops per trial, we expect 4 calls
+        assert loop_count == trials * loops_per_trial2
+
+        captured = capsys.readouterr()
+        assert "bench_count_loops" in captured.out

@@ -405,6 +405,7 @@ class MyBenchmark(EasyBench):
         memory="MB",         # Enable memory measurement and show in megabytes
         color=True,          # Use color output in results
         show_output=False,   # Display function return values
+        loops_per_trial=1,   # Number of function executions per trial (see explanation below)
         reporters=[]         # Custom reporters (see explanation below)
     )
 ```
@@ -426,6 +427,31 @@ Memory measurement options (`memory`):
 - `"KB"`: Display memory usage in kilobytes
 - `"MB"`: Display memory usage in megabytes
 - `"GB"`: Display memory usage in gigabytes
+
+### Improving Timer Precision with `loops_per_trial`
+
+In environments with poor timer resolution (e.g., certain virtual machines or systems where `time.perf_counter()` has limited precision), you may need to run a function multiple times to get meaningful timing results.
+
+The `loops_per_trial` parameter allows you to specify how many times a function should be executed in a single timing measurement (trial):
+
+```python
+# Measure the average time to append 1 to a list of length 100 1000 times, repeated for 500 trials
+# (Note that the same list is used within each of the 1000 loops)
+@bench(small_list=lambda: list(range(100)))
+@bench.config(trials=500, loops_per_trial=1000)
+def append_item(small_list):
+    small_list.append(1)
+```
+
+How `loops_per_trial` works:
+- The function is executed `loops_per_trial` times in a loop within a single timing measurement (trial)
+- The total execution time is divided by `loops_per_trial` to get the average time per execution
+- This provides more accurate measurements for very fast operations where individual timing would be affected by timer resolution limits
+
+When to use:
+- For very fast operations (microsecond or nanoseconds)
+- In environments with poor timer precision
+- When you notice high variability in timing results for simple operations
 
 #### Memory Measurement Limitations
 

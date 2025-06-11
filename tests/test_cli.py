@@ -127,6 +127,7 @@ def cli_args_mock() -> MagicMock:
     args = MagicMock()
     args.path = "test_dir"
     args.trials = DEFAULT_TEST_TRIALS
+    args.loops_per_trial = 1
     args.memory = False
     args.sort_by = "avg"
     args.reverse = False
@@ -709,6 +710,7 @@ class TestCliArguments:
         mock_args = MagicMock()
         mock_args.path = "benchmarks"
         mock_args.trials = None
+        mock_args.loops_per_trial = None
         mock_args.memory = False
         mock_args.sort_by = None
         mock_args.reverse = False
@@ -744,6 +746,7 @@ class TestCliArguments:
         mock_args = MagicMock()
         mock_args.directory = "benchmarks"
         mock_args.trials = None
+        mock_args.loops_per_trial = None
         mock_args.memory = True  # Enable memory flag
         mock_args.sort_by = None
         mock_args.reverse = False
@@ -778,6 +781,7 @@ class TestCliArguments:
             mock_args = MagicMock()
             mock_args.directory = "benchmarks"
             mock_args.trials = None
+            mock_args.loops_per_trial = None
             mock_args.memory = False
             mock_args.sort_by = sort_option
             mock_args.reverse = False
@@ -812,6 +816,7 @@ class TestCliArguments:
         mock_args = MagicMock()
         mock_args.directory = "benchmarks"
         mock_args.trials = DEFAULT_TEST_VALUE  # Custom trial count
+        mock_args.loops_per_trial = 1
         mock_args.memory = False
         mock_args.sort_by = None
         mock_args.reverse = False
@@ -836,6 +841,38 @@ class TestCliArguments:
         cli_setup["run_benchmarks"].assert_called_once()
         args, kwargs = cli_setup["run_benchmarks"].call_args
         assert kwargs["config"].trials == DEFAULT_TEST_VALUE
+
+    def test_loops_per_trial_parameter(self, cli_setup: dict[str, MagicMock]) -> None:
+        """Test specifying loops per trial."""
+        # Setup mocks
+        mock_args = MagicMock()
+        mock_args.directory = "benchmarks"
+        mock_args.trials = None
+        mock_args.loops_per_trial = 5  # Custom loops per trial count
+        mock_args.memory = False
+        mock_args.sort_by = None
+        mock_args.reverse = False
+        mock_args.no_color = False
+        mock_args.show_output = False
+        cli_setup["parse_args"].return_value = mock_args
+
+        # Mock finding benchmark files
+        mock_file = Path("benchmarks/bench_test.py")
+        cli_setup["discover_files"].return_value = [mock_file]
+
+        # Mock loading module and discovering benchmarks
+        mock_module = MagicMock()
+        cli_setup["load_module"].return_value = mock_module
+        mock_benchmarks = {"bench1": MagicMock()}
+        cli_setup["discover_benchmarks"].return_value = mock_benchmarks
+
+        # Run the CLI
+        cli_main()
+
+        # Verify run_benchmarks was called with the correct loops_per_trial
+        cli_setup["run_benchmarks"].assert_called_once()
+        args, kwargs = cli_setup["run_benchmarks"].call_args
+        assert kwargs["config"].loops_per_trial == mock_args.loops_per_trial
 
 
 class TestCliEdgeCases:
