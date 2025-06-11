@@ -58,17 +58,30 @@ def _find_header_idx(clean_lines: list[str]) -> int:
         (
             i
             for i, line in enumerate(clean_lines)
-            if "Function" in line and (("Time (s)" in line) or ("Avg Time (s)" in line))
+            if "Function" in line
+            and (
+                re.search(r"Time \([^\)]+\)", line)
+                or re.search(r"Avg Time \([^\)]+\)", line)
+            )
         ),
         -1,
     )
 
 
-def _detect_table_format(header_line: str) -> tuple[bool, bool]:
-    """Determine the table format."""
-    is_single_trial = "Avg Time (s)" not in header_line
-    has_memory_metrics = "Memory (KB)" in header_line or "Avg Mem (KB)" in header_line
-    return is_single_trial, has_memory_metrics
+def _detect_table_format(header_line: str) -> tuple[bool, bool, str, str]:
+    """Determine the table format and extract units."""
+    is_single_trial = not re.search(r"Avg Time \([^\)]+\)", header_line)
+
+    # Extract time unit
+    time_match = re.search(r"(?:Avg )?Time \(([^\)]+)\)", header_line)
+    time_unit = time_match.group(1) if time_match else "s"
+
+    # Detect memory metrics and extract memory unit
+    memory_match = re.search(r"(?:Avg )?Mem(?:ory)? \(([^\)]+)\)", header_line)
+    has_memory_metrics = bool(memory_match)
+    memory_unit = memory_match.group(1) if memory_match else "KB"
+
+    return is_single_trial, has_memory_metrics, time_unit, memory_unit
 
 
 def _find_data_section(clean_lines: list[str], header_idx: int) -> tuple[int, int]:
@@ -143,25 +156,31 @@ def _extract_color_info(
         if j >= len(values) or col_name not in metrics:
             continue
 
-        # Get the value as a string
-        value_str = values[j]
+        # Get the value as a string - strip spaces to handle right-justified values
+        value_str = values[j].strip()
         value_pattern = re.escape(value_str)
 
-        # Detect green code (appearing before the value)
+        # Detect green code (appearing before the value, with potential spaces)
         green_match = re.search(
-            r"\033\[32m" + value_pattern,
+            r"\033\[32m\s*" + value_pattern,
             orig_line,
-        ) or re.search(r"\x1b\[32m" + value_pattern, orig_line)
+        ) or re.search(
+            r"\x1b\[32m\s*" + value_pattern,
+            orig_line,
+        )
         if green_match:
             if col_name not in color_info:
                 color_info[col_name] = {}
             color_info[col_name]["green"] = func_name
 
-        # Detect red code (appearing before the value)
+        # Detect red code (appearing before the value, with potential spaces)
         red_match = re.search(
-            r"\033\[31m" + value_pattern,
+            r"\033\[31m\s*" + value_pattern,
             orig_line,
-        ) or re.search(r"\x1b\[31m" + value_pattern, orig_line)
+        ) or re.search(
+            r"\x1b\[31m\s*" + value_pattern,
+            orig_line,
+        )
         if red_match:
             if col_name not in color_info:
                 color_info[col_name] = {}
@@ -196,13 +215,14 @@ def _parse_functions_data(
         orig_line = original_lines[i] if i < len(original_lines) else clean_line
 
         # Extract function name and values
+        # Split on spaces of length 2 or more to handle right-justified columns
         parts = re.split(r"\s{2,}", clean_line.strip())
         min_parts_required = 2
         if len(parts) < min_parts_required:
             continue
 
         func_name = parts[0]
-        values = parts[1:]
+        values = [part.strip() for part in parts[1:]]  # Strip spaces from each part
 
         # Parse metrics and extract color information
         metrics = _extract_metrics(values, columns)
@@ -219,7 +239,6 @@ def _parse_functions_data(
 
     # Clean up empty color information
     cleaned_colors = {col: colors for col, colors in color_info.items() if colors}
-
     return functions, cleaned_colors
 
 
@@ -306,11 +325,15 @@ def parse_benchmark_output() -> Callable[[str], dict[str, Any]]:
         if header_idx < 0:
             return result  # Header not found
 
-        # Determine the table format
+        # Determine the table format and extract units
         header_line = clean_lines[header_idx]
-        is_single_trial, has_memory_metrics = _detect_table_format(header_line)
+        is_single_trial, has_memory_metrics, time_unit, memory_unit = (
+            _detect_table_format(header_line)
+        )
         result["is_single_trial"] = is_single_trial
         result["has_memory_metrics"] = has_memory_metrics
+        result["time_unit"] = time_unit
+        result["memory_unit"] = memory_unit
 
         # Identify the start and end of the data section
         data_start, data_end = _find_data_section(clean_lines, header_idx)

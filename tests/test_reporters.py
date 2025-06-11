@@ -36,6 +36,7 @@ from easybench.reporters import (
     MemoryUnit,
     MetricType,
     Reporter,
+    SimpleConsoleReporter,
     StreamReporter,
     TableFormatter,
 )
@@ -52,6 +53,12 @@ TEST_METRIC_MIN = 0.05
 TEST_METRIC_MAX = 0.15
 TEST_FLOAT_VALUE = 0.1
 EXPECTED_ROW_COUNT = 2
+
+# Constants for comparison
+MIN_CSV_ROWS = 2  # Header + data row
+MIN_VALUE_COLUMNS = 2  # Function name + value
+MIN_STAT_COLUMNS = 4  # Function name + avg + min + max
+FLOAT_TOLERANCE = 0.001  # Tolerance for float comparisons
 
 # Type alias for import function return type
 ImportReturnT = TypeVar("ImportReturnT")
@@ -1115,8 +1122,6 @@ class TestSimpleConsoleReporter:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test basic SimpleConsoleReporter functionality."""
-        from easybench.reporters import SimpleConsoleReporter
-
         reporter = SimpleConsoleReporter(metric="avg")
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
         stats: dict[str, StatType] = {
@@ -1133,7 +1138,6 @@ class TestSimpleConsoleReporter:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test SimpleConsoleReporter with custom formatter."""
-        from easybench.reporters import SimpleConsoleReporter
 
         def custom_format(method_name: str, value: float) -> str:
             _ = method_name
@@ -1155,7 +1159,6 @@ class TestSimpleConsoleReporter:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test SimpleConsoleReporter with custom joiner."""
-        from easybench.reporters import SimpleConsoleReporter
 
         def custom_join(values: list[str]) -> str:
             return ", ".join(values)
@@ -1210,7 +1213,6 @@ class TestGetReporter:
     def test_get_simple_reporter(self) -> None:
         """Test getting a simple reporter."""
         from easybench.core import get_reporter
-        from easybench.reporters import SimpleConsoleReporter
 
         reporter = get_reporter("simple")
         assert isinstance(reporter, SimpleConsoleReporter)
@@ -1280,3 +1282,168 @@ class TestGetReporter:
 
         assert isinstance(json_with_csv, FileReporter)
         assert json_with_csv.formatter is custom_formatter
+
+
+class TestFormatterTimeUnits:
+    """Test formatter handling of different time units from BenchConfig."""
+
+    def test_formatters_with_time_units(self) -> None:
+        """Test all formatters with different time units."""
+        time_units = ["s", "ms", "μs", "us", "ns", "m"]
+        # Create sample results and stats
+        results: dict[str, ResultType] = {"test_func": {"times": [1.0, 2.0, 3.0]}}
+        stats = {"test_func": complete_stat({"avg": 2.0, "min": 1.0, "max": 3.0})}
+
+        for time_unit in time_units:
+            config = BenchConfig(time=time_unit)
+
+            # Test TableFormatter
+            table_formatter = TableFormatter()
+            table_output = table_formatter.format(results, stats, config)
+            display_unit = "μs" if time_unit == "us" else time_unit
+            assert f"Time ({display_unit})" in table_output
+
+            # Test CSVFormatter
+            csv_formatter = CSVFormatter()
+            csv_output = csv_formatter.format(results, stats, config)
+            assert f"Avg Time ({display_unit})" in csv_output
+
+            # Test JSONFormatter
+            json_formatter = JSONFormatter()
+            json_output = json_formatter.format(results, stats, config)
+            decoded_str = json_output.encode("utf-8").decode("unicode_escape")
+            assert f'"time_unit": "{display_unit}"' in decoded_str
+
+            # Test DataFrameFormatter (skip if pandas not installed)
+            try:
+
+                df_formatter = DataFrameFormatter()
+                df_output = df_formatter.format(results, stats, config)
+                assert f"Avg Time ({display_unit})" in df_output.columns
+            except ImportError:
+                pass  # Skip if pandas not installed
+
+    def test_time_unit_conversion_values(self) -> None:
+        """Test that time values are correctly converted to different units."""
+        # Base time in seconds
+        base_seconds = 1.0
+
+        # Expected conversion factors for different time units
+        conversion_factors = {
+            "s": 1.0,  # seconds (no conversion)
+            "ms": 1000.0,  # milliseconds
+            "μs": 1000000.0,  # microseconds
+            "us": 1000000.0,  # microseconds (alternative notation)
+            "ns": 1000000000.0,  # nanoseconds
+            "m": 1 / 60.0,  # minutes
+        }
+
+        # Create sample results and stats with time in seconds
+        results: dict[str, ResultType] = {"test_func": {"times": [base_seconds]}}
+        stats = {
+            "test_func": complete_stat(
+                {
+                    "avg": base_seconds,
+                    "min": base_seconds,
+                    "max": base_seconds,
+                },
+            ),
+        }
+
+        for time_unit, factor in conversion_factors.items():
+            config = BenchConfig(time=time_unit, trials=1)
+            expected_value = base_seconds * factor
+
+            # Test TableFormatter
+            table_formatter = TableFormatter()
+            table_output = table_formatter.format(results, stats, config)
+            assert f"{expected_value:.6f}" in table_output
+
+            # Test CSVFormatter
+            csv_formatter = CSVFormatter()
+            csv_output = csv_formatter.format(results, stats, config)
+            csv_lines = csv_output.strip().split("\n")
+            if len(csv_lines) >= MIN_CSV_ROWS:  # Header + data line
+                data_line = csv_lines[1].split(",")
+                if len(data_line) >= MIN_VALUE_COLUMNS:  # Function name + value
+                    converted_value = float(data_line[1])
+                    assert abs(converted_value - expected_value) < FLOAT_TOLERANCE
+
+            # Test JSONFormatter
+            json_formatter = JSONFormatter()
+            json_output = json_formatter.format(results, stats, config)
+            json_data = json.loads(json_output)
+            converted_value = json_data["results"]["test_func"]["avg"]
+            assert abs(converted_value - expected_value) < FLOAT_TOLERANCE
+
+            # Test DataFrameFormatter (skip if pandas not installed)
+            try:
+                df_formatter = DataFrameFormatter()
+                df_output = df_formatter.format(results, stats, config)
+                display_unit = "μs" if time_unit == "us" else time_unit
+                column_name = f"Time ({display_unit})"
+                converted_value = df_output[column_name].iloc[0]
+                assert abs(converted_value - expected_value) < FLOAT_TOLERANCE
+            except ImportError:
+                pass  # Skip if pandas not installed
+
+    def test_time_unit_conversion_multiple_trials(self) -> None:
+        """Test time unit conversion with multiple trials."""
+        # Base times in seconds
+        base_times = [1.0, 2.0, 3.0]
+        avg_time = 2.0
+        min_time = 1.0
+        max_time = 3.0
+
+        # Create sample results and stats
+        results: dict[str, ResultType] = {"test_func": {"times": base_times}}
+        stats = {
+            "test_func": complete_stat(
+                {"avg": avg_time, "min": min_time, "max": max_time},
+            ),
+        }
+
+        # Test conversion to milliseconds
+        time_unit = "ms"
+        factor = 1000.0
+        config = BenchConfig(time=time_unit, trials=3)
+
+        # Expected converted values
+        expected_avg = avg_time * factor
+        expected_min = min_time * factor
+        expected_max = max_time * factor
+
+        # Test TableFormatter
+        table_formatter = TableFormatter()
+        table_output = table_formatter.format(results, stats, config)
+        assert f"{expected_avg:.6f}" in table_output
+        assert f"{expected_min:.6f}" in table_output
+        assert f"{expected_max:.6f}" in table_output
+
+        # Test CSVFormatter
+        csv_formatter = CSVFormatter()
+        csv_output = csv_formatter.format(results, stats, config)
+        csv_lines = csv_output.strip().split("\n")
+        if len(csv_lines) >= MIN_CSV_ROWS:  # Header + data line
+            data_line = csv_lines[1].split(",")
+            if len(data_line) >= MIN_STAT_COLUMNS:  # Function name + avg + min + max
+                assert abs(float(data_line[1]) - expected_avg) < FLOAT_TOLERANCE
+                assert abs(float(data_line[2]) - expected_min) < FLOAT_TOLERANCE
+                assert abs(float(data_line[3]) - expected_max) < FLOAT_TOLERANCE
+
+        # Test JSONFormatter
+        json_formatter = JSONFormatter()
+        json_output = json_formatter.format(results, stats, config)
+        json_data = json.loads(json_output)
+        assert (
+            abs(json_data["results"]["test_func"]["avg"] - expected_avg)
+            < FLOAT_TOLERANCE
+        )
+        assert (
+            abs(json_data["results"]["test_func"]["min"] - expected_min)
+            < FLOAT_TOLERANCE
+        )
+        assert (
+            abs(json_data["results"]["test_func"]["max"] - expected_max)
+            < FLOAT_TOLERANCE
+        )

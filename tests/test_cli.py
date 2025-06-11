@@ -133,6 +133,7 @@ def cli_args_mock() -> MagicMock:
     args.reverse = False
     args.no_color = False
     args.show_output = False
+    args.time_unit = "s"
     return args
 
 
@@ -716,6 +717,7 @@ class TestCliArguments:
         mock_args.reverse = False
         mock_args.no_color = False
         mock_args.show_output = False
+        mock_args.time_unit = "s"
         cli_setup["parse_args"].return_value = mock_args
 
         # Set up other mocks
@@ -752,6 +754,7 @@ class TestCliArguments:
         mock_args.reverse = False
         mock_args.no_color = False
         mock_args.show_output = False
+        mock_args.time_unit = "s"
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -787,6 +790,7 @@ class TestCliArguments:
             mock_args.reverse = False
             mock_args.no_color = False
             mock_args.show_output = False
+            mock_args.time_unit = "s"
             cli_setup["parse_args"].return_value = mock_args
 
             # Mock finding benchmark files
@@ -822,6 +826,7 @@ class TestCliArguments:
         mock_args.reverse = False
         mock_args.no_color = False
         mock_args.show_output = False
+        mock_args.time_unit = "s"
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -854,6 +859,7 @@ class TestCliArguments:
         mock_args.reverse = False
         mock_args.no_color = False
         mock_args.show_output = False
+        mock_args.time_unit = "s"
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files

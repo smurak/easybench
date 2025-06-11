@@ -149,7 +149,7 @@ def cli_main() -> None:
 
     Usage:
     easybench [`--trials N`] [`--loops-per-trial N`] [`--memory`] [`--sort-by METRIC`]
-    [`--reverse`] [`--show-output`] [`path`]
+    [`--reverse`] [`--show-output`] [`--time-unit UNIT`] [`path`]
     """
     default_config = BenchConfig()
     parser = argparse.ArgumentParser(
@@ -188,6 +188,12 @@ def cli_main() -> None:
         help="Measure memory usage during benchmarks",
     )
     parser.add_argument(
+        "--time-unit",
+        choices=["ns", "μs", "ms", "s", "m", "us"],
+        default="s",
+        help="Time unit for displaying results (default: s)",
+    )
+    parser.add_argument(
         "--sort-by",
         choices=["def", "avg", "min", "max", "avg_memory", "max_memory"],
         help="Sort results by the specified metric",
@@ -212,6 +218,7 @@ def cli_main() -> None:
             trials=args.trials,
             loops_per_trial=args.loops_per_trial,
             memory=args.memory or None,
+            time=args.time_unit,
             sort_by=args.sort_by,
             reverse=args.reverse or None,
             color=False if args.no_color else None,

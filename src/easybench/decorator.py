@@ -20,7 +20,7 @@ from .core import (
     ResultType,
     SortType,
 )
-from .reporters import ConsoleReporter, Reporter
+from .reporters import ConsoleReporter, MemoryUnit, Reporter, TimeUnit
 
 # Type for decorated functions
 P = ParamSpec("P")
@@ -408,7 +408,8 @@ class BenchDecorator:
         loops_per_trial: int | None = None,
         sort_by: SortType | None = None,
         reverse: bool | None = None,
-        memory: bool | None = None,
+        memory: bool | MemoryUnit | str | None = None,
+        time: TimeUnit | str | None = None,
         color: bool | None = None,
         show_output: bool | None = None,
         reporters: list[Reporter] | None = None,

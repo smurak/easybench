@@ -201,6 +201,12 @@ Main configuration options:
   * `False`: Disable memory measurement (default)
   * `True`: Show memory in kilobytes
   * `"B"`, `"KB"`, `"MB"`, `"GB"`: Show memory in bytes, kilobytes, megabytes, or gigabytes
+* `time`: Specify time measurement unit
+  * `"s"`: Display time in seconds (default)
+  * `"ms"`: Display time in milliseconds
+  * `"μs"` or `"us"`: Display time in microseconds
+  * `"ns"`: Display time in nanoseconds
+  * `"m"`: Display time in minutes
 * For other options, see "Configuration Options" below
 
 #### **Multiple parameter sets** (`BenchParams`)
@@ -430,6 +436,13 @@ Memory measurement options (`memory`):
 - `"MB"`: Display memory usage in megabytes
 - `"GB"`: Display memory usage in gigabytes
 
+Time measurement options (`time`):
+- `"s"`: Display time in seconds (default)
+- `"ms"`: Display time in milliseconds
+- `"μs"` or `"us"`: Display time in microseconds
+- `"ns"`: Display time in nanoseconds
+- `"m"`: Display time in minutes
+
 ### Improving Timer Precision with `loops_per_trial`
 
 In environments with poor timer resolution (e.g., certain virtual machines or systems where `time.perf_counter()` has limited precision), you may need to run a function multiple times to get meaningful timing results.
@@ -437,10 +450,12 @@ In environments with poor timer resolution (e.g., certain virtual machines or sy
 The `loops_per_trial` parameter allows you to specify how many times a function should be executed in a single timing measurement (trial):
 
 ```python
-# Measure the average time to append 1 to a list of length 100 1000 times, repeated for 500 trials
-# (Note that the same list is used within each of the 1000 loops)
+# Measure the average time it takes to append the number 1 to a list
+# that initially contains 100 elements, repeated 1000 times
+# (Note: the same list instance is used throughout the 1000 append operations)
+# Repeat this process 500 times to perform the benchmark
 @bench(small_list=lambda: list(range(100)))
-@bench.config(trials=500, loops_per_trial=1000)
+@bench.config(trials=500, loops_per_trial=1000, time="us")
 def append_item(small_list):
     small_list.append(1)
 ```
