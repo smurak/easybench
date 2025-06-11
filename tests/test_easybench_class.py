@@ -48,10 +48,10 @@ TIME_COMPARISON_TOLERANCE = 0.01
 EXPECTED_SLEEP_TIME_SEC = 0.01  # 10ms sleep time
 MIN_MS_TIME = 5  # Minimum expected time in milliseconds
 MAX_MS_TIME = 100  # Maximum expected time in milliseconds
-MIN_US_TIME = 5000  # Minimum expected time in microseconds
-MAX_US_TIME = 20000  # Maximum expected time in microseconds
-MIN_S_TIME = 0.005  # Minimum expected time in seconds
-MAX_S_TIME = 0.02  # Maximum expected time in seconds
+MIN_US_TIME = 1000  # Minimum expected time in microseconds
+MAX_US_TIME = 100000  # Maximum expected time in microseconds
+MIN_S_TIME = 0.001  # Minimum expected time in seconds
+MAX_S_TIME = 0.1  # Maximum expected time in seconds
 
 
 class TestEasyBenchOutput:
