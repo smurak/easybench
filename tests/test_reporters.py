@@ -885,32 +885,17 @@ class TestDataFrameFormatter:
         config = BenchConfig(trials=1)
 
         # Mock pandas import failure
-        import builtins
-        from types import ModuleType
+        from unittest import mock
 
-        original_import = builtins.__import__
+        # Mock the import statement to raise ImportError
+        with mock.patch("builtins.__import__") as mock_import:
+            mock_import.side_effect = ImportError("No module named 'pandas'")
 
-        def mock_import(
-            name: str,
-            globals_: Mapping[str, object] | None = None,
-            locals_: Mapping[str, object] | None = None,
-            fromlist: Sequence[str] = (),
-            level: int = 0,
-        ) -> ModuleType:
-            if name == "pandas":
-                error_msg = "No module named 'pandas'"
-                raise ImportError(error_msg)
-            return original_import(name, globals_, locals_, fromlist, level)
-
-        try:
-            builtins.__import__ = mock_import  # type: ignore [method-assign, assignment]
             with pytest.raises(
                 ImportError,
                 match="pandas is required for DataFrame output",
             ):
                 formatter.format(results, stats, config)
-        finally:
-            builtins.__import__ = original_import
 
     def test_format_with_memory_unit(self) -> None:
         """Test formatting results with different memory units."""
