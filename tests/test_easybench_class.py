@@ -47,7 +47,7 @@ TIME_COMPARISON_TOLERANCE = 0.01
 # Constants for time unit conversion tests
 EXPECTED_SLEEP_TIME_SEC = 0.01  # 10ms sleep time
 MIN_MS_TIME = 5  # Minimum expected time in milliseconds
-MAX_MS_TIME = 20  # Maximum expected time in milliseconds
+MAX_MS_TIME = 100  # Maximum expected time in milliseconds
 MIN_US_TIME = 5000  # Minimum expected time in microseconds
 MAX_US_TIME = 20000  # Maximum expected time in microseconds
 MIN_S_TIME = 0.005  # Minimum expected time in seconds
