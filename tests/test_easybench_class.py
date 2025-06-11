@@ -44,6 +44,14 @@ EXPECTED_RESULT_10 = 10
 EXPECTED_RESULT_15 = 15
 # Add tolerance for time comparisons to handle Windows timer resolution
 TIME_COMPARISON_TOLERANCE = 0.01
+# Constants for time unit conversion tests
+EXPECTED_SLEEP_TIME_SEC = 0.01  # 10ms sleep time
+MIN_MS_TIME = 5  # Minimum expected time in milliseconds
+MAX_MS_TIME = 100  # Maximum expected time in milliseconds
+MIN_US_TIME = 1000  # Minimum expected time in microseconds
+MAX_US_TIME = 100000  # Maximum expected time in microseconds
+MIN_S_TIME = 0.001  # Minimum expected time in seconds
+MAX_S_TIME = 0.1  # Maximum expected time in seconds
 
 
 class TestEasyBenchOutput:
@@ -952,6 +960,98 @@ class TestEasyBenchConfig:
 
         assert parsed_out["color"]["max_memory"]["green"] == "bench_small_memory"
         assert parsed_out["color"]["max_memory"]["red"] == "bench_large_memory"
+
+    def test_time_unit_configuration(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that the time unit configuration affects the output display."""
+
+        class TimeUnitBench(EasyBench):
+            def bench_test(self) -> None:
+                time.sleep(0.001)  # Sleep for 1ms
+
+        # Test with milliseconds
+        bench1 = TimeUnitBench()
+        bench1.bench(config=PartialBenchConfig(time="ms"))
+
+        captured1 = capsys.readouterr()
+        assert "Time (ms)" in captured1.out or "Avg Time (ms)" in captured1.out
+
+        # Test with microseconds
+        bench2 = TimeUnitBench()
+        bench2.bench(config=PartialBenchConfig(time="μs"))
+
+        captured2 = capsys.readouterr()
+        assert "Time (μs)" in captured2.out or "Avg Time (μs)" in captured2.out
+
+        # Test with seconds (default)
+        bench3 = TimeUnitBench()
+        bench3.bench()
+
+        captured3 = capsys.readouterr()
+        assert "Time (s)" in captured3.out or "Avg Time (s)" in captured3.out
+
+    def test_us_alternative_for_microseconds(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that 'us' can be used as an alternative for microseconds."""
+
+        class TimeUnitBench(EasyBench):
+            def bench_test(self) -> None:
+                time.sleep(0.001)  # Sleep for 1ms = 1000μs
+
+        # Test with "us" which should be equivalent to "μs"
+        bench = TimeUnitBench()
+        bench.bench(config=PartialBenchConfig(time="us"))
+
+        captured = capsys.readouterr()
+        # Should display microseconds symbol in output
+        assert "Time (μs)" in captured.out or "Avg Time (μs)" in captured.out
+
+    def test_time_unit_conversion(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test that time values are correctly converted to the specified unit."""
+
+        class TimeConversionBench(EasyBench):
+            def bench_sleep(self) -> None:
+                # Sleep for 10ms = 10,000μs = 10,000,000ns
+                time.sleep(EXPECTED_SLEEP_TIME_SEC)
+
+        # Test with different time units
+        bench1 = TimeConversionBench()
+        bench1.bench(config=PartialBenchConfig(time="ms", trials=1))
+
+        captured1 = capsys.readouterr()
+        parsed_out1 = parse_benchmark_output(captured1.out)
+
+        ms_time = parsed_out1["functions"]["bench_sleep"]["time"]
+
+        # Should be around 10 in milliseconds
+        assert MIN_MS_TIME <= ms_time <= MAX_MS_TIME
+
+        # Test with microseconds
+        bench2 = TimeConversionBench()
+        bench2.bench(config=PartialBenchConfig(time="us", trials=1))
+
+        captured2 = capsys.readouterr()
+        parsed_out2 = parse_benchmark_output(captured2.out)
+        us_time = parsed_out2["functions"]["bench_sleep"]["time"]
+
+        # Should be around 10000 in microseconds (10ms = 10,000μs)
+        assert MIN_US_TIME <= us_time <= MAX_US_TIME
+
+        # Test with seconds
+        bench3 = TimeConversionBench()
+        bench3.bench(config=PartialBenchConfig(time="s", trials=1))
+
+        captured3 = capsys.readouterr()
+        parsed_out3 = parse_benchmark_output(captured3.out)
+        s_time = parsed_out3["functions"]["bench_sleep"]["time"]
+
+        # Should be around 0.01 in seconds
+        assert MIN_S_TIME <= s_time <= MAX_S_TIME
 
 
 class TestFunctionBench:

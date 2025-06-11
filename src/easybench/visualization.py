@@ -20,7 +20,7 @@ except ImportError as err:
     raise ImportError(error_msg) from err
 
 from .core import BenchConfig, ResultsType, StatsType
-from .reporters import Formatted, Formatter, MemoryUnit, Reporter
+from .reporters import Formatted, Formatter, MemoryUnit, Reporter, TimeUnit
 
 # Constants for magic values
 MAX_PERCENTILE_THRESHOLD = 0.5
@@ -114,6 +114,7 @@ class BoxplotFormatter(PlotFormatter):
         """
         # Extract and preprocess data
         time_data, labels = self._preprocess_data(results, stats, config)
+        time_unit = TimeUnit.from_config(config)
 
         # Create figure and axes based on memory tracking
         if config.memory:
@@ -131,8 +132,14 @@ class BoxplotFormatter(PlotFormatter):
             else:
                 self._create_matplotlib_boxplot(ax_time, box_data_time, labels)
 
-            # Apply styling to time plot
-            self._apply_styling(ax_time, config, labels, title_suffix="")
+            # Apply styling to time plot with time unit
+            self._apply_styling(
+                ax_time,
+                config,
+                labels,
+                title_suffix="",
+                unit=str(time_unit),
+            )
 
             # Process memory data using dedicated method
             self._process_memory_subplot(ax_mem, results, config, labels)
@@ -144,7 +151,14 @@ class BoxplotFormatter(PlotFormatter):
                 self._create_seaborn_boxplot(ax, box_data, labels)
             else:
                 self._create_matplotlib_boxplot(ax, box_data, labels)
-            self._apply_styling(ax, config, labels)
+
+            # Apply styling with time unit
+            self._apply_styling(
+                ax,
+                config,
+                labels,
+                unit=str(time_unit),
+            )
 
         plt.tight_layout()
         return fig
@@ -196,6 +210,7 @@ class BoxplotFormatter(PlotFormatter):
         """Extract and preprocess benchmark data."""
         data: dict[str, list[float]] = {}
         labels = []
+        time_unit = TimeUnit.from_config(config)
 
         # Sort method names according to configuration
         sorted_methods = self.sort_keys(stats, config)
@@ -205,7 +220,11 @@ class BoxplotFormatter(PlotFormatter):
             # No outlier handling needed, extract raw data and return early
             for method_name in sorted_methods:
                 if "times" in results[method_name]:
-                    data[method_name] = results[method_name]["times"]
+                    # Convert time values to the specified unit
+                    data[method_name] = [
+                        time_unit.convert_seconds(t)
+                        for t in results[method_name]["times"]
+                    ]
                     labels.append(method_name)
             return data, labels
 
@@ -415,7 +434,7 @@ class BoxplotFormatter(PlotFormatter):
         config: BenchConfig,
         labels: list[str],
         title_suffix: str = "",
-        unit: str = "seconds",
+        unit: str = "s",
     ) -> None:
         """Apply common styling to the plot."""
         # Set the scale (log or linear)
@@ -459,7 +478,10 @@ class BoxplotFormatter(PlotFormatter):
 
     def _set_axis_labels(self, ax: plt.Axes, unit: str) -> None:
         """Set appropriate axis labels based on orientation and measurement type."""
-        label_text = "Time (seconds)" if unit == "seconds" else f"Memory ({unit})"
+        if any(unit == item.value for item in TimeUnit):
+            label_text = f"Time ({unit})"
+        else:
+            label_text = f"Memory ({unit})"
 
         if self.orientation == "horizontal":
             ax.set_xlabel(label_text)

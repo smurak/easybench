@@ -42,6 +42,7 @@ from .reporters import (
     MemoryUnit,
     Reporter,
     SimpleConsoleReporter,
+    TimeUnit,
 )
 
 # Configure logger
@@ -125,7 +126,8 @@ class PartialBenchConfig(BaseModel):
     loops_per_trial: int | None = None
     sort_by: SortType | None = None
     reverse: bool | None = None
-    memory: bool | MemoryUnit | None = None
+    memory: bool | MemoryUnit | str | None = None
+    time: TimeUnit | str | None = None
     color: bool | None = None
     show_output: bool | None = None
     return_output: bool | None = None
@@ -200,7 +202,8 @@ class BenchConfig(PartialBenchConfig):
     loops_per_trial: int = 1
     sort_by: SortType = "def"
     reverse: bool = False
-    memory: bool | MemoryUnit = False
+    memory: bool | MemoryUnit | str = False
+    time: TimeUnit | str = TimeUnit.SECONDS
     color: bool = True
     show_output: bool = False
     return_output: bool = False

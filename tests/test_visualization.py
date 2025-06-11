@@ -674,3 +674,37 @@ class TestPlotReporter:
                 stats=sample_stats,
                 config=sample_config,
             )
+
+
+class TestBoxplotFormatterTimeUnits:
+    """Test BoxplotFormatter handling of different time units from BenchConfig."""
+
+    def test_boxplot_formatter_with_time_units(self) -> None:
+        """Test BoxplotFormatter with different time units."""
+        # Skip if matplotlib is not available
+        pytest.importorskip("matplotlib")
+
+        time_units = ["s", "ms", "μs", "us", "ns", "m"]
+        # Create sample results and stats
+        results: dict[str, ResultType] = {"test_func": {"times": [1.0, 2.0, 3.0]}}
+        stats = {"test_func": complete_stat({"avg": 2.0, "min": 1.0, "max": 3.0})}
+
+        for time_unit in time_units:
+            config = BenchConfig(time=time_unit)
+
+            # Test BoxplotFormatter
+            boxplot_formatter = BoxplotFormatter()
+            figure = boxplot_formatter.format(results, stats, config)
+
+            # Check the label on the axis
+            display_unit = "μs" if time_unit == "us" else time_unit
+            assert hasattr(figure, "axes"), "Figure has no axes attribute"
+            assert figure.axes, "Figure has no axes"
+
+            axis = figure.axes[0]
+            time_label = f"Time ({display_unit})"
+
+            # The label might be on x-axis or y-axis depending on orientation
+            assert (
+                time_label in axis.get_xlabel() or time_label in axis.get_ylabel()
+            ), f"Time unit {display_unit} not found in plot labels"
