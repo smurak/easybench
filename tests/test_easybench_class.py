@@ -14,6 +14,8 @@ import logging
 import time
 from collections.abc import Callable, Generator
 from typing import Any, ClassVar, cast
+from unittest import mock
+from unittest.mock import patch
 
 import pytest
 
@@ -1007,19 +1009,25 @@ class TestEasyBenchConfig:
         # Should display microseconds symbol in output
         assert "Time (μs)" in captured.out or "Avg Time (μs)" in captured.out
 
+    @patch("time.perf_counter")
     def test_time_unit_conversion(
         self,
+        mock_perf_counter: mock.MagicMock,
         capsys: pytest.CaptureFixture[str],
         parse_benchmark_output: Callable[[str], dict[str, Any]],
     ) -> None:
         """Test that time values are correctly converted to the specified unit."""
+        # Configure the mock to return predetermined values for start/end times
+        # This simulates a function that takes exactly 0.01 seconds (10ms)
+        bench_time = 0.01
+        mock_perf_counter.side_effect = [0.0, bench_time]
 
         class TimeConversionBench(EasyBench):
             def bench_sleep(self) -> None:
-                # Sleep for 10ms = 10,000μs = 10,000,000ns
-                time.sleep(EXPECTED_SLEEP_TIME_SEC)
+                # With mocked perf_counter, we don't need to actually sleep
+                pass
 
-        # Test with different time units
+        # Test with milliseconds
         bench1 = TimeConversionBench()
         bench1.bench(config=PartialBenchConfig(time="ms", trials=1))
 
@@ -1028,8 +1036,13 @@ class TestEasyBenchConfig:
 
         ms_time = parsed_out1["functions"]["bench_sleep"]["time"]
 
-        # Should be around 10 in milliseconds
-        assert MIN_MS_TIME <= ms_time <= MAX_MS_TIME
+        # Should be around 10 in milliseconds (0.01s * 1000)
+        assert ms_time == bench_time * 1000
+
+        # Reset mock for next test
+        mock_perf_counter.reset_mock()
+        bench_time = 0.01
+        mock_perf_counter.side_effect = [0.0, bench_time]
 
         # Test with microseconds
         bench2 = TimeConversionBench()
@@ -1039,8 +1052,13 @@ class TestEasyBenchConfig:
         parsed_out2 = parse_benchmark_output(captured2.out)
         us_time = parsed_out2["functions"]["bench_sleep"]["time"]
 
-        # Should be around 10000 in microseconds (10ms = 10,000μs)
-        assert MIN_US_TIME <= us_time <= MAX_US_TIME
+        # Should be around 10000 in microseconds (0.01s * 1000000)
+        assert us_time == bench_time * 1000000
+
+        # Reset mock for next test
+        mock_perf_counter.reset_mock()
+        bench_time = 0.01
+        mock_perf_counter.side_effect = [0.0, bench_time]
 
         # Test with seconds
         bench3 = TimeConversionBench()
@@ -1050,8 +1068,8 @@ class TestEasyBenchConfig:
         parsed_out3 = parse_benchmark_output(captured3.out)
         s_time = parsed_out3["functions"]["bench_sleep"]["time"]
 
-        # Should be around 0.01 in seconds
-        assert MIN_S_TIME <= s_time <= MAX_S_TIME
+        # Should be exactly 0.01 in seconds
+        assert s_time == bench_time
 
 
 class TestFunctionBench:
