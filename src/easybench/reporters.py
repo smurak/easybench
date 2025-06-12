@@ -514,7 +514,7 @@ class JSONFormatter(Formatter):
         """Format results as JSON."""
         memory_unit = MemoryUnit.from_config(config)
         time_unit = TimeUnit.from_config(config)
-        output_data: dict[str, dict[str, Any]] = {
+        output_data: dict[str, Any] = {
             "config": {
                 "trials": config.trials,
                 "memory": config.memory,
@@ -523,7 +523,8 @@ class JSONFormatter(Formatter):
                 "reverse": config.reverse,
                 "memory_unit": str(memory_unit),
             },
-            "results": {},
+            "stats": {},
+            "results": results,
         }
 
         for method_name in self.sort_keys(stats, config):
@@ -541,13 +542,7 @@ class JSONFormatter(Formatter):
                 if "max_memory" in stat:
                     stat["max_memory"] = memory_unit.convert_bytes(stat["max_memory"])
 
-            output_data["results"][method_name] = stat
-
-            # Add output values if requested
-            if config.show_output and "output" in results[method_name]:
-                output_data["results"][method_name]["output"] = results[method_name][
-                    "output"
-                ]
+            output_data["stats"][method_name] = stat
 
         return json.dumps(output_data, indent=2)
 
