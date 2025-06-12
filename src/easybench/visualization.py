@@ -51,7 +51,7 @@ class PlotFormatter(Formatter):
         """
 
 
-class BoxplotFormatter(PlotFormatter):
+class BoxPlotFormatter(PlotFormatter):
     """Format benchmark results as a matplotlib boxplot."""
 
     def __init__(
@@ -68,7 +68,7 @@ class BoxplotFormatter(PlotFormatter):
         **boxplot_kwargs: object,
     ) -> None:
         """
-        Initialize BoxplotFormatter.
+        Initialize BoxPlotFormatter.
 
         Args:
             showfliers: Whether to show outliers in the boxplot (default: True)
@@ -233,7 +233,7 @@ class BoxplotFormatter(PlotFormatter):
             import numpy as np
         except ImportError as err:
             error_msg = (
-                "numpy is required for outlier handling in BoxplotFormatter. "
+                "numpy is required for outlier handling in BoxPlotFormatter. "
                 "Install with pip install numpy."
             )
             raise ImportError(error_msg) from err

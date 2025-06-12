@@ -645,13 +645,13 @@ bench_config = BenchConfig(
 )
 ```
 
-### Boxplot Visualization (`BoxplotFormatter`)
+### Boxplot Visualization (`BoxPlotFormatter`)
 
 You can visualize benchmark results as boxplots, which is useful for analyzing distribution and outliers across multiple trials:
 
 ```python
 from easybench import BenchConfig, EasyBench
-from easybench.visualization import BoxplotFormatter, PlotReporter
+from easybench.visualization import BoxPlotFormatter, PlotReporter
 
 
 class BenchList(EasyBench):
@@ -659,7 +659,7 @@ class BenchList(EasyBench):
         trials=100,
         reporters=[
             PlotReporter(
-                BoxplotFormatter(
+                BoxPlotFormatter(
                     showfliers=True,           # Show outliers
                     log_scale=True,            # Use logarithmic scale
                     engine="seaborn",          # Use seaborn as plotting engine
@@ -700,7 +700,7 @@ if __name__ == "__main__":
 
 ![Boxplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_boxplot.png)
 
-### Main `BoxplotFormatter` options
+### Main `BoxPlotFormatter` options
 
 - `showfliers`: Whether to show outliers (default: `True`)
 - `log_scale`: Whether to use logarithmic scale (default: `False`)
@@ -713,7 +713,7 @@ if __name__ == "__main__":
 
 ### `PlotReporter` options
 
-- `formatter`: Plot formatter to use (e.g., `BoxplotFormatter`)
+- `formatter`: Plot formatter to use (e.g., `BoxPlotFormatter`)
 - `show`: Whether to display the plot on screen (default: `True`)
 - `save_path`: File path to save the plot
 - `dpi`: Image resolution (default: `100`)

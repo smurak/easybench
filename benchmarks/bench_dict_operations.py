@@ -2,7 +2,7 @@
 
 from easybench import BenchConfig, EasyBench
 from easybench.reporters import ConsoleReporter
-from easybench.visualization import BoxplotFormatter, PlotReporter
+from easybench.visualization import BoxPlotFormatter, PlotReporter
 
 
 class BenchDictOperation(EasyBench):
@@ -84,7 +84,7 @@ if __name__ == "__main__":
             reporters=[
                 ConsoleReporter(),
                 PlotReporter(
-                    BoxplotFormatter(
+                    BoxPlotFormatter(
                         showfliers=True,
                         log_scale=True,
                         engine="seaborn",

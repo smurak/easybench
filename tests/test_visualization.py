@@ -3,7 +3,7 @@ Tests for the visualization module.
 
 This module tests visualization-related classes including:
 - PlotFormatter
-- BoxplotFormatter
+- BoxPlotFormatter
 - PlotReporter
 
 Tests require matplotlib and optionally seaborn.
@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import pytest
 
 from easybench.core import BenchConfig, ResultType, StatType
-from easybench.visualization import BoxplotFormatter, PlotFormatter, PlotReporter
+from easybench.visualization import BoxPlotFormatter, PlotFormatter, PlotReporter
 
 # Constants for test values
 TEST_TIME_VALUE = 0.1
@@ -93,12 +93,12 @@ def sample_config() -> BenchConfig:
     return BenchConfig(trials=3)
 
 
-class TestBoxplotFormatter:
-    """Tests for the BoxplotFormatter class."""
+class TestBoxPlotFormatter:
+    """Tests for the BoxPlotFormatter class."""
 
     def test_init_with_defaults(self) -> None:
         """Test initialization with default parameters."""
-        formatter = BoxplotFormatter()
+        formatter = BoxPlotFormatter()
         assert formatter.showfliers is True
         assert formatter.log_scale is False
         assert formatter.data_limit is None
@@ -108,7 +108,7 @@ class TestBoxplotFormatter:
 
     def test_init_with_custom_params(self) -> None:
         """Test initialization with custom parameters."""
-        formatter = BoxplotFormatter(
+        formatter = BoxPlotFormatter(
             showfliers=False,
             log_scale=True,
             data_limit=(0.0, 1.0),
@@ -136,7 +136,7 @@ class TestBoxplotFormatter:
         sample_config: BenchConfig,
     ) -> None:
         """Test data preprocessing with no outlier handling."""
-        formatter = BoxplotFormatter()
+        formatter = BoxPlotFormatter()
         data, labels = formatter._preprocess_data(
             sample_results,
             sample_stats,
@@ -168,7 +168,7 @@ class TestBoxplotFormatter:
             warnings.catch_warnings()
             warnings.simplefilter("ignore", PendingDeprecationWarning)
 
-        formatter = BoxplotFormatter(engine=engine)  # type: ignore [arg-type]
+        formatter = BoxPlotFormatter(engine=engine)  # type: ignore [arg-type]
 
         with (
             mock.patch("matplotlib.pyplot.show"),
@@ -188,7 +188,7 @@ class TestBoxplotFormatter:
         sample_config: BenchConfig,
     ) -> None:
         """Test formatting with different orientations."""
-        formatter = BoxplotFormatter(orientation=orientation)  # type: ignore [arg-type]
+        formatter = BoxPlotFormatter(orientation=orientation)  # type: ignore [arg-type]
 
         with (
             mock.patch("matplotlib.pyplot.show"),
@@ -209,7 +209,7 @@ class TestBoxplotFormatter:
         if not find_spec("numpy"):
             pytest.skip("numpy not installed")
 
-        formatter = BoxplotFormatter(trim_outliers=DEFAULT_TRIM_OUTLIERS)
+        formatter = BoxPlotFormatter(trim_outliers=DEFAULT_TRIM_OUTLIERS)
         with (
             mock.patch("matplotlib.pyplot.show"),
             mock.patch("matplotlib.pyplot.savefig"),
@@ -228,7 +228,7 @@ class TestBoxplotFormatter:
         if not find_spec("numpy"):
             pytest.skip("numpy not installed")
 
-        formatter = BoxplotFormatter(winsorize_outliers=DEFAULT_TRIM_OUTLIERS)
+        formatter = BoxPlotFormatter(winsorize_outliers=DEFAULT_TRIM_OUTLIERS)
         with (
             mock.patch("matplotlib.pyplot.show"),
             mock.patch("matplotlib.pyplot.savefig"),
@@ -239,7 +239,7 @@ class TestBoxplotFormatter:
 
     def test_create_matplotlib_boxplot(self) -> None:
         """Test creation of boxplot with matplotlib engine."""
-        formatter = BoxplotFormatter()
+        formatter = BoxPlotFormatter()
 
         # Mock a matplotlib Axes object
         with mock.patch("matplotlib.pyplot.Axes") as mock_axes:
@@ -262,7 +262,7 @@ class TestBoxplotFormatter:
         if not find_spec("seaborn"):
             pytest.skip("seaborn not installed")
 
-        formatter = BoxplotFormatter(engine="seaborn")
+        formatter = BoxPlotFormatter(engine="seaborn")
 
         with mock.patch("seaborn.boxplot") as mock_boxplot:
             # Mock a matplotlib Axes object
@@ -283,7 +283,7 @@ class TestBoxplotFormatter:
 
         Tests the horizontal orientation case.
         """
-        formatter = BoxplotFormatter(orientation="horizontal")
+        formatter = BoxPlotFormatter(orientation="horizontal")
 
         # Create mock Axes
         mock_axes = mock.MagicMock()
@@ -322,7 +322,7 @@ class TestBoxplotFormatter:
 
         Tests the vertical orientation case.
         """
-        formatter = BoxplotFormatter(orientation="vertical")
+        formatter = BoxPlotFormatter(orientation="vertical")
 
         # Create mock Axes
         mock_axes = mock.MagicMock()
@@ -397,7 +397,7 @@ class TestBoxplotFormatter:
         # Create a config with memory enabled
         memory_config = BenchConfig(trials=3, memory=True)
 
-        formatter = BoxplotFormatter()
+        formatter = BoxPlotFormatter()
 
         with (
             mock.patch("matplotlib.pyplot.show"),
@@ -448,7 +448,7 @@ class TestBoxplotFormatter:
         # Create a config with memory enabled
         memory_config = BenchConfig(trials=3, memory=True)
 
-        formatter = BoxplotFormatter()
+        formatter = BoxPlotFormatter()
         labels = ["test_func1", "test_func2"]
 
         # Call _preprocess_memory_data directly
@@ -492,7 +492,7 @@ class TestBoxplotFormatter:
         # Create a config with memory in MB
         memory_config = BenchConfig(trials=1, memory="MB")  # type: ignore [arg-type]
 
-        formatter = BoxplotFormatter()
+        formatter = BoxPlotFormatter()
 
         with (
             mock.patch("matplotlib.pyplot.show"),
@@ -549,7 +549,7 @@ class TestBoxplotFormatter:
         # Create a config with memory enabled
         memory_config = BenchConfig(trials=1, memory=True)
 
-        formatter = BoxplotFormatter()
+        formatter = BoxPlotFormatter()
         labels = ["test_func1", "test_func2"]
 
         # Mock matplotlib axes
@@ -676,11 +676,11 @@ class TestPlotReporter:
             )
 
 
-class TestBoxplotFormatterTimeUnits:
-    """Test BoxplotFormatter handling of different time units from BenchConfig."""
+class TestBoxPlotFormatterTimeUnits:
+    """Test BoxPlotFormatter handling of different time units from BenchConfig."""
 
     def test_boxplot_formatter_with_time_units(self) -> None:
-        """Test BoxplotFormatter with different time units."""
+        """Test BoxPlotFormatter with different time units."""
         # Skip if matplotlib is not available
         pytest.importorskip("matplotlib")
 
@@ -692,8 +692,8 @@ class TestBoxplotFormatterTimeUnits:
         for time_unit in time_units:
             config = BenchConfig(time=time_unit)
 
-            # Test BoxplotFormatter
-            boxplot_formatter = BoxplotFormatter()
+            # Test BoxPlotFormatter
+            boxplot_formatter = BoxPlotFormatter()
             figure = boxplot_formatter.format(results, stats, config)
 
             # Check the label on the axis

@@ -645,14 +645,14 @@ bench_config = BenchConfig(
 )
 ```
 
-### ボックスプロットによる可視化 (`BoxplotFormatter`)
+### ボックスプロットによる可視化 (`BoxPlotFormatter`)
 
 ベンチマーク結果をボックスプロット（箱ひげ図）として視覚化することができます。  
 これは複数試行間の分布や外れ値を分析するのに役立ちます。
 
 ```python
 from easybench import BenchConfig, EasyBench
-from easybench.visualization import BoxplotFormatter, PlotReporter
+from easybench.visualization import BoxPlotFormatter, PlotReporter
 
 
 class BenchList(EasyBench):
@@ -660,7 +660,7 @@ class BenchList(EasyBench):
         trials=100,
         reporters=[
             PlotReporter(
-                BoxplotFormatter(
+                BoxPlotFormatter(
                     showfliers=True,        # 外れ値を表示するかどうか
                     log_scale=True,         # 対数スケールを使用
                     engine="seaborn",       # プロットエンジンとしてseabornを使用
@@ -701,7 +701,7 @@ if __name__ == "__main__":
 
 ![Boxplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_boxplot.png)
 
-#### `BoxplotFormatter` の主なオプション
+#### `BoxPlotFormatter` の主なオプション
 
 - `showfliers`: 外れ値を表示するかどうか（デフォルト: `True`）
 - `log_scale`: 対数スケールを使用するかどうか（デフォルト: `False`）
@@ -714,7 +714,7 @@ if __name__ == "__main__":
 
 #### `PlotReporter` のオプション
 
-- `formatter`: 使用するプロットフォーマッタ（例: `BoxplotFormatter`）
+- `formatter`: 使用するプロットフォーマッタ（例: `BoxPlotFormatter`）
 - `show`: プロットを画面に表示するかどうか（デフォルト: `True`）
 - `save_path`: プロットを保存するファイルパス
 - `dpi`: 画像の解像度（デフォルト: `100`）
