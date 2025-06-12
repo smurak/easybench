@@ -18,6 +18,7 @@ from unittest import mock
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
 from easybench import BenchConfig, EasyBench, fixture
 from easybench.core import (
@@ -1805,3 +1806,57 @@ class TestParametrizedDecorator:
 
         captured = capsys.readouterr()
         assert "bench_count_loops" in captured.out
+
+    def test_loops_per_trial_configuration2(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test configuring and overriding loops per trial."""
+        loop_count = 0
+        trials = 2
+        warmups = 5
+        loops_per_trial = 3
+
+        class LoopsBench(EasyBench):
+            # Set loops_per_trial in the configuration
+            bench_config = BenchConfig(
+                trials=trials,
+                loops_per_trial=loops_per_trial,
+                warmups=warmups,
+            )
+
+            def bench_count_loops(self) -> int:
+                nonlocal loop_count
+                loop_count += 1
+                return loop_count
+
+        # Create an instance and run with the default configuration
+        bench1 = LoopsBench()
+        bench1.bench()
+
+        # With 2 trials and 3 loops per trial, we expect 6 calls
+        assert loop_count == (trials + warmups) * loops_per_trial
+
+
+class TestConfigValidation:
+    """Tests for configuration validation in BenchConfig and PartialBenchConfig."""
+
+    def test_benchconfig_validation(self):
+        """Test that BenchConfig validates parameters and raises error for undefined ones."""
+        # Test with a misspelled parameter
+        with pytest.raises(ValidationError):
+            BenchConfig(loops_per_trials=10)  # Typo: should be loops_per_trial
+            
+        # Test with an entirely made-up parameter
+        with pytest.raises(ValidationError):
+            BenchConfig(nonexistent_param=42)
+
+    def test_partialbenchconfig_validation(self):
+        """Test that PartialBenchConfig validates parameters and raises error for undefined ones."""
+        # Test with a misspelled parameter
+        with pytest.raises(ValidationError):
+            PartialBenchConfig(loops_per_trials=10)  # Typo: should be loops_per_trial
+            
+        # Test with an entirely made-up parameter
+        with pytest.raises(ValidationError):
+            PartialBenchConfig(nonexistent_param=42)
