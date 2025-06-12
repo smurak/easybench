@@ -124,6 +124,7 @@ class PartialBenchConfig(BaseModel):
 
     trials: int | None = None
     loops_per_trial: int | None = None
+    warmups: int | None = None
     sort_by: SortType | None = None
     reverse: bool | None = None
     memory: bool | MemoryUnit | str | None = None
@@ -194,12 +195,22 @@ class PartialBenchConfig(BaseModel):
             raise ValueError(msg)
         return v
 
+    @field_validator("warmups", mode="before")
+    @classmethod
+    def validate_warmups(cls, v: int | None) -> int | None:
+        """Validate warmups."""
+        if v is not None and v < 0:
+            msg = "warmups must be at least 0"
+            raise ValueError(msg)
+        return v
+
 
 class BenchConfig(PartialBenchConfig):
     """Complete configuration for EasyBench with required values."""
 
     trials: int = 5
     loops_per_trial: int = 1
+    warmups: int = 0
     sort_by: SortType = "def"
     reverse: bool = False
     memory: bool | MemoryUnit | str = False
@@ -471,7 +482,11 @@ class EasyBench:
             result_dict["output"] = []
 
         with self._manage_scope("function", values, fixture_registry):
-            for _ in range(config.trials):
+            warmup = True
+            for i in range(config.warmups + config.trials):
+                if i == config.warmups:
+                    warmup = False
+
                 with self._manage_scope("trial", values, fixture_registry):
                     # Run the benchmark and record the time, memory, and result
                     execution_time, memory_usage, func_result = (
@@ -484,13 +499,14 @@ class EasyBench:
                         )
                     )
 
-                    result_dict["times"].append(execution_time)
+                    if not warmup:
+                        result_dict["times"].append(execution_time)
 
-                    if config.memory and memory_usage is not None:
-                        result_dict["memory"].append(memory_usage)
+                        if config.memory and memory_usage is not None:
+                            result_dict["memory"].append(memory_usage)
 
-                    if capture_output:
-                        result_dict["output"].append(func_result)
+                        if capture_output:
+                            result_dict["output"].append(func_result)
 
         return result_dict
 

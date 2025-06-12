@@ -410,6 +410,7 @@ from easybench import BenchConfig, EasyBench
 class MyBenchmark(EasyBench):
     bench_config = BenchConfig(
         trials=5,            # 試行回数
+        warmups=2,           # 測定前のウォームアップ試行回数
         sort_by="avg",       # ソート基準
         reverse=False,       # ソート順序（False=昇順、True=降順）
         memory="MB",         # メモリ測定を有効化し、メガバイト単位で表示
@@ -442,6 +443,35 @@ class MyBenchmark(EasyBench):
 - `"μs"` or `"us"`: マイクロ秒単位で表示
 - `"ns"`: ナノ秒単位で表示
 - `"m"`: 分単位で表示
+
+### ウォームアップによる測定精度の向上（`warmups`）
+
+ベンチマーク測定時、初回の実行はコードのコンパイルやキャッシュのウォームアップなど、
+様々な要因の影響を受ける可能性があります。より安定した正確な測定を得るために、
+`warmups`パラメータを使って、実際の測定開始前に何回の試行を行うかを指定できます：
+
+```python
+@bench
+@bench.config(trials=5, warmups=3, time="ms")
+def my_function():
+    # この関数はウォームアップとして3回実行され（結果は破棄）、
+    # その後に5回の実際の測定試行が行われます
+    # ...
+```
+
+`warmups`の動作方法：
+
+- 実際の測定を開始する前に、関数が`warmups`回実行されます
+- 各ウォームアップは、setup_trial/teardown_trialを含む完全な試行実行です
+- ウォームアップ試行の結果は破棄され、測定結果には含まれません
+- ウォームアップが完了すると、結果を記録する通常の試行が始まります
+
+使用すべき場面：
+
+- JITコンパイルを必要とする関数が最適なパフォーマンスに達するため
+- システムがキャッシュをウォームアップしたり、安定状態に達する時間が必要な場合
+- 最初の数回の実行が一貫して異なるパフォーマンス特性を示す場合
+
 
 ### タイマー精度の改善（`loops_per_trial`）
 

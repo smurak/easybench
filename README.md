@@ -197,6 +197,7 @@ def pop_last(big_list):
 Main configuration options:
 
 * `trials`: Number of trials (default: `5`)
+* `warmups`: Number of warmup trials before actual measurement (default: `0`)
 * `memory`: Also measure memory usage
   * `False`: Disable memory measurement (default)
   * `True`: Show memory in kilobytes
@@ -410,6 +411,7 @@ from easybench import BenchConfig, EasyBench
 class MyBenchmark(EasyBench):
     bench_config = BenchConfig(
         trials=5,            # Number of trials
+        warmups=2,           # Number of warmup trials before actual measurement
         sort_by="avg",       # Sort criterion
         reverse=False,       # Sort order (False=ascending, True=descending)
         memory="MB",         # Enable memory measurement and show in megabytes
@@ -442,6 +444,33 @@ Time measurement options (`time`):
 - `"μs"` or `"us"`: Display time in microseconds
 - `"ns"`: Display time in nanoseconds
 - `"m"`: Display time in minutes
+
+### Improving Measurement Accuracy with `warmups`
+
+When benchmarking, the initial runs might be affected by various factors like code compilation, 
+cache warmup, or other system effects. To get more stable and accurate measurements, you can 
+use the `warmups` parameter to specify how many trial runs should be performed before the actual 
+measurement begins:
+
+```python
+@bench
+@bench.config(trials=5, warmups=3, time="ms")
+def my_function():
+    # This function will be run 3 times as warmup (results discarded)
+    # before the 5 actual trials that are measured
+    # ...
+```
+
+How `warmups` works:
+- Before actual measurements begin, the function is executed `warmups` times
+- Each warmup is a complete trial execution including setup_trial/teardown_trial
+- Results from warmup trials are discarded and not included in measurements
+- After warmups are complete, regular trials begin with results being recorded
+
+When to use:
+- For functions that need JIT compilation to reach optimal performance
+- When the system needs time to "warm up" caches or reach steady state
+- When you notice that the first few runs consistently show different performance characteristics
 
 ### Improving Timer Precision with `loops_per_trial`
 
