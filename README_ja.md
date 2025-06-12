@@ -132,6 +132,9 @@ pip install easybench
 
   ![Boxplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_boxplot.png)
 
+* ラインプロットによる視覚化
+
+  ![Lineplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_lineplot.png)
 
 ## 使用方法
 
@@ -583,7 +586,8 @@ EasyBenchでは、**レポーター**（Reporter）という仕組みを使用�
 1. **文字列で指定**：レポーター名を文字列として指定する
    - `"console"`: 標準的なテーブル形式のコンソール出力
    - `"simple"`: シンプルなコンソール出力
-   - `"plot"`: ボックスプロットによる可視化
+   - `"plot"` or `"boxplot"`: ボックスプロットによる可視化
+   - `"lineplot"`: ラインプロットによる視覚化
    - `"*.csv"` または `"*.json"`: ファイル出力
 
 2. **引数付きで指定**：`(レポーター名, パラメータ辞書)`の形式で指定する

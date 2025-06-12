@@ -95,3 +95,7 @@ There are 3 ways to benchmark with `easybench`:
 * Boxplot Visualization
 
     ![Boxplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_boxplot.png)
+
+* Lineplot Visualization
+
+    ![Lineplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_lineplot.png)
