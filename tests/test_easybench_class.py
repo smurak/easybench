@@ -18,6 +18,7 @@ from unittest import mock
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
 from easybench import BenchConfig, EasyBench, fixture
 from easybench.core import (
@@ -1805,3 +1806,27 @@ class TestParametrizedDecorator:
 
         captured = capsys.readouterr()
         assert "bench_count_loops" in captured.out
+
+
+class TestConfigValidation:
+    """Tests for configuration validation in BenchConfig and PartialBenchConfig."""
+
+    def test_benchconfig_validation(self) -> None:
+        """Test ValidationError for BenchConfig."""
+        # Test with a misspelled parameter
+        with pytest.raises(ValidationError):
+            BenchConfig(loops_per_trials=10)  # type: ignore [call-arg]
+
+        # Test with an entirely made-up parameter
+        with pytest.raises(ValidationError):
+            BenchConfig(nonexistent_param=42)  # type: ignore [call-arg]
+
+    def test_partialbenchconfig_validation(self) -> None:
+        """Test ValidationError for PartialBenchConfig."""
+        # Test with a misspelled parameter
+        with pytest.raises(ValidationError):
+            PartialBenchConfig(loops_per_trials=10)  # type: ignore [call-arg]
+
+        # Test with an entirely made-up parameter
+        with pytest.raises(ValidationError):
+            PartialBenchConfig(nonexistent_param=42)  # type: ignore [call-arg]

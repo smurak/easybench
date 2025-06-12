@@ -124,7 +124,10 @@ class ParametrizedFunction(Protocol[P, R_co]):
 class PartialBenchConfig(BaseModel):
     """Partial configuration for EasyBench with optional values."""
 
-    model_config = {"arbitrary_types_allowed": True}
+    model_config = {
+        "arbitrary_types_allowed": True,
+        "extra": "forbid",
+    }
 
     trials: int | None = None
     loops_per_trial: int | None = None
