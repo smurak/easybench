@@ -26,6 +26,7 @@ from easybench.core import (
     FixtureRegistry,
     PartialBenchConfig,
     ScopeType,
+    customize,
     parametrize,
 )
 
@@ -1806,6 +1807,80 @@ class TestParametrizedDecorator:
 
         captured = capsys.readouterr()
         assert "bench_count_loops" in captured.out
+
+    def test_loops_per_trial_configuration2(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that loops_per_trial can be configured per method with @customize."""
+        trials = 2
+        loops = 10
+
+        class CustomLoopsBench(EasyBench):
+            bench_config = BenchConfig(trials=trials)
+
+            def setup_class(self) -> None:
+                self.counter = 0
+
+            @customize(loops_per_trial=loops)
+            def bench_with_custom_loops(self) -> None:
+                self.counter += 1
+
+            def bench_with_default_loops(self) -> None:
+                self.counter += 1
+
+        bench = CustomLoopsBench()
+        bench.bench()
+
+        # The counter should increase by:
+        # - bench_with_custom_loops: 2 trials * 10 loops = 20 increments
+        # - bench_with_default_loops: 2 trials * 1 loop = 2 increments
+        # Total: 22 increments
+        assert bench.counter == trials * loops + trials
+
+        captured = capsys.readouterr()
+        assert "bench_with_custom_loops" in captured.out
+        assert "bench_with_default_loops" in captured.out
+        assert "Benchmark Results" in captured.out
+
+    def test_parametrize_with_customize(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that parametrize and customize can be used together."""
+        # Define parameter sets
+        small = BenchParams(name="Small", params={"size": 100})
+        large = BenchParams(name="Large", params={"size": 500})
+
+        trials = 2
+        loops = 5
+
+        class CombinedDecorators(EasyBench):
+            bench_config = BenchConfig(trials=trials)
+
+            def setup_class(self) -> None:
+                self.counter = 0
+
+            @parametrize([small, large])
+            @customize(loops_per_trial=loops)
+            def bench_test(self, size: int) -> None:
+                # This should run with 5 loops per trial for each parameter set
+                _ = size
+                self.counter += 1
+
+        bench = CombinedDecorators()
+        bench.bench()
+
+        # The counter should increase by:
+        # - bench_test with Small param: 2 trials * 5 loops = 10 increments
+        # - bench_test with Large param: 2 trials * 5 loops = 10 increments
+        # Total: 20 increments
+        assert bench.counter == trials * loops * 2
+
+        captured = capsys.readouterr()
+        assert "bench_test (Small)" in captured.out
+        assert "bench_test (Large)" in captured.out
+        assert "Benchmark Results" in captured.out
 
 
 class TestConfigValidation:

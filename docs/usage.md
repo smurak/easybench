@@ -276,7 +276,7 @@ The `scope` parameter of the `fixture` decorator specifies the lifetime of the f
 The following settings are available in the `BenchConfig` class:
 
 ```python
-from easybench import BenchConfig, EasyBench
+from easybench import BenchConfig, EasyBench, customize
 
 class MyBenchmark(EasyBench):
     bench_config = BenchConfig(
@@ -290,6 +290,12 @@ class MyBenchmark(EasyBench):
         loops_per_trial=1,   # Number of function executions per trial (see explanation below)
         reporters=[]         # Custom reporters (see explanation below)
     )
+
+    # You can also customize settings for individual methods
+    @customize(loops_per_trial=1000)
+    def bench_fast_operation(self):
+        # This method uses 1000 loops per trial
+        pass
 ```
 
 Sorting options (`sort_by`):

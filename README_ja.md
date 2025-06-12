@@ -408,7 +408,7 @@ if __name__ == "__main__":
 `BenchConfig`クラスでは以下の設定が利用可能です：
 
 ```python
-from easybench import BenchConfig, EasyBench
+from easybench import BenchConfig, EasyBench, customize
 
 class MyBenchmark(EasyBench):
     bench_config = BenchConfig(
@@ -422,6 +422,12 @@ class MyBenchmark(EasyBench):
         loops_per_trial=1,   # 試行毎の関数実行回数 (後述の解説を参照)
         reporters=[]         # カスタムレポーター (後述の解説を参照)
     )
+
+    # メソッド個別のカスタマイズも可能です
+    @customize(loops_per_trial=1000)
+    def bench_fast_operation(self):
+        # このメソッドは1試行あたり1000回実行されます
+        pass
 ```
 
 ソートオプション（`sort_by`）：
