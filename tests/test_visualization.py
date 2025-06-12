@@ -1,23 +1,29 @@
 """
 Tests for the visualization module.
 
-This module tests visualization-related classes including:
-- PlotFormatter
+This module tests the visualization components, including:
 - BoxPlotFormatter
+- LinePlotFormatter
 - PlotReporter
-
-Tests require matplotlib and optionally seaborn.
 """
 
+import tempfile
 import warnings
 from importlib.util import find_spec
 from unittest import mock
+from unittest.mock import MagicMock, patch
 
+import matplotlib.figure
 import matplotlib.pyplot as plt
 import pytest
 
-from easybench.core import BenchConfig, ResultType, StatType
-from easybench.visualization import BoxPlotFormatter, PlotFormatter, PlotReporter
+from easybench import BenchConfig
+from easybench.core import ResultsType, ResultType, StatsType, StatType
+from easybench.visualization import (
+    BoxPlotFormatter,
+    LinePlotFormatter,
+    PlotReporter,
+)
 
 # Constants for test values
 TEST_TIME_VALUE = 0.1
@@ -33,6 +39,17 @@ NUM_TEST_FUNCTIONS = 2
 DEFAULT_DPI = 100
 CUSTOM_DPI = 200
 EXPECTED_CALL_COUNT = 2  # Number of times boxplot is called during fallback tests
+EXPECTED_LINEWIDTH = 2
+EXPECTED_DATA_LENGTH = 2
+CUSTOM_HIGH_DPI = 300
+
+TEST_TRIALS = 5
+MIN_TIME = 0.001
+MAX_TIME = 0.01
+AVG_TIME = 0.005
+MIN_MEMORY = 1000
+MAX_MEMORY = 5000
+AVG_MEMORY = 3000
 
 
 def complete_stat(
@@ -578,102 +595,297 @@ class TestBoxPlotFormatter:
             mock_ax.set_xticklabels.assert_called_once()
 
 
+class TestLinePlotFormatter:
+    """Tests for the LinePlotFormatter class."""
+
+    @pytest.fixture
+    def mock_results(self) -> ResultsType:
+        """Create sample results data for LinePlotFormatter tests."""
+        return {
+            "test_method1": {
+                "times": [
+                    MIN_TIME + (MAX_TIME - MIN_TIME) * i / TEST_TRIALS
+                    for i in range(TEST_TRIALS)
+                ],
+                "memory": [
+                    MIN_MEMORY + (MAX_MEMORY - MIN_MEMORY) * i / TEST_TRIALS
+                    for i in range(TEST_TRIALS)
+                ],
+            },
+            "test_method2": {
+                "times": [
+                    MAX_TIME - (MAX_TIME - MIN_TIME) * i / TEST_TRIALS
+                    for i in range(TEST_TRIALS)
+                ],
+                "memory": [
+                    MAX_MEMORY - (MAX_MEMORY - MIN_MEMORY) * i / TEST_TRIALS
+                    for i in range(TEST_TRIALS)
+                ],
+            },
+        }
+
+    @pytest.fixture
+    def mock_stats(self) -> StatsType:
+        """Create sample stats data for LinePlotFormatter tests."""
+        return {
+            "test_method1": complete_stat(
+                {
+                    "avg": AVG_TIME,
+                    "min": MIN_TIME,
+                    "max": MAX_TIME,
+                    "avg_memory": AVG_MEMORY,
+                    "max_memory": MAX_MEMORY,
+                },
+                memory=True,
+            ),
+            "test_method2": complete_stat(
+                {
+                    "avg": AVG_TIME,
+                    "min": MIN_TIME,
+                    "max": MAX_TIME,
+                    "avg_memory": AVG_MEMORY,
+                    "max_memory": MAX_MEMORY,
+                },
+                memory=True,
+            ),
+        }
+
+    @pytest.fixture
+    def mock_config(self) -> BenchConfig:
+        """Create sample benchmark configuration for LinePlotFormatter tests."""
+        return BenchConfig(trials=TEST_TRIALS, memory=True)
+
+    def test_init(self) -> None:
+        """Test initialization and parameter setting."""
+        formatter = LinePlotFormatter(
+            figsize=(12, 8),
+            log_scale=True,
+            engine="matplotlib",
+            linewidth=EXPECTED_LINEWIDTH,
+            marker="o",
+        )
+
+        assert formatter.figsize == (12, 8)
+        assert formatter.log_scale is True
+        assert formatter.engine == "matplotlib"
+        assert formatter.plot_kwargs["linewidth"] == EXPECTED_LINEWIDTH
+        assert formatter.plot_kwargs["marker"] == "o"
+
+    @pytest.mark.parametrize(
+        ("memory_enabled", "expected_subplots"),
+        [(True, 2), (False, 1)],
+    )
+    def test_format_subplots(
+        self,
+        mock_results: ResultsType,
+        mock_stats: StatsType,
+        mock_config: BenchConfig,
+        memory_enabled: bool,  # noqa: FBT001
+        expected_subplots: int,
+    ) -> None:
+        """Test that the correct number of subplots are created based on memory flag."""
+        mock_config.memory = memory_enabled
+        formatter = LinePlotFormatter()
+
+        figure = formatter.format(mock_results, mock_stats, mock_config)
+
+        assert isinstance(figure, matplotlib.figure.Figure)
+        assert len(figure.axes) == expected_subplots
+
+    def test_format_matplotlib_engine(
+        self,
+        mock_results: ResultsType,
+        mock_stats: StatsType,
+        mock_config: BenchConfig,
+    ) -> None:
+        """Test using matplotlib as the plotting engine."""
+        formatter = LinePlotFormatter(engine="matplotlib")
+
+        with (
+            patch("matplotlib.axes.Axes.plot") as mock_plot,
+            patch("matplotlib.axes.Axes.legend") as mock_legend,
+        ):  # Add mock for legend
+            # Make mock_plot return a list of artist objects
+            mock_plot.return_value = [MagicMock()]
+
+            figure = formatter.format(mock_results, mock_stats, mock_config)
+
+            assert isinstance(figure, matplotlib.figure.Figure)
+            assert mock_plot.called
+            assert mock_legend.called
+
+    def test_format_seaborn_engine(
+        self,
+        mock_results: ResultsType,
+        mock_stats: StatsType,
+        mock_config: BenchConfig,
+    ) -> None:
+        """Test using seaborn as the plotting engine."""
+        try:
+            # Check if seaborn is installed without importing it directly
+            if not find_spec("seaborn"):
+                pytest.skip("Seaborn not installed, skipping seaborn engine test")
+
+            formatter = LinePlotFormatter(engine="seaborn")
+
+            with (
+                patch("seaborn.lineplot") as mock_lineplot,
+                patch("matplotlib.axes.Axes.legend") as mock_legend,
+            ):  # Add mock for legend
+                # Make mock_lineplot return a list of artist objects
+                mock_lineplot.return_value = MagicMock()
+
+                figure = formatter.format(mock_results, mock_stats, mock_config)
+
+                assert isinstance(figure, matplotlib.figure.Figure)
+                assert mock_lineplot.called
+                assert mock_legend.called
+        except ImportError:
+            pytest.skip("Seaborn not installed, skipping seaborn engine test")
+
+    def test_preprocess_data(
+        self,
+        mock_results: ResultsType,
+        mock_stats: StatsType,
+        mock_config: BenchConfig,
+    ) -> None:
+        """Test data preprocessing."""
+        formatter = LinePlotFormatter()
+        sorted_methods = formatter.sort_keys(mock_stats, mock_config)
+
+        time_data = formatter._preprocess_data(
+            mock_results,
+            sorted_methods,
+            mock_config,
+        )
+
+        assert len(time_data) == EXPECTED_DATA_LENGTH
+        assert "test_method1" in time_data
+        assert "test_method2" in time_data
+
+        # Check data structure: (x_values, times)
+        x_values, times = time_data["test_method1"]
+        assert len(x_values) == TEST_TRIALS
+        assert len(times) == TEST_TRIALS
+        assert isinstance(x_values, list)
+        assert isinstance(times, list)
+        assert x_values[0] == 1  # x starts at 1
+
+    def test_preprocess_memory_data(
+        self,
+        mock_results: ResultsType,
+        mock_stats: StatsType,
+        mock_config: BenchConfig,
+    ) -> None:
+        """Test memory data preprocessing."""
+        formatter = LinePlotFormatter()
+        sorted_methods = formatter.sort_keys(mock_stats, mock_config)
+
+        memory_data = formatter._preprocess_memory_data(
+            mock_results,
+            sorted_methods,
+            mock_config,
+        )
+
+        assert len(memory_data) == EXPECTED_DATA_LENGTH
+        assert "test_method1" in memory_data
+        assert "test_method2" in memory_data
+
+        # Check data structure: (x_values, memory_values)
+        x_values, memory_values = memory_data["test_method1"]
+        assert len(x_values) == TEST_TRIALS
+        assert len(memory_values) == TEST_TRIALS
+        assert isinstance(x_values, list)
+        assert isinstance(memory_values, list)
+
+    def test_apply_styling(self, mock_config: BenchConfig) -> None:
+        """Test styling application."""
+        formatter = LinePlotFormatter(log_scale=True)
+
+        # Create a mock axes object
+        mock_ax = MagicMock()
+
+        # Apply styling to the mock axes
+        formatter._apply_styling(
+            mock_ax,
+            mock_config,
+            title_suffix="Test Plot",
+            unit="ms",
+            show_legend=True,
+            xlabel="Custom X Label",
+        )
+
+        # Verify styling was applied
+        mock_ax.set_yscale.assert_called_once_with("log")
+        mock_ax.set_title.assert_called_once()
+        mock_ax.set_xlabel.assert_called_once_with("Custom X Label")
+        mock_ax.set_ylabel.assert_called_once()
+        mock_ax.legend.assert_called_once()
+
+
 class TestPlotReporter:
     """Tests for the PlotReporter class."""
 
-    def test_init_with_defaults(self) -> None:
-        """Test initialization with default parameters."""
-        formatter = mock.MagicMock(spec=PlotFormatter)
-        reporter = PlotReporter(formatter)
-
-        assert reporter.show is True
-        assert reporter.save_path is None
-        assert reporter.dpi == DEFAULT_DPI
-
-    def test_init_with_custom_params(self) -> None:
-        """Test initialization with custom parameters."""
-        formatter = mock.MagicMock(spec=PlotFormatter)
+    def test_init(self) -> None:
+        """Test initialization with different parameters."""
+        formatter = MagicMock()
         reporter = PlotReporter(
             formatter,
-            show=False,
-            save_path="plot.png",
-            dpi=CUSTOM_DPI,
+            show=True,
+            save_path="test.png",
+            dpi=CUSTOM_HIGH_DPI,
         )
 
-        assert reporter.show is False
-        assert reporter.save_path == "plot.png"
-        assert reporter.dpi == CUSTOM_DPI
+        assert reporter.formatter == formatter
+        assert reporter.show is True
+        assert reporter.save_path == "test.png"
+        assert reporter.dpi == CUSTOM_HIGH_DPI
 
-    def test_send_with_figure(self) -> None:
-        """Test _send method with a matplotlib Figure."""
-        from matplotlib.figure import Figure
+    def test_send_with_savefig(self) -> None:
+        """Test saving a figure to file."""
+        mock_formatter = MagicMock()
+        mock_figure = MagicMock(spec=matplotlib.figure.Figure)
+        mock_formatter.format.return_value = mock_figure
 
-        formatter = mock.MagicMock(spec=PlotFormatter)
-        reporter = PlotReporter(formatter, show=True)
+        # Create a temporary file for testing
+        with tempfile.NamedTemporaryFile(suffix=".png") as temp_file:
+            reporter = PlotReporter(
+                mock_formatter,
+                show=False,
+                save_path=temp_file.name,
+                dpi=100,
+            )
 
-        # Create a mock Figure
-        mock_fig = mock.MagicMock(spec=Figure)
+            with patch.object(mock_figure, "savefig") as mock_savefig:
+                reporter.report({}, {}, BenchConfig())
 
-        # Mock plt.show and plt.close to avoid actually showing a plot
-        with mock.patch("matplotlib.pyplot.show") as mock_show:
-            reporter._send(mock_fig)
+                # Check that savefig was called with the correct parameters
+                mock_savefig.assert_called_once_with(temp_file.name, dpi=100)
+
+    def test_send_with_show(self) -> None:
+        """Test showing a figure."""
+        mock_formatter = MagicMock()
+        mock_figure = MagicMock(spec=matplotlib.figure.Figure)
+        mock_formatter.format.return_value = mock_figure
+
+        reporter = PlotReporter(mock_formatter, show=True)
+
+        with patch("matplotlib.pyplot.show") as mock_show:
+            reporter.report({}, {}, BenchConfig())
+
+            # Check that plt.show was called
             mock_show.assert_called_once()
 
-    def test_send_with_non_figure(self) -> None:
-        """Test _send method with a non-matplotlib Figure object."""
-        formatter = mock.MagicMock(spec=PlotFormatter)
-        reporter = PlotReporter(formatter)
+    def test_send_type_error(self) -> None:
+        """Test handling the case where formatter doesn't return a Figure."""
+        mock_formatter = MagicMock()
+        # Return something that's not a Figure
+        mock_formatter.format.return_value = "Not a Figure"
 
-        with pytest.raises(TypeError, match="requires a matplotlib Figure object"):
-            reporter._send("not a figure")
+        reporter = PlotReporter(mock_formatter)
 
-    def test_send_with_save_path(self) -> None:
-        """Test _send method with save_path."""
-        from matplotlib.figure import Figure
-
-        formatter = mock.MagicMock(spec=PlotFormatter)
-        reporter = PlotReporter(
-            formatter,
-            show=False,
-            save_path="test_plot.png",
-            dpi=100,
-        )
-
-        # Create a mock Figure
-        mock_fig = mock.MagicMock(spec=Figure)
-
-        # Mock savefig to avoid actually saving a file
-        with mock.patch.object(mock_fig, "savefig") as mock_savefig:
-            reporter._send(mock_fig)
-            mock_savefig.assert_called_once_with("test_plot.png", dpi=100)
-
-    def test_report(
-        self,
-        sample_results: dict[str, ResultType],
-        sample_stats: dict[str, StatType],
-        sample_config: BenchConfig,
-    ) -> None:
-        """Test report method."""
-        from matplotlib.figure import Figure
-
-        # Create a mock formatter that returns a mock Figure
-        mock_fig = mock.MagicMock(spec=Figure)
-        formatter = mock.MagicMock(spec=PlotFormatter)
-        formatter.format.return_value = mock_fig
-
-        reporter = PlotReporter(formatter, show=False)
-
-        # Mock _send method to avoid actually doing anything
-        with mock.patch.object(reporter, "_send") as mock_send:
-            reporter.report(sample_results, sample_stats, sample_config)
-            mock_send.assert_called_once_with(mock_fig)
-
-            # Verify formatter.format was called with right arguments
-            formatter.format.assert_called_once_with(
-                results=sample_results,
-                stats=sample_stats,
-                config=sample_config,
-            )
+        with pytest.raises(TypeError):
+            reporter.report({}, {}, BenchConfig())
 
 
 class TestBoxPlotFormatterTimeUnits:

@@ -498,6 +498,286 @@ class BoxPlotFormatter(PlotFormatter):
                 plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
 
 
+class LinePlotFormatter(PlotFormatter):
+    """
+    Format benchmark results as a line plot showing time/memory across trials.
+
+    This formatter creates a visualization of how execution time (and optionally memory)
+    changes across trial runs, which is useful for determining how many warmup
+    runs are needed before measurements stabilize.
+    """
+
+    def __init__(
+        self,
+        figsize: tuple[int, int] = (10, 6),
+        log_scale: bool = False,
+        engine: Literal["matplotlib", "seaborn"] = "matplotlib",
+        **plot_kwargs: object,
+    ) -> None:
+        """
+        Initialize LinePlotFormatter.
+
+        Args:
+            figsize: Figure size (default: (10, 6))
+            log_scale: Whether to use logarithmic scale for y-axis (default: False)
+            engine: Plotting backend to use ('matplotlib' or 'seaborn')
+            **plot_kwargs: Additional keyword arguments for plot function
+
+        """
+        self.figsize = figsize
+        self.log_scale = log_scale
+        self.engine = engine
+        self.plot_kwargs = plot_kwargs
+
+    def format(
+        self,
+        results: ResultsType,
+        stats: StatsType,
+        config: BenchConfig,
+    ) -> Figure:
+        """
+        Format benchmark results as a trial progression plot.
+
+        Args:
+            results: Dictionary mapping benchmark names to result data
+            stats: Dictionary of calculated statistics
+            config: Benchmark configuration
+
+        Returns:
+            Matplotlib Figure object containing the visualization
+
+        """
+        # Sort method names according to configuration
+        sorted_methods = self.sort_keys(stats, config)
+
+        # Extract and preprocess time data
+        time_data = self._preprocess_data(results, sorted_methods, config)
+        time_unit = TimeUnit.from_config(config)
+
+        # Create figure and axes based on memory tracking
+        if config.memory:
+            fig, (ax_time, ax_mem) = plt.subplots(
+                2,
+                1,
+                figsize=(self.figsize[0], self.figsize[1] * 1.8),
+                sharex=True,
+            )
+
+            # Create time plot using appropriate engine
+            self._create_time_plot(ax_time, time_data, sorted_methods)
+
+            # Apply styling to time plot
+            self._apply_styling(
+                ax_time,
+                config,
+                title_suffix="",
+                unit=str(time_unit),
+                show_legend=True,
+            )
+
+            # Create memory subplot
+            self._process_memory_subplot(ax_mem, results, config, sorted_methods)
+        else:
+            # Single plot for time data only
+            fig, ax_time = plt.subplots(figsize=self.figsize)
+
+            # Create time plot using appropriate engine
+            self._create_time_plot(ax_time, time_data, sorted_methods)
+
+            # Apply styling to time plot
+            self._apply_styling(ax_time, config, unit=str(time_unit), show_legend=True)
+
+        plt.tight_layout()
+        return fig
+
+    def _preprocess_data(
+        self,
+        results: ResultsType,
+        sorted_methods: list[str],
+        config: BenchConfig,
+    ) -> dict[str, tuple[list[int], list[float]]]:
+        """Extract and preprocess benchmark time data."""
+        time_data: dict[str, tuple[list[int], list[float]]] = {}
+        time_unit = TimeUnit.from_config(config)
+
+        for method_name in sorted_methods:
+            if "times" in results[method_name]:
+                times = [
+                    time_unit.convert_seconds(t) for t in results[method_name]["times"]
+                ]
+                x_values = list(range(1, len(times) + 1))
+                time_data[method_name] = (x_values, times)
+
+        return time_data
+
+    def _preprocess_memory_data(
+        self,
+        results: ResultsType,
+        sorted_methods: list[str],
+        config: BenchConfig,
+    ) -> dict[str, tuple[list[int], list[float]]]:
+        """Extract and preprocess benchmark memory data."""
+        memory_data: dict[str, tuple[list[int], list[float]]] = {}
+        memory_unit = MemoryUnit.from_config(config)
+
+        for method_name in sorted_methods:
+            if "memory" in results[method_name]:
+                memory_values = [
+                    memory_unit.convert_bytes(m) for m in results[method_name]["memory"]
+                ]
+                x_values = list(range(1, len(memory_values) + 1))
+                memory_data[method_name] = (x_values, memory_values)
+
+        return memory_data
+
+    def _create_time_plot(
+        self,
+        ax: plt.Axes,
+        time_data: dict[str, tuple[list[int], list[float]]],
+        sorted_methods: list[str],
+    ) -> None:
+        """Create time plot using the selected engine."""
+        for method_name in sorted_methods:
+            if method_name in time_data:
+                x_values, times = time_data[method_name]
+                if self.engine == "seaborn":
+                    self._create_seaborn_lineplot(ax, x_values, times, method_name)
+                else:
+                    self._create_matplotlib_lineplot(ax, x_values, times, method_name)
+
+    def _create_matplotlib_lineplot(
+        self,
+        ax: plt.Axes,
+        x_values: list[int],
+        y_values: list[float],
+        label: str,
+    ) -> None:
+        """Create a line plot using matplotlib."""
+        ax.plot(
+            x_values,
+            y_values,
+            label=label,
+            **self.plot_kwargs,  # type: ignore[arg-type]
+        )
+
+    def _create_seaborn_lineplot(
+        self,
+        ax: plt.Axes,
+        x_values: list[int],
+        y_values: list[float],
+        label: str,
+    ) -> None:
+        """Create a line plot using seaborn."""
+        try:
+            import seaborn as sns
+        except ImportError as err:
+            error_msg = (
+                "seaborn is required for seaborn engine. "
+                "Install with pip install seaborn."
+            )
+            raise ImportError(error_msg) from err
+
+        sns.lineplot(
+            x=x_values,
+            y=y_values,
+            label=label,
+            ax=ax,
+            **self.plot_kwargs,  # type: ignore[arg-type]
+        )
+
+    def _process_memory_subplot(
+        self,
+        ax: plt.Axes,
+        results: ResultsType,
+        config: BenchConfig,
+        sorted_methods: list[str],
+    ) -> None:
+        """
+        Process and create memory usage subplot.
+
+        Args:
+            ax: The matplotlib axes for the memory subplot
+            results: Dictionary mapping benchmark names to result data
+            config: Benchmark configuration
+            sorted_methods: List of method names to include
+
+        """
+        # Extract memory data
+        memory_data = self._preprocess_memory_data(results, sorted_methods, config)
+        memory_unit = MemoryUnit.from_config(config)
+
+        # Plot memory data for each method
+        for method_name in sorted_methods:
+            if method_name in memory_data:
+                x_values, memory_values = memory_data[method_name]
+                if self.engine == "seaborn":
+                    self._create_seaborn_lineplot(
+                        ax,
+                        x_values,
+                        memory_values,
+                        method_name,
+                    )
+                else:
+                    self._create_matplotlib_lineplot(
+                        ax,
+                        x_values,
+                        memory_values,
+                        method_name,
+                    )
+
+        # Apply styling to memory plot
+        self._apply_styling(
+            ax,
+            config,
+            title_suffix="Memory Usage",
+            unit=str(memory_unit),
+            show_legend=True,
+            xlabel="Trials",
+        )
+
+    def _apply_styling(
+        self,
+        ax: plt.Axes,
+        config: BenchConfig,
+        title_suffix: str = "",
+        unit: str = "s",
+        show_legend: bool = False,
+        xlabel: str = "Trials",
+    ) -> None:
+        """Apply common styling to the plot."""
+        # Apply log scale if configured
+        if self.log_scale:
+            ax.set_yscale("log")
+
+        # Set the plot title
+        title = self._get_plot_title(config.trials, title_suffix)
+        ax.set_title(title)
+
+        # Set axis labels
+        ax.set_xlabel(xlabel)
+        self._set_ylabel(ax, unit)
+
+        # Show legend if requested
+        if show_legend:
+            ax.legend()
+
+    def _get_plot_title(self, trials: int, title_suffix: str = "") -> str:
+        """Generate the plot title."""
+        base_title = f"Benchmark Results ({trials} trials)"
+        if title_suffix:
+            return f"{title_suffix} {base_title}"
+        return base_title
+
+    def _set_ylabel(self, ax: plt.Axes, unit: str) -> None:
+        """Set the y-axis label based on the unit type."""
+        if any(unit == item.value for item in TimeUnit):
+            label_text = f"Time ({unit})"
+        else:
+            label_text = f"Memory Usage ({unit})"
+
+        ax.set_ylabel(label_text)
+
+
 class PlotReporter(Reporter):
     """Reporter that displays benchmark results as a matplotlib visualization."""
 

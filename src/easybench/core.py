@@ -72,10 +72,14 @@ def get_reporter(name: str, kwargs: dict | None = None) -> Reporter:
             return FileReporter(**kwargs)
         case _ if name.endswith((".csv", ".json")):
             return FileReporter(name, **kwargs)
-        case "plot":
+        case "plot" | "boxplot":
             from .visualization import BoxPlotFormatter, PlotReporter
 
             return PlotReporter(BoxPlotFormatter(**kwargs))
+        case "lineplot":
+            from .visualization import LinePlotFormatter, PlotReporter
+
+            return PlotReporter(LinePlotFormatter(**kwargs))
         case _:
             err = f"Unknown reporter type: {name}"
             raise ValueError(err)
