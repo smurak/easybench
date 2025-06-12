@@ -1071,6 +1071,99 @@ class TestEasyBenchConfig:
         # Should be exactly 0.01 in seconds
         assert s_time == bench_time
 
+    def test_warmups_execution(self) -> None:
+        """Test that warmup executions occur but don't affect benchmark results."""
+        execution_count = 0
+        execution_times: list[float] = []
+        trials = 3
+        warmups = 2
+
+        class WarmupBench(EasyBench):
+            bench_config = BenchConfig(trials=trials, warmups=warmups, show_output=True)
+
+            def bench_count_executions(self) -> int:
+                nonlocal execution_count, execution_times
+                execution_count += 1
+                # Record when this execution happened
+                execution_times.append(time.perf_counter())
+                return execution_count
+
+        bench = WarmupBench()
+        results = bench.bench()
+
+        # Total executions should be trials + warmups
+        assert execution_count == trials + warmups
+
+        # Check that the benchmark results only include the non-warmup executions
+        assert len(results["bench_count_executions"]["times"]) == trials
+
+        # The values in the results should be the last 3 executions (3, 4, 5)
+        # and not include the warmup executions (1, 2)
+        assert "output" in results["bench_count_executions"]
+        outputs = results["bench_count_executions"]["output"]
+        assert set(outputs) == {3, 4, 5}
+
+    def test_warmups_with_zero(self) -> None:
+        """Test that zero warmups works correctly."""
+        execution_count = 0
+        trials = 2
+        warmups = 0
+
+        class NoWarmupBench(EasyBench):
+            bench_config = BenchConfig(trials=trials, warmups=warmups)
+
+            def bench_count_executions(self) -> int:
+                nonlocal execution_count
+                execution_count += 1
+                return execution_count
+
+        bench = NoWarmupBench()
+        results = bench.bench(config=PartialBenchConfig(show_output=True))
+
+        # Total executions should equal trials when warmups=0
+        assert execution_count == trials
+
+        # Check outputs are as expected (1, 2)
+        assert "output" in results["bench_count_executions"]
+        outputs = results["bench_count_executions"]["output"]
+        assert outputs == [1, 2]
+
+    def test_negative_warmups_validation(self) -> None:
+        """Test that negative warmups values raise a validation error."""
+        with pytest.raises(ValueError, match="warmups must be at least 0"):
+            PartialBenchConfig(warmups=-1)
+
+        # Also test with bench method
+        class WarmupBench(EasyBench):
+            def bench_test(self) -> None:
+                pass
+
+        bench = WarmupBench()
+        with pytest.raises(ValueError, match="warmups must be at least 0"):
+            bench.bench(warmups=-1)
+
+    def test_warmups_runtime_override(self) -> None:
+        """Test that warmups can be overridden at runtime."""
+        execution_count = 0
+        trials = 2
+        warmups = 1
+
+        class DefaultWarmupBench(EasyBench):
+            bench_config = BenchConfig(trials=trials, warmups=warmups)
+
+            def bench_count_executions(self) -> int:
+                nonlocal execution_count
+                execution_count += 1
+                return execution_count
+
+        bench = DefaultWarmupBench()
+        # Override warmups at runtime
+        new_warmups = 3
+        bench.bench(config=PartialBenchConfig(warmups=new_warmups, show_output=True))
+
+        # Total executions should be trials + warmups = 2 + 3 = 5
+        assert execution_count == trials + new_warmups
+
 
 class TestFunctionBench:
     """Tests for the FunctionBench class."""
