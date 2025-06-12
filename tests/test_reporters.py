@@ -463,10 +463,12 @@ class TestJSONFormatter:
         data = json.loads(output)
 
         assert "config" in data
+        assert "stats" in data
         assert "results" in data
         assert data["config"]["trials"] == 1
-        assert "test_func" in data["results"]
-        assert data["results"]["test_func"]["avg"] == TEST_TIME_VALUE
+        assert "test_func" in data["stats"]
+        assert data["stats"]["test_func"]["avg"] == TEST_TIME_VALUE
+        assert data["results"] == results
 
     def test_format_with_memory(self) -> None:
         """Test JSON formatting with memory metrics."""
@@ -494,8 +496,9 @@ class TestJSONFormatter:
         data = json.loads(output)
 
         assert data["config"]["memory"] is True
-        assert data["results"]["test_func"]["avg_memory"] == TEST_AVG_MEMORY
-        assert data["results"]["test_func"]["max_memory"] == TEST_MAX_MEMORY
+        assert data["stats"]["test_func"]["avg_memory"] == TEST_AVG_MEMORY
+        assert data["stats"]["test_func"]["max_memory"] == TEST_MAX_MEMORY
+        assert data["results"] == results
 
     def test_format_with_output(self) -> None:
         """Test JSON formatting with function outputs."""
@@ -511,8 +514,9 @@ class TestJSONFormatter:
         output = formatter.format(results, stats, config)
         data = json.loads(output)
 
-        assert "output" in data["results"]["test_func"]
         assert data["results"]["test_func"]["output"] == ["result"]
+        assert "test_func" in data["stats"]
+        assert data["stats"]["test_func"]["avg"] == TEST_TIME_VALUE
 
     def test_format_with_memory_unit(self) -> None:
         """Test formatting results with different memory units."""
@@ -541,8 +545,9 @@ class TestJSONFormatter:
         data = json.loads(output)
 
         assert data["config"]["memory_unit"] == "MB"
-        assert data["results"]["test_func"]["avg_memory"] == TEST_AVG_MEMORY
-        assert data["results"]["test_func"]["max_memory"] == TEST_MAX_MEMORY
+        assert data["stats"]["test_func"]["avg_memory"] == TEST_AVG_MEMORY
+        assert data["stats"]["test_func"]["max_memory"] == TEST_MAX_MEMORY
+        assert data["results"] == results
 
 
 class TestSimpleFormatter:
@@ -1358,7 +1363,7 @@ class TestFormatterTimeUnits:
             json_formatter = JSONFormatter()
             json_output = json_formatter.format(results, stats, config)
             json_data = json.loads(json_output)
-            converted_value = json_data["results"]["test_func"]["avg"]
+            converted_value = json_data["stats"]["test_func"]["avg"]
             assert abs(converted_value - expected_value) < FLOAT_TOLERANCE
 
             # Test DataFrameFormatter (skip if pandas not installed)
@@ -1421,14 +1426,11 @@ class TestFormatterTimeUnits:
         json_output = json_formatter.format(results, stats, config)
         json_data = json.loads(json_output)
         assert (
-            abs(json_data["results"]["test_func"]["avg"] - expected_avg)
-            < FLOAT_TOLERANCE
+            abs(json_data["stats"]["test_func"]["avg"] - expected_avg) < FLOAT_TOLERANCE
         )
         assert (
-            abs(json_data["results"]["test_func"]["min"] - expected_min)
-            < FLOAT_TOLERANCE
+            abs(json_data["stats"]["test_func"]["min"] - expected_min) < FLOAT_TOLERANCE
         )
         assert (
-            abs(json_data["results"]["test_func"]["max"] - expected_max)
-            < FLOAT_TOLERANCE
+            abs(json_data["stats"]["test_func"]["max"] - expected_max) < FLOAT_TOLERANCE
         )
