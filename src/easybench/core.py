@@ -121,6 +121,16 @@ class ParametrizedFunction(Protocol[P, R_co]):
     _bench_params: list[BenchParams]
 
 
+class CustomizedFunction(Protocol[P, R_co]):
+    """Function with _bench_customize."""
+
+    def __call__(self, *args: P.args, **kwds: P.kwargs) -> R_co:
+        """Call method."""
+        ...
+
+    _bench_customize: dict[str, Any]
+
+
 class PartialBenchConfig(BaseModel):
     """Partial configuration for EasyBench with optional values."""
 
@@ -360,6 +370,34 @@ def parametrize(params_list: list[BenchParams]) -> Callable:
     return decorator
 
 
+def customize(*, loops_per_trial: int | None = None) -> Callable:
+    """
+    Create a decorator for customizing benchmark settings for specific methods.
+
+    Example:
+        ```python
+        class BenchList(EasyBench):
+            @customize(loops_per_trial=1000)
+            def bench_append(self):
+                self.big_list.append(0)
+        ```
+
+    Args:
+        loops_per_trial: Number of loops per trial for this specific benchmark method
+
+    Returns:
+        A decorator function that applies custom benchmark settings to the method
+
+    """
+
+    def decorator(func: Callable) -> Callable:
+        func = cast("CustomizedFunction", func)
+        func._bench_customize = {"loops_per_trial": loops_per_trial}  # noqa: SLF001
+        return func
+
+    return decorator
+
+
 class EasyBench:
     """Base class for benchmark classes."""
 
@@ -488,6 +526,14 @@ class EasyBench:
         if capture_output:
             result_dict["output"] = []
 
+        # Check if method has custom loops_per_trial setting
+        loops_per_trial = config.loops_per_trial
+        if hasattr(method, "_bench_customize"):
+            method = cast("CustomizedFunction", method)
+            custom_config = method._bench_customize  # noqa: SLF001
+            if custom_config.get("loops_per_trial") is not None:
+                loops_per_trial = custom_config["loops_per_trial"]
+
         with self._manage_scope("function", values, fixture_registry):
             warmup = True
             for i in range(config.warmups + config.trials):
@@ -502,7 +548,7 @@ class EasyBench:
                             values=values,
                             memory=bool(config.memory),
                             capture_output=capture_output,
-                            loops_per_trial=config.loops_per_trial,
+                            loops_per_trial=loops_per_trial,
                         )
                     )
 
