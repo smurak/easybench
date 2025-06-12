@@ -129,6 +129,10 @@ There are 3 ways to benchmark with `easybench`:
 
   ![Boxplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_boxplot.png)
 
+* Lineplot Visualization
+
+  ![Lineplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_lineplot.png)
+
 ## Usage
 
 ### Decorator-based Benchmarks (`@bench` decorator)
@@ -583,7 +587,8 @@ There are three ways to specify reporters:
 1. **As a string**: Specify the reporter name as a string
    - `"console"`: Standard tabular console output
    - `"simple"`: Simple console output
-   - `"plot"`: Visualization with boxplot
+   - `"plot"` or `"boxplot"`: Visualization with boxplot
+   - `"lineplot"`: Visualization with lineplot
    - `"*.csv"` or `"*.json"`: File output
 
 2. **With arguments**: Specify in the format `(reporter_name, parameter_dict)`

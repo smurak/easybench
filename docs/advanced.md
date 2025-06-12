@@ -15,7 +15,8 @@ There are three ways to specify reporters:
 1. **As a string**: Specify the reporter name as a string
    - `"console"`: Standard tabular console output
    - `"simple"`: Simple console output
-   - `"plot"`: Visualization with boxplot
+   - `"plot"` or `"boxplot"`: Visualization with boxplot
+   - `"lineplot"`: Visualization with lineplot
    - `"*.csv"` or `"*.json"`: File output
 
 2. **With arguments**: Specify in the format `(reporter_name, parameter_dict)`
