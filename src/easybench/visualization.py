@@ -6,8 +6,10 @@ This module provides formatters and reporters for creating visual representation
 of benchmark results using matplotlib.
 """
 
+import contextlib
 from abc import abstractmethod
-from typing import Literal
+from collections.abc import Generator
+from typing import Any, Literal
 
 try:
     from matplotlib import pyplot as plt
@@ -25,6 +27,63 @@ from .reporters import Formatted, Formatter, MemoryUnit, Reporter, TimeUnit
 # Constants for magic values
 MAX_PERCENTILE_THRESHOLD = 0.5
 MIN_PERCENTILE_THRESHOLD = 0.0
+
+# Default seaborn theme settings
+DEFAULT_SNS_THEME = {"style": "darkgrid", "palette": "Set2"}
+
+
+@contextlib.contextmanager
+def set_seaborn_theme(theme_params: dict[str, Any] | None = None) -> Generator:
+    """
+    Context manager for temporarily setting a seaborn theme.
+
+    Args:
+        theme_params: Dictionary of parameters to pass to sns.set_theme()
+                    If None, uses default theme
+
+    """
+    try:
+        import seaborn as sns
+
+        # Use provided theme or default
+        theme_to_use = theme_params if theme_params is not None else DEFAULT_SNS_THEME
+
+        # Store current theme settings (if possible)
+        with sns.plotting_context():
+            # Apply the theme
+            sns.set_theme(**theme_to_use)
+            yield
+    except ImportError:
+        # If seaborn is not installed, just yield without doing anything
+        yield
+
+
+def _handle_seaborn_engine_and_theme(
+    engine: str,
+    sns_theme: dict[str, Any] | None = None,
+) -> tuple[str, dict[str, Any] | None]:
+    """
+    Handle seaborn engine and theme settings.
+
+    Args:
+        engine: The plotting engine to use
+        sns_theme: Optional dictionary of parameters for sns.set_theme()
+
+    Returns:
+        tuple: (engine, theme_params) where engine is the possibly updated engine
+               and theme_params are the theme parameters to use
+
+    """
+    # If sns_theme is provided, ensure engine is set to "seaborn"
+    if sns_theme is not None:
+        return "seaborn", sns_theme
+
+    # If engine is "seaborn" but no theme provided, use default theme
+    if engine == "seaborn":
+        return engine, DEFAULT_SNS_THEME
+
+    # Otherwise, return original engine and None for theme
+    return engine, None
 
 
 class PlotFormatter(Formatter):
@@ -65,6 +124,7 @@ class BoxPlotFormatter(PlotFormatter):
         label_rotation_threshold: int = 4,
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
         orientation: Literal["vertical", "horizontal"] = "horizontal",
+        sns_theme: dict[str, Any] | None = None,
         **boxplot_kwargs: object,
     ) -> None:
         """
@@ -80,6 +140,7 @@ class BoxPlotFormatter(PlotFormatter):
             label_rotation_threshold: Rotate x-axis labels if method count exceeds this.
             engine: Plotting backend to use ('matplotlib' or 'seaborn')
             orientation: Direction of boxplot ('vertical' or 'horizontal')
+            sns_theme: Optional dictionary of seaborn theme parameters
             **boxplot_kwargs: Additional keyword arguments for boxplot function
 
         """
@@ -91,8 +152,13 @@ class BoxPlotFormatter(PlotFormatter):
         self.boxplot_kwargs = boxplot_kwargs
         self.label_rotation_threshold = label_rotation_threshold
         self.showfliers = showfliers
-        self.engine = engine
         self.orientation = orientation
+
+        # Handle seaborn engine and theme relationship
+        self.engine, self.sns_theme = _handle_seaborn_engine_and_theme(
+            engine,
+            sns_theme,
+        )
 
     def format(
         self,
@@ -112,56 +178,58 @@ class BoxPlotFormatter(PlotFormatter):
             Matplotlib Figure object containing the boxplot
 
         """
-        # Extract and preprocess data
-        time_data, labels = self._preprocess_data(results, stats, config)
-        time_unit = TimeUnit.from_config(config)
+        # Use the temporary seaborn theme context if needed
+        with set_seaborn_theme(self.sns_theme):
+            # Extract and preprocess data
+            time_data, labels = self._preprocess_data(results, stats, config)
+            time_unit = TimeUnit.from_config(config)
 
-        # Create figure and axes based on memory tracking
-        if config.memory:
-            # Create a figure with two subplots when memory tracking is enabled
-            fig, (ax_time, ax_mem) = plt.subplots(
-                2,
-                1,
-                figsize=(self.figsize[0], self.figsize[1] * 1.8),
-            )
+            # Create figure and axes based on memory tracking
+            if config.memory:
+                # Create a figure with two subplots when memory tracking is enabled
+                fig, (ax_time, ax_mem) = plt.subplots(
+                    2,
+                    1,
+                    figsize=(self.figsize[0], self.figsize[1] * 1.8),
+                )
 
-            # Process time data
-            box_data_time = [time_data[method] for method in labels]
-            if self.engine == "seaborn":
-                self._create_seaborn_boxplot(ax_time, box_data_time, labels)
+                # Process time data
+                box_data_time = [time_data[method] for method in labels]
+                if self.engine == "seaborn":
+                    self._create_seaborn_boxplot(ax_time, box_data_time, labels)
+                else:
+                    self._create_matplotlib_boxplot(ax_time, box_data_time, labels)
+
+                # Apply styling to time plot with time unit
+                self._apply_styling(
+                    ax_time,
+                    config,
+                    labels,
+                    title_suffix="",
+                    unit=str(time_unit),
+                )
+
+                # Process memory data using dedicated method
+                self._process_memory_subplot(ax_mem, results, config, labels)
             else:
-                self._create_matplotlib_boxplot(ax_time, box_data_time, labels)
+                # Original behavior for timing-only plots
+                fig, ax = plt.subplots(figsize=self.figsize)
+                box_data = [time_data[method] for method in labels]
+                if self.engine == "seaborn":
+                    self._create_seaborn_boxplot(ax, box_data, labels)
+                else:
+                    self._create_matplotlib_boxplot(ax, box_data, labels)
 
-            # Apply styling to time plot with time unit
-            self._apply_styling(
-                ax_time,
-                config,
-                labels,
-                title_suffix="",
-                unit=str(time_unit),
-            )
+                # Apply styling with time unit
+                self._apply_styling(
+                    ax,
+                    config,
+                    labels,
+                    unit=str(time_unit),
+                )
 
-            # Process memory data using dedicated method
-            self._process_memory_subplot(ax_mem, results, config, labels)
-        else:
-            # Original behavior for timing-only plots
-            fig, ax = plt.subplots(figsize=self.figsize)
-            box_data = [time_data[method] for method in labels]
-            if self.engine == "seaborn":
-                self._create_seaborn_boxplot(ax, box_data, labels)
-            else:
-                self._create_matplotlib_boxplot(ax, box_data, labels)
-
-            # Apply styling with time unit
-            self._apply_styling(
-                ax,
-                config,
-                labels,
-                unit=str(time_unit),
-            )
-
-        plt.tight_layout()
-        return fig
+            plt.tight_layout()
+            return fig
 
     def _process_memory_subplot(
         self,
@@ -512,6 +580,7 @@ class LinePlotFormatter(PlotFormatter):
         figsize: tuple[int, int] = (10, 6),
         log_scale: bool = False,
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
+        sns_theme: dict[str, Any] | None = None,
         **plot_kwargs: object,
     ) -> None:
         """
@@ -521,13 +590,19 @@ class LinePlotFormatter(PlotFormatter):
             figsize: Figure size (default: (10, 6))
             log_scale: Whether to use logarithmic scale for y-axis (default: False)
             engine: Plotting backend to use ('matplotlib' or 'seaborn')
+            sns_theme: Optional dictionary of seaborn theme parameters
             **plot_kwargs: Additional keyword arguments for plot function
 
         """
         self.figsize = figsize
         self.log_scale = log_scale
-        self.engine = engine
         self.plot_kwargs = plot_kwargs
+
+        # Handle seaborn engine and theme relationship
+        self.engine, self.sns_theme = _handle_seaborn_engine_and_theme(
+            engine,
+            sns_theme,
+        )
 
     def format(
         self,
@@ -547,48 +622,55 @@ class LinePlotFormatter(PlotFormatter):
             Matplotlib Figure object containing the visualization
 
         """
-        # Sort method names according to configuration
-        sorted_methods = self.sort_keys(stats, config)
+        # Apply seaborn theme if needed
+        with set_seaborn_theme(self.sns_theme):
+            # Sort method names according to configuration
+            sorted_methods = self.sort_keys(stats, config)
 
-        # Extract and preprocess time data
-        time_data = self._preprocess_data(results, sorted_methods, config)
-        time_unit = TimeUnit.from_config(config)
+            # Extract and preprocess time data
+            time_data = self._preprocess_data(results, sorted_methods, config)
+            time_unit = TimeUnit.from_config(config)
 
-        # Create figure and axes based on memory tracking
-        if config.memory:
-            fig, (ax_time, ax_mem) = plt.subplots(
-                2,
-                1,
-                figsize=(self.figsize[0], self.figsize[1] * 1.8),
-                sharex=True,
-            )
+            # Create figure and axes based on memory tracking
+            if config.memory:
+                fig, (ax_time, ax_mem) = plt.subplots(
+                    2,
+                    1,
+                    figsize=(self.figsize[0], self.figsize[1] * 1.8),
+                    sharex=True,
+                )
 
-            # Create time plot using appropriate engine
-            self._create_time_plot(ax_time, time_data, sorted_methods)
+                # Create time plot using appropriate engine
+                self._create_time_plot(ax_time, time_data, sorted_methods)
 
-            # Apply styling to time plot
-            self._apply_styling(
-                ax_time,
-                config,
-                title_suffix="",
-                unit=str(time_unit),
-                show_legend=True,
-            )
+                # Apply styling to time plot
+                self._apply_styling(
+                    ax_time,
+                    config,
+                    title_suffix="",
+                    unit=str(time_unit),
+                    show_legend=True,
+                )
 
-            # Create memory subplot
-            self._process_memory_subplot(ax_mem, results, config, sorted_methods)
-        else:
-            # Single plot for time data only
-            fig, ax_time = plt.subplots(figsize=self.figsize)
+                # Create memory subplot
+                self._process_memory_subplot(ax_mem, results, config, sorted_methods)
+            else:
+                # Single plot for time data only
+                fig, ax_time = plt.subplots(figsize=self.figsize)
 
-            # Create time plot using appropriate engine
-            self._create_time_plot(ax_time, time_data, sorted_methods)
+                # Create time plot using appropriate engine
+                self._create_time_plot(ax_time, time_data, sorted_methods)
 
-            # Apply styling to time plot
-            self._apply_styling(ax_time, config, unit=str(time_unit), show_legend=True)
+                # Apply styling to time plot
+                self._apply_styling(
+                    ax_time,
+                    config,
+                    unit=str(time_unit),
+                    show_legend=True,
+                )
 
-        plt.tight_layout()
-        return fig
+            plt.tight_layout()
+            return fig
 
     def _preprocess_data(
         self,
