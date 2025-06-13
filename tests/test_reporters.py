@@ -40,6 +40,7 @@ from easybench.reporters import (
     StreamReporter,
     TableFormatter,
 )
+from easybench.utils import visual_width
 
 # Constants for test values to avoid magic numbers
 TEST_TIME_VALUE = 0.1
@@ -292,6 +293,121 @@ class TestTableFormatter:
         assert "Benchmark Results (1 trial)" in output
         assert "Memory (MB)" in output
         assert "1.000000" in output  # 1 MB displayed
+
+    def test_format_with_wide_characters(self) -> None:
+        """Test formatting with function names containing wide characters."""
+        formatter = TableFormatter()
+        results: dict[str, ResultType] = {
+            "test_func": {"times": [TEST_TIME_VALUE]},
+            "テスト関数": {"times": [TEST_SLOW_TIME]},  # Japanese characters
+            "测试函数": {"times": [TEST_SLOWER_TIME]},  # Chinese characters
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+            "テスト関数": complete_stat({"avg": TEST_SLOW_TIME}),
+            "测试函数": complete_stat({"avg": TEST_SLOWER_TIME}),
+        }
+        config = BenchConfig(trials=1)
+
+        output = formatter.format(results, stats, config)
+
+        # Verify output contains all function names
+        assert "test_func" in output
+        assert "テスト関数" in output
+        assert "测试函数" in output
+
+        # Check if function names are properly spaced
+        # - each line should start with a function name
+        # followed by appropriate spacing before the time value
+        lines = [line.strip() for line in output.split("\n") if line.strip()]
+        function_lines = [
+            line
+            for line in lines
+            if "test_func" in line or "テスト関数" in line or "测试函数" in line
+        ]
+
+        for line in function_lines:
+            # Extract function name - it's at the start of the line
+            function_name = None
+            for name in results:
+                if line.startswith(name):
+                    function_name = name
+                    break
+
+            assert (
+                function_name is not None
+            ), f"Could not find function name in line: {line}"
+
+            # Verify proper alignment - after the function name there should be spaces
+            # followed by the time value
+            remainder = line[len(function_name) :].strip()
+            assert remainder.startswith("0."), f"Value not properly aligned in: {line}"
+
+    def test_format_alignment_with_mixed_width_characters(self) -> None:
+        """Test column alignment with mixed regular and wide characters."""
+        formatter = TableFormatter()
+        results: dict[str, ResultType] = {
+            "ascii_only": {"times": [TEST_TIME_VALUE]},
+            "漢字_mixed_with_ascii": {"times": [TEST_SLOW_TIME]},
+            "all_アジア文字_chars": {"times": [TEST_SLOWER_TIME]},
+        }
+        stats: dict[str, StatType] = {
+            "ascii_only": complete_stat({"avg": TEST_TIME_VALUE}),
+            "漢字_mixed_with_ascii": complete_stat({"avg": TEST_SLOW_TIME}),
+            "all_アジア文字_chars": complete_stat({"avg": TEST_SLOWER_TIME}),
+        }
+        config = BenchConfig(trials=1)
+
+        output = formatter.format(results, stats, config)
+
+        # Get all lines with function names
+        lines = [
+            line for line in output.split("\n") if any(name in line for name in results)
+        ]
+
+        # All line length are equal
+        assert len({visual_width(line) for line in lines}) == 1
+
+    def test_format_visual_width_calculation(self) -> None:
+        """Test that visual_width is used correctly for width calculation."""
+        from easybench.utils import visual_width
+
+        # Create function names with different visual widths
+        names = {
+            "ascii": "test_function",  # 13 chars, visual width 13
+            "wide": "テスト関数",  # 5 chars, visual width 10
+            "mixed": "test_漢字_func",  # 14 chars, visual width 18
+        }
+
+        formatter = TableFormatter()
+        results: dict[str, ResultType] = {
+            names["ascii"]: {"times": [TEST_TIME_VALUE]},
+            names["wide"]: {"times": [TEST_SLOW_TIME]},
+            names["mixed"]: {"times": [TEST_SLOWER_TIME]},
+        }
+        stats: dict[str, StatType] = {
+            names["ascii"]: complete_stat({"avg": TEST_TIME_VALUE}),
+            names["wide"]: complete_stat({"avg": TEST_SLOW_TIME}),
+            names["mixed"]: complete_stat({"avg": TEST_SLOWER_TIME}),
+        }
+        config = BenchConfig(trials=1)
+
+        output = formatter.format(results, stats, config)
+
+        # Verify max_name_len is using visual_width rather than len
+        # Max visual width should be 18 (test_漢字_func) not 13 (test_function)
+        expected_max_visual_width = max(visual_width(name) for name in names.values())
+        assert expected_max_visual_width == 14  # noqa: PLR2004
+
+        # Extract all lines with function names
+        lines = [
+            line
+            for line in output.split("\n")
+            if any(name in line for name in names.values())
+        ]
+
+        # All line length are equal
+        assert len({visual_width(line) for line in lines}) == 1
 
 
 class TestCSVFormatter:

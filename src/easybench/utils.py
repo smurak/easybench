@@ -4,6 +4,7 @@ import os
 import platform
 import sys
 import time
+import unicodedata
 from typing import Any
 
 
@@ -85,3 +86,67 @@ def get_bench_env() -> dict[str, Any]:
     }
 
     return env_info
+
+
+def visual_width(text: str) -> int:
+    """
+    Calculate the visual width of a string.
+
+    Assuming:
+        - Fullwidth ('F') and Wide ('W') characters count as 2.
+        - All other characters count as 1.
+
+    This function is useful for determining display width, especially for
+    East Asian characters in fixed-width terminal environments.
+
+    Args:
+        text (str): The input string.
+
+    Returns:
+        int: The total visual width of the string.
+
+    """
+    width = 0
+    for ch in text:
+        ea_width = unicodedata.east_asian_width(ch)
+        if ea_width in ("F", "W"):  # Fullwidth or Wide
+            width += 2
+        else:
+            width += 1  # Narrow, Halfwidth, Ambiguous, Neutral
+    return width
+
+
+def visual_ljust(text: str, width: int, fillchar: str = " ") -> str:
+    """
+    Ljust for visual width.
+
+    Args:
+        text (str): The input string to pad.
+        width (int): Target visual width.
+        fillchar (str, optional): Character used for padding. Defaults to a space.
+
+    Returns:
+        str: Padded string with the specified visual width.
+
+    """
+    current_width = visual_width(text)
+    padding_width = max(0, width - current_width)
+    return text + (fillchar * padding_width)
+
+
+def visual_rjust(text: str, width: int, fillchar: str = " ") -> str:
+    """
+    Rjust for visual width.
+
+    Args:
+        text (str): The input string to pad.
+        width (int): Target visual width.
+        fillchar (str, optional): Character used for padding. Defaults to a space.
+
+    Returns:
+        str: Right-padded string with the specified visual width.
+
+    """
+    current_width = visual_width(text)
+    padding_width = max(0, width - current_width)
+    return (fillchar * padding_width) + text

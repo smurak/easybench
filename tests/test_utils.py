@@ -9,7 +9,12 @@ import sys
 from unittest.mock import patch
 
 from easybench import get_bench_env
-from easybench.utils import measure_timer_overhead
+from easybench.utils import (
+    measure_timer_overhead,
+    visual_ljust,
+    visual_rjust,
+    visual_width,
+)
 
 
 class TestGetBenchEnv:
@@ -124,3 +129,90 @@ class TestGetBenchEnv:
             env_info = get_bench_env()
             assert env_info["python"]["environment"] == "pyodide"
             assert env_info["python"]["pyodide_version"] == "unknown"
+
+
+class TestVisualWidthFunctions:
+    """Tests for the visual width calculation and text alignment functions."""
+
+    # ruff: noqa: PLR2004
+    def test_visual_width(self) -> None:
+        """Test that visual_width correctly calculates display width of strings."""
+        # ASCII characters should have width 1
+        assert visual_width("hello") == 5
+        assert visual_width("hello world") == 11
+        assert visual_width("123") == 3
+
+        # Empty string should have width 0
+        assert visual_width("") == 0
+
+        # Wide characters (CJK) should have width 2
+        assert visual_width("漢字") == 4  # 2 characters, each width 2
+        assert visual_width("テスト") == 6  # 3 characters, each width 2
+        assert visual_width("안녕하세요") == 10  # 5 Korean characters, each width 2
+
+        # Mixed width strings
+        assert visual_width("hello漢字") == 9  # 5 (ASCII) + 4 (CJK)
+        assert visual_width("テスト123") == 9  # 6 (CJK) + 3 (ASCII)
+        assert visual_width("漢字abc漢字") == 11  # 4 (CJK) + 3 (ASCII) + 4 (CJK)
+
+        # Special characters - most non-wide characters have width 1
+        assert visual_width("!@#$%^&*()") == 10
+        assert visual_width("こんにちは! Hello!") == 18  # 10 (CJK) + 8 (ASCII)
+
+    def test_visual_ljust(self) -> None:
+        """Test that visual_ljust correctly left-justifies text."""
+        # Basic ASCII strings
+        assert (
+            visual_ljust("hello", 10) == "hello     "
+        )  # 5 chars + 5 spaces = 10 width
+        assert visual_ljust("x", 5) == "x    "  # 1 char + 4 spaces = 5 width
+
+        # Wide characters
+        assert visual_ljust("漢字", 10) == "漢字      "  # 4 width + 6 spaces = 10 width
+        assert (
+            visual_ljust("テスト", 10) == "テスト    "
+        )  # 6 width + 4 spaces = 10 width
+
+        # Mixed width characters
+        assert (
+            visual_ljust("hello漢字", 15) == "hello漢字      "
+        )  # 9 width + 6 spaces = 15 width
+
+        # When string is already wider than target width
+        assert visual_ljust("hello", 3) == "hello"  # No truncation, returns original
+
+        # With custom fill character
+        assert visual_ljust("hello", 10, "-") == "hello-----"
+        assert visual_ljust("漢字", 8, "=") == "漢字===="
+
+        # Empty string
+        assert visual_ljust("", 5) == "     "  # 5 spaces
+
+    def test_visual_rjust(self) -> None:
+        """Test that visual_rjust correctly right-justifies text."""
+        # Basic ASCII strings
+        assert (
+            visual_rjust("hello", 10) == "     hello"
+        )  # 5 spaces + 5 chars = 10 width
+        assert visual_rjust("x", 5) == "    x"  # 4 spaces + 1 char = 5 width
+
+        # Wide characters
+        assert visual_rjust("漢字", 10) == "      漢字"  # 6 spaces + 4 width = 10 width
+        assert (
+            visual_rjust("テスト", 10) == "    テスト"
+        )  # 4 spaces + 6 width = 10 width
+
+        # Mixed width characters
+        assert (
+            visual_rjust("hello漢字", 15) == "      hello漢字"
+        )  # 6 spaces + 9 width = 15 width
+
+        # When string is already wider than target width
+        assert visual_rjust("hello", 3) == "hello"  # No truncation, returns original
+
+        # With custom fill character
+        assert visual_rjust("hello", 10, "-") == "-----hello"
+        assert visual_rjust("漢字", 8, "=") == "====漢字"
+
+        # Empty string
+        assert visual_rjust("", 5) == "     "  # 5 spaces

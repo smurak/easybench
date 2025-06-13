@@ -24,6 +24,8 @@ from typing import (
     get_args,
 )
 
+from .utils import visual_ljust, visual_width
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -204,7 +206,7 @@ class TableFormatter(Formatter):
     ) -> str:
         """Format results as text tables."""
         output = []
-        self.max_name_len = max(len(name) for name in results)
+        self.max_name_len = max(visual_width(name) for name in results)
         self.sorted_methods = self.sort_keys(stats, config)
 
         # Add title line
@@ -294,7 +296,7 @@ class TableFormatter(Formatter):
         for method_name in self.sorted_methods:
             stat = stats[method_name]
             time_val = f"{time_unit.convert_seconds(stat['avg']):.6f}".rjust(self.width)
-            line = f"{method_name}".ljust(self.max_name_len + 2) + time_val
+            line = visual_ljust(method_name, self.max_name_len + 2) + time_val
             if config.memory:
                 mem_val = f"{memory_unit.convert_bytes(stat['avg_memory']):.6f}".rjust(
                     self.width,
@@ -350,7 +352,7 @@ class TableFormatter(Formatter):
             )
 
             # Format the function name with proper alignment
-            method_col = f"{method_name}".ljust(self.max_name_len + 2)
+            method_col = visual_ljust(method_name, self.max_name_len + 2)
             line = (
                 method_col
                 + avg_val.rjust(self.width)
