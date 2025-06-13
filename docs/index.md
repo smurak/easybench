@@ -27,7 +27,7 @@ pip install easybench
 EasyBench supports optional dependencies for additional features:
 
 ```bash
-# Install with visualization and analysis support
+# Install with visualization support
 pip install easybench[all]
 ```
 
