@@ -62,8 +62,8 @@ pip install easybench[all]
     
     # 関数パラメータと共に@benchを追加
     @bench(item=123, big_list=lambda: list(range(1_000_000)))
-    def add_item(item, big_list):
-        big_list.append(item)
+    def insert_first(item, big_list):
+        big_list.insert(0, item)
     ```
 
 > [!TIP]  
@@ -74,7 +74,7 @@ pip install easybench[all]
 
     ```python
     from easybench import EasyBench, BenchConfig
-    
+
     class BenchListOperation(EasyBench):
         # ベンチマーク設定
         bench_config = BenchConfig(
@@ -82,19 +82,19 @@ pip install easybench[all]
             memory=True,
             sort_by="avg"
         )
-    
+
         # 各試行のセットアップ
         def setup_trial(self):
             self.big_list = list(range(1_000_000))
-    
+
         # ベンチマークメソッド（bench_で始まる必要があります）
-        def bench_append(self):
-            self.big_list.append(123)
-    
+        def bench_insert_first(self):
+            self.big_list.insert(0, 123)
+
         # 複数のベンチマークメソッドが定義可能です
-        def bench_pop(self):
-            self.big_list.pop()
-    
+        def bench_pop_first(self):
+            self.big_list.pop(0)
+
     if __name__ == "__main__":
         # ベンチマーク実行
         BenchListOperation().bench()
@@ -107,19 +107,19 @@ pip install easybench[all]
 
         ```python
         from easybench import fixture
-        
+
         # 各試行用のフィクスチャ
         @fixture(scope="trial")
         def big_list():
             return list(range(1_000_000))
-        
+
         # ベンチマーク関数（bench_で始まる必要があります）
-        def bench_append(big_list):
-            big_list.append(123)
-        
+        def bench_insert_first(big_list):
+            big_list.insert(0, 123)
+
         # 複数のベンチマーク関数が定義可能です
-        def bench_pop(big_list):
-            big_list.pop()
+        def bench_pop_first(big_list):
+                big_list.pop(0)
         ```
 
     3. `easybench`コマンドを実行
@@ -135,9 +135,9 @@ pip install easybench[all]
     ```
     Benchmark Results (5 trials):
     
-    Function   Avg Time (s) Min Time (s) Max Time (s)
-    ----------------------------------------------
-    add_item   0.002393     0.000939     0.007362   
+    Function        Avg Time (s)  Min Time (s)  Max Time (s)
+    --------------------------------------------------------
+    insert_first        0.001568      0.001071      0.003265
     ```
 
 * 複数ベンチマーク
@@ -165,8 +165,8 @@ from easybench import bench
 
 # 関数パラメータと共に@benchを追加
 @bench(item=123, big_list=list(range(1_000_000)))
-def add_item(item, big_list):
-    big_list.append(item)
+def insert_first(item, big_list):
+    big_list.insert(0, item)
 ```
 
 #### **毎試行で入力値を再作成する**
@@ -179,8 +179,8 @@ from easybench import bench
 
 # 各試行ごとに新しいリストを作成
 @bench(item=-1, big_list=lambda: list(range(1_000_000)))
-def append(item, big_list):
-    big_list.append(item)
+def insert_first(item, big_list):
+    big_list.insert(0, item)
 ```
 
 #### **関数パラメータ**（`@bench.fn_params`）
@@ -205,8 +205,8 @@ def apply_function(big_list, func):
 ```python
 @bench(big_list=list(range(10_000_000)))
 @bench.config(trials=10, memory=True)
-def pop_last(big_list):
-    big_list.pop()
+def pop_first(big_list):
+    big_list.pop(0)
 ```
 
 > [!TIP] 
@@ -258,26 +258,26 @@ def pop_first(lst):
 
 ```python
 @bench
-def append_item(item, big_list):
-    big_list.append(item)
+def insert_first(item, big_list):
+    big_list.insert(0, item)
     return len(big_list)
 
 # 通常の関数として実行（ベンチマークなし）
-result = append_item(3, list(range(1_000_000)))
+result = insert_first(3, list(range(1_000_000)))
 
 # ベンチマークと共に実行
-result = append_item.bench(3, list(range(1_000_000)))
+result = insert_first.bench(3, list(range(1_000_000)))
 print(result)  # 10000001
 ```
 * 試行回数はデフォルトでは `1` 回です。
 * 複数回試行したい場合は、`bench_trials`パラメータを指定します：
   ```python
-  result = append_item.bench(3, list(range(1_000_000)), bench_trials=10)
+  result = insert_first.bench(3, list(range(1_000_000)), bench_trials=10)
   ```
 * 複数回試行の場合、`.bench()`メソッドの戻り値は初回試行時の戻り値となります。
   ```python
-  result = append_item.bench(3, [1,2,3], bench_trials=10)
-  print(result)  # 4
+  result = insert_first.bench(3, list(range(100_000)), bench_trials=10)
+  print(result)  # 100001
   ```
 
 ### クラスベースのベンチマーク（`EasyBench`クラス）
@@ -301,11 +301,11 @@ class BenchListOperation(EasyBench):
         self.big_list = list(range(10_000_000))
 
     # ベンチマークメソッド（bench_で始まる必要があります）
-    def bench_append(self):
-        self.big_list.append(-1)
+    def bench_insert_first(self):
+        self.big_list.insert(0, 123)
 
-    def bench_insert_start(self):
-        self.big_list.insert(0, -1)
+    def bench_pop_first(self):
+        self.big_list.pop(0)
 
 if __name__ == "__main__":
     BenchListOperation().bench()
@@ -403,11 +403,12 @@ def big_list():
 
 class BenchListOperation(EasyBench):
     # フィクスチャを引数として受け取る
-    def bench_append(self, big_list):
-        big_list.append(-1)
-
-    def bench_insert_start(self, big_list):
+    def bench_insert_first(self, big_list):
         big_list.insert(0, -1)
+
+    def bench_pop_first(self, big_list):
+        big_list.pop(0)
+        
 
 if __name__ == "__main__":
     BenchListOperation().bench()
@@ -471,14 +472,9 @@ class MyBenchmark(EasyBench):
 - `"m"`: 分単位で表示
 
 進捗表示オプション（`progress`）：
-- `False`: 進捗表示を無効化 (デフォルト)
-- `True`: tqdmを使用した進捗表示を有効化
+- `False`: 進捗表示を無効化
+- `True`: tqdmを使用した進捗表示を有効化 (デフォルト)
 - カスタム関数: 独自の進捗表示関数を使用（tqdmインターフェースに準拠する関数）
-
-`progress=True`を設定すると、以下の場面で進捗バーが表示されます：
-- ベンチマークプロセス全体
-- 各ベンチマークメソッドの試行実行
-- パラメータ化されたベンチマークのパラメータセット
 
 ### ウォームアップによる測定精度の向上（`warmups`）
 
@@ -513,14 +509,16 @@ def my_function():
 
 タイマー解像度が低い環境（例：特定の仮想マシンや`time.perf_counter()`の精度が制限されているシステム）では、意味のある計測結果を得るために、関数を複数回実行する必要がある場合があります。
 
+また、非常に高速な処理（数マイクロ秒以下）をベンチマークする場合、関数呼び出し自体のオーバーヘッドが測定結果に大きな影響を与えることがあります。このようなケースでは、`loops_per_trial`パラメータを設定することで、関数呼び出しのオーバーヘッドを分散させ、より正確な測定結果を得ることができます。
+
 `loops_per_trial`パラメータを使用すると、1回の時間測定（試行）で関数を実行する回数を指定できます：
 
 ```python
-# 要素数100のリストに対して、1を1000回追加する処理の平均時間を計測する
-# （1000回の追加処理中、同じリストインスタンスを使い続ける点に注意）
+# 要素数100のリストに対して、1を10000回追加する処理の平均時間を計測する
+# （10000回の追加処理中、同じリストインスタンスを使い続ける点に注意）
 # この処理を500回繰り返してベンチマークを計測する
 @bench(small_list=lambda: list(range(100)))
-@bench.config(trials=500, loops_per_trial=1000, time="us")
+@bench.config(trials=500, loops_per_trial=10000, time="us")
 def append_item(small_list):
     small_list.append(1)
 ```
@@ -585,15 +583,14 @@ from easybench import fixture
 
 @fixture(scope="trial")
 def big_list():
-    return list(range(10_000_000))
+    return list(range(1_000_000))
 
-def bench_append(big_list):
-    """リストの末尾に要素を追加"""
-    big_list.append(-1)
+# ベンチマーク関数（bench_で始まる必要があります）
+def bench_insert_first(big_list):
+    big_list.insert(0, 123)
 
-def bench_insert_start(big_list):
-    """リストの先頭に要素を挿入"""
-    big_list.insert(0, -1)
+def bench_pop_first(big_list):
+        big_list.pop(0)
 ```
 
 このファイルを`benchmarks`フォルダに保存し、`easybench`コマンドを実行して両方の関数をベンチマークし、結果を比較します：
@@ -688,13 +685,15 @@ bench_config = BenchConfig(
 これは複数試行間の分布や外れ値を分析するのに役立ちます。
 
 ```python
-from easybench import BenchConfig, EasyBench
+from easybench import BenchConfig, EasyBench, customize
 from easybench.visualization import BoxPlotFormatter, PlotReporter
 
 
 class BenchList(EasyBench):
     bench_config = BenchConfig(
         trials=100,
+        warmups=100,
+        loops_per_trial=100,
         reporters=[
             PlotReporter(
                 BoxPlotFormatter(
@@ -704,14 +703,15 @@ class BenchList(EasyBench):
                     orientation="horizontal", # ボックスプロットの方向（水平または垂直）
                     width=0.5,              # ボックスの幅（seabornのboxplotに直接渡される）
                     linewidth=0.5,          # ラインの太さ（seabornのboxplotに直接渡される）
-                )
-            )
+                ),
+            ),
         ],
     )
 
     def setup_trial(self):
         self.big_list = list(range(1_000_000))
 
+    @customize(loops_per_trial=1000)
     def bench_append(self):
         self.big_list.append(-1)
 
@@ -721,6 +721,7 @@ class BenchList(EasyBench):
     def bench_insert_middle(self):
         self.big_list.insert(len(self.big_list) // 2, -1)
 
+    @customize(loops_per_trial=1000)
     def bench_pop(self):
         self.big_list.pop()
 

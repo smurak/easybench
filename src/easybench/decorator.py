@@ -413,6 +413,7 @@ class BenchDecorator:
         color: bool | None = None,
         show_output: bool | None = None,
         reporters: list[Reporter] | None = None,
+        progress: bool | Callable | None = None,
     ) -> Callable: ...
 
     def config(self, **kwargs: Any) -> Callable:

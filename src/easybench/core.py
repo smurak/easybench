@@ -251,7 +251,7 @@ class BenchConfig(PartialBenchConfig):
     show_output: bool = False
     return_output: bool = False
     reporters: list[Reporter] = [ConsoleReporter()]
-    progress: bool | Callable = False
+    progress: bool | Callable = True
 
 
 def ensure_full_config(

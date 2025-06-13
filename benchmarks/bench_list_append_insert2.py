@@ -1,6 +1,6 @@
 """Benchmark for comparing different list operations in Python."""
 
-from easybench import BenchConfig, EasyBench
+from easybench import BenchConfig, EasyBench, customize
 
 
 class BenchListOperation(EasyBench):
@@ -25,6 +25,7 @@ class BenchListOperation(EasyBench):
         """Set up a fresh list before each trial."""
         self.big_list = list(range(self.size))
 
+    @customize(loops_per_trial=1000)
     def bench_append(self) -> None:
         """Benchmark appending an element to the end of the list."""
         self.big_list.append(-1)
@@ -37,6 +38,7 @@ class BenchListOperation(EasyBench):
         """Benchmark inserting an element in the middle of the list."""
         self.big_list.insert(len(self.big_list) // 2, -1)
 
+    @customize(loops_per_trial=1000)
     def bench_pop(self) -> None:
         """Benchmark removing an element from the end of the list."""
         self.big_list.pop()
@@ -49,7 +51,9 @@ class BenchListOperation(EasyBench):
 if __name__ == "__main__":
     BenchListOperation(size=1_000_000).bench(
         config=BenchConfig(
-            trials=10,
+            trials=100,
+            warmups=100,
+            loops_per_trial=100,
             memory=True,
             sort_by="avg",
             color=True,

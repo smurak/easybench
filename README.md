@@ -40,7 +40,7 @@ pip install easybench
 EasyBench supports optional dependencies for additional features:
 
 ```bash
-# Install with visualization and analysis support
+# Install with visualization support
 pip install easybench[all]
 ```
 
@@ -62,8 +62,8 @@ There are 3 ways to benchmark with `easybench`:
     
     # Add @bench with function parameters
     @bench(item=123, big_list=lambda: list(range(1_000_000)))
-    def add_item(item, big_list):
-        big_list.append(item)
+    def insert_first(item, big_list):
+        big_list.insert(0, item)
     ```
 
 > [!TIP]  
@@ -88,12 +88,12 @@ There are 3 ways to benchmark with `easybench`:
             self.big_list = list(range(1_000_000))
     
         # Benchmark methods (must start with bench_)
-        def bench_append(self):
-            self.big_list.append(123)
+        def bench_insert_first(self):
+            self.big_list.insert(0, 123)
     
         # You can define multiple benchmark methods
-        def bench_pop(self):
-            self.big_list.pop()
+        def bench_pop_first(self):
+            self.big_list.pop(0)
     
     if __name__ == "__main__":
         # Run benchmark
@@ -114,12 +114,12 @@ There are 3 ways to benchmark with `easybench`:
             return list(range(1_000_000))
         
         # Benchmark functions (must start with bench_)
-        def bench_append(big_list):
-            big_list.append(123)
+        def bench_insert_first(big_list):
+            big_list.insert(0, 123)
         
         # You can define multiple benchmark functions
-        def bench_pop(big_list):
-            big_list.pop()
+        def bench_pop_first(big_list):
+            big_list.pop(0)
         ```
 
     3. Run `easybench` command
@@ -135,9 +135,9 @@ There are 3 ways to benchmark with `easybench`:
     ```
     Benchmark Results (5 trials):
     
-    Function   Avg Time (s) Min Time (s) Max Time (s)
-    ----------------------------------------------
-    add_item   0.002393     0.000939     0.007362   
+    Function        Avg Time (s)  Min Time (s)  Max Time (s)
+    --------------------------------------------------------
+    insert_first        0.001568      0.001071      0.003265
     ```
 
 * Multiple benchmarks
@@ -165,8 +165,8 @@ from easybench import bench
 
 # Add @bench with function parameters
 @bench(item=123, big_list=list(range(1_000_000)))
-def add_item(item, big_list):
-    big_list.append(item)
+def insert_first(item, big_list):
+    big_list.insert(0, item)
 ```
 
 #### **Fresh data**
@@ -179,8 +179,8 @@ from easybench import bench
 
 # Create a new list for each trial
 @bench(item=-1, big_list=lambda: list(range(1_000_000)))
-def append(item, big_list):
-    big_list.append(item)
+def insert_first(item, big_list):
+    big_list.insert(0, item)
 ```
 
 #### **Function parameters** (`@bench.fn_params`)
@@ -206,8 +206,8 @@ To customize benchmark settings, use the `@bench.config` decorator:
 ```python
 @bench(big_list=list(range(10_000_000)))
 @bench.config(trials=10, memory=True)
-def pop_last(big_list):
-    big_list.pop()
+def pop_first(big_list):
+    big_list.pop(0)
 ```
 
 > [!TIP]  
@@ -260,26 +260,26 @@ If you want to run the benchmark only when needed, use the `.bench()` method:
 
 ```python
 @bench
-def append_item(item, big_list):
-    big_list.append(item)
+def insert_first(item, big_list):
+    big_list.insert(0, item)
     return len(big_list)
 
 # Run as a normal function (without benchmarking)
-result = append_item(3, list(range(1_000_000)))
+result = insert_first(3, list(range(1_000_000)))
 
 # Run with benchmarking
-result = append_item.bench(3, list(range(1_000_000)))
+result = insert_first.bench(3, list(range(1_000_000)))
 print(result)  # 10000001
 ```
 * By default, the benchmark runs for `1` trial.
 * To run multiple trials, specify the `bench_trials` parameter:
   ```python
-  result = append_item.bench(3, list(range(1_000_000)), bench_trials=10)
+  result = insert_first.bench(3, list(range(1_000_000)), bench_trials=10)
   ```
 * When running multiple trials, the `.bench()` method returns the value from the first trial.
   ```python
-  result = append_item.bench(3, [1,2,3], bench_trials=10)
-  print(result)  # 4
+  result = insert_first.bench(3, list(range(100_000)), bench_trials=10)
+  print(result)  # 100001
   ```
 
 ### Class-based Benchmarks (`EasyBench` class)
@@ -303,11 +303,11 @@ class BenchListOperation(EasyBench):
         self.big_list = list(range(10_000_000))
 
     # Benchmark methods (must start with bench_)
-    def bench_append(self):
-        self.big_list.append(-1)
+    def bench_insert_first(self):
+        self.big_list.insert(0, 123)
 
-    def bench_insert_start(self):
-        self.big_list.insert(0, -1)
+    def bench_pop_first(self):
+        self.big_list.pop(0)
 
 if __name__ == "__main__":
     BenchListOperation().bench()
@@ -405,11 +405,11 @@ def big_list():
 
 class BenchListOperation(EasyBench):
     # Receive the fixture as an argument
-    def bench_append(self, big_list):
-        big_list.append(-1)
-
-    def bench_insert_start(self, big_list):
+    def bench_insert_first(self, big_list):
         big_list.insert(0, -1)
+
+    def bench_pop_first(self, big_list):
+        big_list.pop(0)
 
 if __name__ == "__main__":
     BenchListOperation().bench()
@@ -473,8 +473,8 @@ Time measurement options (`time`):
 - `"m"`: Display time in minutes
 
 Progress tracking options (`progress`):
-- `False`: Disable progress tracking (default)
-- `True`: Enable progress tracking using tqdm
+- `False`: Disable progress tracking
+- `True`: Enable progress tracking using tqdm (default)
 - Custom function: Use a custom progress tracking function that follows the tqdm interface
 
 ### Improving Measurement Accuracy with `warmups`
@@ -508,15 +508,18 @@ When to use:
 
 In environments with poor timer resolution (e.g., certain virtual machines or systems where `time.perf_counter()` has limited precision), you may need to run a function multiple times to get meaningful timing results.
 
+Additionally, when benchmarking very fast operations (less than a few microseconds), the overhead of function calls themselves can significantly impact measurement results.  
+In such cases, using the `loops_per_trial` parameter can help distribute the function call overhead and achieve more accurate measurements.
+
 The `loops_per_trial` parameter allows you to specify how many times a function should be executed in a single timing measurement (trial):
 
 ```python
 # Measure the average time it takes to append the number 1 to a list
-# that initially contains 100 elements, repeated 1000 times
-# (Note: the same list instance is used throughout the 1000 append operations)
+# that initially contains 100 elements, repeated 10000 times
+# (Note: the same list instance is used throughout the 10000 append operations)
 # Repeat this process 500 times to perform the benchmark
 @bench(small_list=lambda: list(range(100)))
-@bench.config(trials=500, loops_per_trial=1000, time="us")
+@bench.config(trials=500, loops_per_trial=10000, time="us")
 def append_item(small_list):
     small_list.append(1)
 ```
@@ -581,15 +584,15 @@ from easybench import fixture
 
 @fixture(scope="trial")
 def big_list():
-    return list(range(10_000_000))
+    return list(range(1_000_000))
 
-def bench_append(big_list):
-    """Append an element to the end of the list"""
-    big_list.append(-1)
-
-def bench_insert_start(big_list):
+def bench_insert_first(big_list):
     """Insert an element at the beginning of the list"""
-    big_list.insert(0, -1)
+    big_list.insert(0, 123)
+
+def bench_pop_first(big_list):
+    """Remove the first element from the list"""
+    big_list.pop(0)
 ```
 
 Save this file in the `benchmarks` folder and run the `easybench` command to benchmark both functions and compare the results:
@@ -683,13 +686,15 @@ bench_config = BenchConfig(
 You can visualize benchmark results as boxplots, which is useful for analyzing distribution and outliers across multiple trials:
 
 ```python
-from easybench import BenchConfig, EasyBench
+from easybench import BenchConfig, EasyBench, customize
 from easybench.visualization import BoxPlotFormatter, PlotReporter
 
 
 class BenchList(EasyBench):
     bench_config = BenchConfig(
         trials=100,
+        warmups=100,
+        loops_per_trial=100,
         reporters=[
             PlotReporter(
                 BoxPlotFormatter(
@@ -699,14 +704,15 @@ class BenchList(EasyBench):
                     orientation="horizontal",  # Horizontal or vertical orientation
                     width=0.5,                 # Box width (passed directly to seaborn's boxplot)
                     linewidth=0.5,             # Line width (passed directly to seaborn's boxplot)
-                )
-            )
+                ),
+            ),
         ],
     )
 
     def setup_trial(self):
         self.big_list = list(range(1_000_000))
 
+    @customize(loops_per_trial=1000)
     def bench_append(self):
         self.big_list.append(-1)
 
@@ -716,6 +722,7 @@ class BenchList(EasyBench):
     def bench_insert_middle(self):
         self.big_list.insert(len(self.big_list) // 2, -1)
 
+    @customize(loops_per_trial=1000)
     def bench_pop(self):
         self.big_list.pop()
 

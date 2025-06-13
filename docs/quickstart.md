@@ -9,8 +9,8 @@ There are 3 ways to benchmark with `easybench`:
     
     # Add @bench with function parameters
     @bench(item=123, big_list=lambda: list(range(1_000_000)))
-    def add_item(item, big_list):
-        big_list.append(item)
+    def insert_first(item, big_list):
+        big_list.insert(0, item)
     ```
 
     !!! tip
@@ -36,12 +36,12 @@ There are 3 ways to benchmark with `easybench`:
             self.big_list = list(range(1_000_000))
     
         # Benchmark methods (must start with bench_)
-        def bench_append(self):
-            self.big_list.append(123)
+        def bench_insert_first(self):
+            self.big_list.insert(0, 123)
     
         # You can define multiple benchmark methods
-        def bench_pop(self):
-            self.big_list.pop()
+        def bench_pop_first(self):
+            self.big_list.pop(0)
     
     if __name__ == "__main__":
         # Run benchmark
@@ -62,12 +62,12 @@ There are 3 ways to benchmark with `easybench`:
             return list(range(1_000_000))
         
         # Benchmark functions (must start with bench_)
-        def bench_append(big_list):
-            big_list.append(123)
+        def bench_insert_first(big_list):
+            big_list.insert(0, 123)
         
         # You can define multiple benchmark functions
-        def bench_pop(big_list):
-            big_list.pop()
+        def bench_pop_first(big_list):
+            big_list.pop(0)
         ```
 
     3. Run `easybench` command
@@ -83,9 +83,9 @@ There are 3 ways to benchmark with `easybench`:
     ```
     Benchmark Results (5 trials):
     
-    Function   Avg Time (s) Min Time (s) Max Time (s)
-    ----------------------------------------------
-    add_item   0.002393     0.000939     0.007362   
+    Function        Avg Time (s)  Min Time (s)  Max Time (s)
+    --------------------------------------------------------
+    insert_first        0.001568      0.001071      0.003265
     ```
 
 * Multiple benchmarks

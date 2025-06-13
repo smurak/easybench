@@ -41,7 +41,7 @@ class TestBenchDecoratorOutput:
     def test_bench_decorator_display(self, capsys: pytest.CaptureFixture) -> None:
         """Test that basic benchmark output is displayed correctly."""
 
-        @bench
+        @bench.config(progress=False)
         def test() -> int:
             return 10
 

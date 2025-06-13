@@ -83,30 +83,33 @@ bench_config = BenchConfig(
 You can visualize benchmark results as boxplots, which is useful for analyzing distribution and outliers across multiple trials:
 
 ```python
-from easybench import BenchConfig, EasyBench
+from easybench import BenchConfig, EasyBench, customize
 from easybench.visualization import BoxPlotFormatter, PlotReporter
 
 
 class BenchList(EasyBench):
     bench_config = BenchConfig(
         trials=100,
+        warmups=100,
+        loops_per_trial=100,
         reporters=[
             PlotReporter(
                 BoxPlotFormatter(
-                    showfliers=True,        # Show outliers
-                    log_scale=True,         # Use logarithmic scale
-                    engine="seaborn",       # Use seaborn as plotting engine
-                    orientation="horizontal", # Horizontal or vertical orientation
-                    width=0.5,              # Box width (passed directly to seaborn's boxplot)
-                    linewidth=0.5,          # Line width (passed directly to seaborn's boxplot)
-                )
-            )
+                    showfliers=True,           # Show outliers
+                    log_scale=True,            # Use logarithmic scale
+                    engine="seaborn",          # Use seaborn as plotting engine
+                    orientation="horizontal",  # Horizontal or vertical orientation
+                    width=0.5,                 # Box width (passed directly to seaborn's boxplot)
+                    linewidth=0.5,             # Line width (passed directly to seaborn's boxplot)
+                ),
+            ),
         ],
     )
 
     def setup_trial(self):
         self.big_list = list(range(1_000_000))
 
+    @customize(loops_per_trial=1000)
     def bench_append(self):
         self.big_list.append(-1)
 
@@ -116,6 +119,7 @@ class BenchList(EasyBench):
     def bench_insert_middle(self):
         self.big_list.insert(len(self.big_list) // 2, -1)
 
+    @customize(loops_per_trial=1000)
     def bench_pop(self):
         self.big_list.pop()
 
