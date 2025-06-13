@@ -195,6 +195,7 @@ class TestBoxPlotFormatter:
             fig = formatter.format(sample_results, sample_stats, sample_config)
             assert fig is not None
             assert len(fig.axes) > 0
+        plt.close()
 
     @pytest.mark.parametrize("orientation", ["horizontal", "vertical"])
     def test_format_with_different_orientations(
@@ -215,6 +216,7 @@ class TestBoxPlotFormatter:
             fig = formatter.format(sample_results, sample_stats, sample_config)
             assert fig is not None
             assert len(fig.axes) > 0
+        plt.close()
 
     def test_trim_outliers(
         self,
@@ -234,6 +236,7 @@ class TestBoxPlotFormatter:
         ):
             fig = formatter.format(sample_results, sample_stats, sample_config)
             assert fig is not None
+        plt.close()
 
     def test_winsorize_outliers(
         self,
@@ -253,6 +256,7 @@ class TestBoxPlotFormatter:
         ):
             fig = formatter.format(sample_results, sample_stats, sample_config)
             assert fig is not None
+        plt.close()
 
     def test_create_matplotlib_boxplot(self) -> None:
         """Test creation of boxplot with matplotlib engine."""
@@ -445,6 +449,7 @@ class TestBoxPlotFormatter:
             mock_ax_mem.set_title.assert_called_once()
 
             assert fig is not None
+        plt.close()
 
     def test_preprocess_memory_data(
         self,
@@ -593,6 +598,128 @@ class TestBoxPlotFormatter:
         else:
             mock_ax.set_xticks.assert_called_once()
             mock_ax.set_xticklabels.assert_called_once()
+
+    def test_sns_theme_application(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that sns_theme parameters are correctly applied."""
+        # Skip if seaborn is not available
+        if not find_spec("seaborn"):
+            pytest.skip("seaborn not installed")
+
+        custom_theme = {"style": "darkgrid", "palette": "Set2"}
+        formatter = BoxPlotFormatter(sns_theme=custom_theme)
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+            warnings.catch_warnings(),
+        ):
+            # Ignore seaborn's PendingDeprecationWarning
+            warnings.filterwarnings(
+                "ignore",
+                category=PendingDeprecationWarning,
+                module="seaborn",
+            )
+
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+            # Verify that seaborn.set_theme was called with the custom theme
+            mock_set_theme.assert_called_once_with(**custom_theme)
+        plt.close()
+
+    def test_sns_theme_forces_seaborn_engine(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that providing sns_theme automatically sets engine to seaborn."""
+        # Skip if seaborn is not available
+        if not find_spec("seaborn"):
+            pytest.skip("seaborn not installed")
+
+        # Create formatter with matplotlib engine but sns_theme provided
+        custom_theme = {"style": "whitegrid"}
+        formatter = BoxPlotFormatter(engine="matplotlib", sns_theme=custom_theme)
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+            mock.patch("seaborn.boxplot") as mock_boxplot,
+        ):
+            # Mock seaborn.boxplot to return a mock axes
+            mock_boxplot.return_value = mock.MagicMock()
+
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+            # Verify seaborn functions were called (indicating seaborn engine was used)
+            mock_set_theme.assert_called_once_with(**custom_theme)
+            mock_boxplot.assert_called()
+        plt.close()
+
+    def test_sns_theme_with_default_theme(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that seaborn engine uses default theme when no sns_theme provided."""
+        # Skip if seaborn is not available
+        if not find_spec("seaborn"):
+            pytest.skip("seaborn not installed")
+
+        formatter = BoxPlotFormatter(engine="seaborn")
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+            mock.patch("seaborn.boxplot") as mock_boxplot,
+        ):
+            # Mock seaborn.boxplot to return a mock axes
+            mock_boxplot.return_value = mock.MagicMock()
+
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+            # Verify default theme was applied
+            from easybench.visualization import DEFAULT_SNS_THEME
+
+            mock_set_theme.assert_called_once_with(**DEFAULT_SNS_THEME)
+        plt.close()
+
+    def test_sns_theme_none_with_matplotlib_engine(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that matplotlib engine doesn't call seaborn.set_theme."""
+        formatter = BoxPlotFormatter(engine="matplotlib", sns_theme=None)
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+        ):
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+            # Verify seaborn.set_theme was not called
+            mock_set_theme.assert_not_called()
+        plt.close()
 
 
 class TestLinePlotFormatter:
@@ -821,6 +948,154 @@ class TestLinePlotFormatter:
         mock_ax.set_xlabel.assert_called_once_with("Custom X Label")
         mock_ax.set_ylabel.assert_called_once()
         mock_ax.legend.assert_called_once()
+
+    def test_sns_theme_application(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that sns_theme parameters are correctly applied."""
+        # Skip if seaborn is not available
+        if not find_spec("seaborn"):
+            pytest.skip("seaborn not installed")
+
+        custom_theme = {"style": "darkgrid", "palette": "Set2"}
+        formatter = LinePlotFormatter(sns_theme=custom_theme)
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+            warnings.catch_warnings(),
+        ):
+            # Ignore seaborn's PendingDeprecationWarning
+            warnings.filterwarnings(
+                "ignore",
+                category=PendingDeprecationWarning,
+                module="seaborn",
+            )
+
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+            # Verify that seaborn.set_theme was called with the custom theme
+            mock_set_theme.assert_called_once_with(**custom_theme)
+        plt.close()
+
+    def test_sns_theme_forces_seaborn_engine(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that providing sns_theme automatically sets engine to seaborn."""
+        # Skip if seaborn is not available
+        if not find_spec("seaborn"):
+            pytest.skip("seaborn not installed")
+
+        # Create formatter with matplotlib engine but sns_theme provided
+        custom_theme = {"style": "whitegrid"}
+        formatter = LinePlotFormatter(engine="matplotlib", sns_theme=custom_theme)
+
+        with (
+            mock.patch("matplotlib.axes.Axes.legend"),
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+            mock.patch("seaborn.lineplot") as mock_lineplot,
+            warnings.catch_warnings(),
+        ):
+            # Ignore seaborn's PendingDeprecationWarning
+            warnings.filterwarnings(
+                "ignore",
+                category=PendingDeprecationWarning,
+                module="seaborn",
+            )
+
+            # Mock seaborn.lineplot to return a mock axes
+            mock_lineplot.return_value = mock.MagicMock()
+
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+            # Verify seaborn functions were called (indicating seaborn engine was used)
+            mock_set_theme.assert_called_once_with(**custom_theme)
+            mock_lineplot.assert_called()
+        plt.close()
+
+    def test_sns_theme_with_default_theme(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that seaborn engine uses default theme when no sns_theme provided."""
+        # Skip if seaborn is not available
+        if not find_spec("seaborn"):
+            pytest.skip("seaborn not installed")
+
+        formatter = LinePlotFormatter(engine="seaborn")
+
+        with (
+            mock.patch("matplotlib.axes.Axes.legend"),
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+            mock.patch("seaborn.lineplot") as mock_lineplot,
+            warnings.catch_warnings(),
+        ):
+            # Ignore seaborn's PendingDeprecationWarning
+            warnings.filterwarnings(
+                "ignore",
+                category=PendingDeprecationWarning,
+                module="seaborn",
+            )
+
+            # Mock seaborn.lineplot to return a mock axes
+            mock_lineplot.return_value = mock.MagicMock()
+
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+            # Verify default theme was applied
+            from easybench.visualization import DEFAULT_SNS_THEME
+
+            mock_set_theme.assert_called_once_with(**DEFAULT_SNS_THEME)
+        plt.close()
+
+    def test_sns_theme_none_with_matplotlib_engine(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that matplotlib engine doesn't call seaborn.set_theme."""
+        formatter = LinePlotFormatter(engine="matplotlib", sns_theme=None)
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+            warnings.catch_warnings(),
+        ):
+            # Ignore seaborn's PendingDeprecationWarning
+            warnings.filterwarnings(
+                "ignore",
+                category=PendingDeprecationWarning,
+                module="seaborn",
+            )
+
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+            # Verify seaborn.set_theme was not called
+            mock_set_theme.assert_not_called()
+        plt.close()
 
 
 class TestPlotReporter:

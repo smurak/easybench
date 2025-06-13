@@ -622,7 +622,9 @@ There are three ways to specify reporters:
    - `"console"`: Standard tabular console output
    - `"simple"`: Simple console output
    - `"plot"` or `"boxplot"`: Visualization with boxplot
+   - `"plot-sns"` or `"boxplot-sns"`: Visualization with seaborn-styled boxplot
    - `"lineplot"`: Visualization with lineplot
+   - `"lineplot-sns"`: Visualization with seaborn-styled lineplot
    - `"*.csv"` or `"*.json"`: File output
 
 2. **With arguments**: Specify in the format `(reporter_name, parameter_dict)`
@@ -734,10 +736,6 @@ class BenchList(EasyBench):
 
 
 if __name__ == "__main__":
-    import seaborn as sns
-
-    # Optional seaborn style settings
-    sns.set_theme(style="darkgrid", palette="Set2")
     BenchList().bench()
 ```
 
@@ -753,6 +751,7 @@ if __name__ == "__main__":
 - `figsize`: Figure size (default: `(10, 6)`)
 - `engine`: Plotting engine (`"matplotlib"` or `"seaborn"`)
 - `orientation`: Boxplot orientation (`"vertical"` or `"horizontal"`)
+- `sns_theme`: Dictionary of seaborn theme parameters (e.g., `{"style": "darkgrid", "palette": "Set2"}`)
 
 ### `PlotReporter` options
 
