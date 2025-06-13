@@ -475,11 +475,6 @@ class MyBenchmark(EasyBench):
 - `True`: tqdmを使用した進捗表示を有効化 (デフォルト)
 - カスタム関数: 独自の進捗表示関数を使用（tqdmインターフェースに準拠する関数）
 
-`progress=True`を設定すると、以下の場面で進捗バーが表示されます：
-- ベンチマークプロセス全体
-- 各ベンチマークメソッドの試行実行
-- パラメータ化されたベンチマークのパラメータセット
-
 ### ウォームアップによる測定精度の向上（`warmups`）
 
 ベンチマーク測定時、初回の実行はコードのコンパイルやキャッシュのウォームアップなど、
@@ -512,6 +507,8 @@ def my_function():
 ### タイマー精度の改善（`loops_per_trial`）
 
 タイマー解像度が低い環境（例：特定の仮想マシンや`time.perf_counter()`の精度が制限されているシステム）では、意味のある計測結果を得るために、関数を複数回実行する必要がある場合があります。
+
+また、非常に高速な処理（数マイクロ秒以下）をベンチマークする場合、関数呼び出し自体のオーバーヘッドが測定結果に大きな影響を与えることがあります。このようなケースでは、`loops_per_trial`パラメータを設定することで、関数呼び出しのオーバーヘッドを分散させ、より正確な測定結果を得ることができます。
 
 `loops_per_trial`パラメータを使用すると、1回の時間測定（試行）で関数を実行する回数を指定できます：
 
@@ -688,13 +685,15 @@ bench_config = BenchConfig(
 これは複数試行間の分布や外れ値を分析するのに役立ちます。
 
 ```python
-from easybench import BenchConfig, EasyBench
+from easybench import BenchConfig, EasyBench, customize
 from easybench.visualization import BoxPlotFormatter, PlotReporter
 
 
 class BenchList(EasyBench):
     bench_config = BenchConfig(
         trials=100,
+        warmups=100,
+        loops_per_trial=100,
         reporters=[
             PlotReporter(
                 BoxPlotFormatter(
@@ -704,14 +703,15 @@ class BenchList(EasyBench):
                     orientation="horizontal", # ボックスプロットの方向（水平または垂直）
                     width=0.5,              # ボックスの幅（seabornのboxplotに直接渡される）
                     linewidth=0.5,          # ラインの太さ（seabornのboxplotに直接渡される）
-                )
-            )
+                ),
+            ),
         ],
     )
 
     def setup_trial(self):
         self.big_list = list(range(1_000_000))
 
+    @customize(loops_per_trial=1000)
     def bench_append(self):
         self.big_list.append(-1)
 
@@ -721,6 +721,7 @@ class BenchList(EasyBench):
     def bench_insert_middle(self):
         self.big_list.insert(len(self.big_list) // 2, -1)
 
+    @customize(loops_per_trial=1000)
     def bench_pop(self):
         self.big_list.pop()
 
