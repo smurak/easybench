@@ -288,7 +288,8 @@ class MyBenchmark(EasyBench):
         color=True,          # Use color output in results
         show_output=False,   # Display function return values
         loops_per_trial=1,   # Number of function executions per trial (see explanation below)
-        reporters=[]         # Custom reporters (see explanation below)
+        reporters=[],        # Custom reporters (see explanation below)
+        progress=True,       # Enable progress tracking with tqdm
     )
 
     # You can also customize settings for individual methods
@@ -323,6 +324,11 @@ Time measurement options (`time`):
 - `"μs"` or `"us"`: Display time in microseconds
 - `"ns"`: Display time in nanoseconds
 - `"m"`: Display time in minutes
+
+Progress tracking options (`progress`):
+- `False`: Disable progress tracking (default)
+- `True`: Enable progress tracking using tqdm
+- Custom function: Use a custom progress tracking function that follows the tqdm interface
 
 ### Improving Measurement Accuracy with `warmups`
 

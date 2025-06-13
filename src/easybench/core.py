@@ -13,6 +13,7 @@ import sys
 import time
 import tracemalloc
 import types
+from collections.abc import Callable, Iterable
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -33,7 +34,7 @@ else:
 from pydantic import BaseModel, field_validator
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable
     from contextlib import AbstractContextManager
 
 from .reporters import (
@@ -45,6 +46,23 @@ from .reporters import (
     TimeUnit,
 )
 
+# Generic types
+T = TypeVar("T")
+V = TypeVar("V")
+
+try:
+    from tqdm.auto import tqdm
+except ImportError:
+
+    def tqdm(  # type: ignore[no-redef]
+        iterable: Iterable[T],
+        **kwargs: object,
+    ) -> Iterable[T]:
+        """Create simple tqdm fallback."""
+        _ = kwargs
+        return iterable
+
+
 # Configure logger
 logger = logging.getLogger(__name__)
 
@@ -53,10 +71,6 @@ ScopeType = Literal["trial", "function", "class"]
 
 # Sort type
 SortType = Literal["def", "avg", "min", "max", "avg_memory", "max_memory"]
-
-# Generic types
-T = TypeVar("T")
-V = TypeVar("V")
 
 
 def get_reporter(name: str, kwargs: dict | None = None) -> Reporter:
@@ -150,6 +164,7 @@ class PartialBenchConfig(BaseModel):
     show_output: bool | None = None
     return_output: bool | None = None
     reporters: list[Reporter] | None = None
+    progress: bool | Callable | None = None
 
     def merge_with(self, config: BenchConfig) -> BenchConfig:
         """
@@ -236,6 +251,7 @@ class BenchConfig(PartialBenchConfig):
     show_output: bool = False
     return_output: bool = False
     reporters: list[Reporter] = [ConsoleReporter()]
+    progress: bool | Callable = False
 
 
 def ensure_full_config(
@@ -499,6 +515,60 @@ class EasyBench:
 
         return complete_config, fixture_registry
 
+    def _get_loops_per_trial(
+        self,
+        method: Callable[..., object],
+        config: BenchConfig,
+    ) -> int:
+        """
+        Get the number of loops per trial, considering method customization.
+
+        Args:
+            method: The benchmark method
+            config: Benchmark configuration
+
+        Returns:
+            Number of loops per trial
+
+        """
+        loops_per_trial = config.loops_per_trial
+        if hasattr(method, "_bench_customize"):
+            method = cast("CustomizedFunction", method)
+            custom_config = method._bench_customize  # noqa: SLF001
+            if custom_config.get("loops_per_trial") is not None:
+                loops_per_trial = custom_config["loops_per_trial"]
+        return loops_per_trial
+
+    def _create_trial_range(
+        self,
+        method: Callable[..., object],
+        config: BenchConfig,
+    ) -> range | Iterable:
+        """
+        Create a trial range with optional progress tracking.
+
+        Args:
+            method: The benchmark method
+            config: Benchmark configuration
+
+        Returns:
+            Trial range
+
+        """
+        total_trials = config.warmups + config.trials
+
+        if config.progress:
+            progress_func = tqdm if config.progress is True else config.progress
+            trial_range = progress_func(
+                range(total_trials),
+                desc=f"Method: {getattr(method, '__name__', 'unknown')}",
+                total=total_trials,
+            )
+        else:
+            trial_range = range(total_trials)
+
+        return trial_range
+
     def _run_benchmark_trials(
         self,
         method: Callable[..., object],
@@ -526,17 +596,15 @@ class EasyBench:
         if capture_output:
             result_dict["output"] = []
 
-        # Check if method has custom loops_per_trial setting
-        loops_per_trial = config.loops_per_trial
-        if hasattr(method, "_bench_customize"):
-            method = cast("CustomizedFunction", method)
-            custom_config = method._bench_customize  # noqa: SLF001
-            if custom_config.get("loops_per_trial") is not None:
-                loops_per_trial = custom_config["loops_per_trial"]
+        # Get customized loops per trial setting
+        loops_per_trial = self._get_loops_per_trial(method, config)
 
         with self._manage_scope("function", values, fixture_registry):
             warmup = True
-            for i in range(config.warmups + config.trials):
+            # Create trial range with progress tracking if enabled
+            trial_range = self._create_trial_range(method, config)
+
+            for i in trial_range:
                 if i == config.warmups:
                     warmup = False
 
@@ -590,8 +658,19 @@ class EasyBench:
         # Get the parameter sets from the method
         params_list = getattr(method, "_bench_params", [])
 
+        # Setup progress for parameter sets if enabled
+        if config.progress:
+            progress_func = tqdm if config.progress is True else config.progress
+            param_iter = progress_func(
+                enumerate(params_list),
+                desc=f"Params for {method_name}",
+                total=len(params_list),
+            )
+        else:
+            param_iter = enumerate(params_list)
+
         # Run benchmarks for each parameter set
-        for i, params in enumerate(params_list):
+        for i, params in param_iter:
             # Create a name for this parameter set
             param_name = f"params_{i+1}"
             if params.name:
@@ -655,7 +734,20 @@ class EasyBench:
         values: dict[str, object] = {}
 
         with self._manage_scope("class", values, fixture_registry):
-            for method_name, method in benchmark_methods.items():
+            # Use progress bar if enabled
+            if config.progress:
+                # Get the progress function (tqdm or custom)
+                progress_func = tqdm if config.progress is True else config.progress
+                # Apply progress bar to methods
+                method_items = progress_func(
+                    benchmark_methods.items(),
+                    desc="Benchmarking",
+                    total=len(benchmark_methods),
+                )
+            else:
+                method_items = benchmark_methods.items()
+
+            for method_name, method in method_items:
                 # Check if this method is parametrized
                 if hasattr(method, "_bench_params"):
                     # Process parametrized method
