@@ -12,7 +12,7 @@ This module contains various test cases for the EasyBench class, including:
 
 import logging
 import time
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Iterable
 from typing import Any, ClassVar, cast
 from unittest import mock
 from unittest.mock import patch
@@ -1881,6 +1881,112 @@ class TestParametrizedDecorator:
         assert "bench_test (Small)" in captured.out
         assert "bench_test (Large)" in captured.out
         assert "Benchmark Results" in captured.out
+
+    def test_progress_option_true(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that progress=True enables progress tracking."""
+
+        class ProgressBench(EasyBench):
+            def bench_test1(self) -> None:
+                pass
+
+            def bench_test2(self) -> None:
+                pass
+
+        # Run with progress=True (should use tqdm)
+        bench = ProgressBench()
+        bench.bench(config=PartialBenchConfig(progress=True))
+
+        # Just verify execution completes without errors
+        # We're not testing tqdm's output, just that our code handles it correctly
+        captured = capsys.readouterr()
+        assert "Benchmark Results" in captured.out
+        assert "bench_test1" in captured.out
+        assert "bench_test2" in captured.out
+
+    def test_custom_progress_function(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test using a custom progress function."""
+        # Track calls to our custom progress function
+        progress_calls: list[dict[str, Any]] = []
+
+        # Create a custom progress function that records calls
+        def custom_progress(
+            iterable: Iterable,
+            desc: str | None = None,
+            total: int | None = None,
+        ) -> Iterable:
+            progress_calls.append({"desc": desc, "total": total})
+            # Just yield the items, no actual progress visualization
+            yield from iterable
+
+        class CustomProgressBench(EasyBench):
+            bench_config = BenchConfig(trials=3)
+
+            def bench_test1(self) -> None:
+                pass
+
+            def bench_test2(self) -> None:
+                pass
+
+        bench = CustomProgressBench()
+        # Use our custom progress function
+        bench.bench(config=PartialBenchConfig(progress=custom_progress))
+
+        # Verify our progress function was called
+        assert len(progress_calls) > 0
+        # Should have one call for the benchmark methods list
+        assert any(call["desc"] == "Benchmarking" for call in progress_calls)
+        # Should have at least one call for each benchmark method's trials
+        assert any(
+            "Method: bench_test1" in call.get("desc", "") for call in progress_calls
+        )
+        assert any(
+            "Method: bench_test2" in call.get("desc", "") for call in progress_calls
+        )
+
+        # Verify benchmark still ran correctly
+        captured = capsys.readouterr()
+        assert "Benchmark Results" in captured.out
+        assert "bench_test1" in captured.out
+        assert "bench_test2" in captured.out
+
+    def test_progress_with_parametrized_benchmark(self) -> None:
+        """Test progress option with parametrized benchmarks."""
+        # Track calls to our custom progress function
+        progress_calls: list[dict[str, Any]] = []
+
+        def custom_progress(
+            iterable: Iterable,
+            desc: str | None = None,
+            total: int | None = None,
+        ) -> Iterable:
+            progress_calls.append({"desc": desc, "total": total})
+            yield from iterable
+
+        # Define parameter sets
+        small = BenchParams(name="Small", params={"size": 10})
+        large = BenchParams(name="Large", params={"size": 100})
+
+        class ParamProgressBench(EasyBench):
+            bench_config = BenchConfig(trials=2)
+
+            @parametrize([small, large])
+            def bench_test(self, size: int) -> None:
+                pass
+
+        bench = ParamProgressBench()
+        # Use our custom progress function
+        bench.bench(config=PartialBenchConfig(progress=custom_progress))
+
+        # Verify our progress function was called for parametrized benchmarks
+        assert len(progress_calls) > 0
+        # Should have calls for benchmark methods, parameter sets, and trials
+        assert any(call["desc"] == "Benchmarking" for call in progress_calls)
+        assert any(
+            "Params for bench_test" in call.get("desc", "") for call in progress_calls
+        )
+        assert any(
+            "Method: bench_test" in call.get("desc", "") for call in progress_calls
+        )
 
 
 class TestConfigValidation:

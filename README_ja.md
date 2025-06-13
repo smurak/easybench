@@ -420,7 +420,8 @@ class MyBenchmark(EasyBench):
         color=True,          # 結果にカラー出力を使用
         show_output=False,   # 関数の戻り値をベンチマーク結果に表示
         loops_per_trial=1,   # 試行毎の関数実行回数 (後述の解説を参照)
-        reporters=[]         # カスタムレポーター (後述の解説を参照)
+        reporters=[],        # カスタムレポーター (後述の解説を参照)
+        progress=True,       # tqdmによる進捗表示を有効化
     )
 
     # メソッド個別のカスタマイズも可能です
@@ -452,6 +453,16 @@ class MyBenchmark(EasyBench):
 - `"μs"` or `"us"`: マイクロ秒単位で表示
 - `"ns"`: ナノ秒単位で表示
 - `"m"`: 分単位で表示
+
+進捗表示オプション（`progress`）：
+- `False`: 進捗表示を無効化 (デフォルト)
+- `True`: tqdmを使用した進捗表示を有効化
+- カスタム関数: 独自の進捗表示関数を使用（tqdmインターフェースに準拠する関数）
+
+`progress=True`を設定すると、以下の場面で進捗バーが表示されます：
+- ベンチマークプロセス全体
+- 各ベンチマークメソッドの試行実行
+- パラメータ化されたベンチマークのパラメータセット
 
 ### ウォームアップによる測定精度の向上（`warmups`）
 
@@ -738,9 +749,5 @@ if __name__ == "__main__":
 > ```bash
 > pip install seaborn
 > ```
-
-## ライセンス
-
-[MIT](./LICENSE)
 
 
