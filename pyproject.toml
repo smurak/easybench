@@ -66,6 +66,7 @@ dev = [
   "mkdocs-material>=9.6.14",
   "mkdocstrings[python]>=0.29.1",
   "mypy>=1.15.0",
+  "nbstripout>=0.8.1",
   "pandas>=2.2.3",
   "pandas-stubs>=2.2.3.250527",
   "pytest-cov>=6.1.1",

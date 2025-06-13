@@ -53,6 +53,8 @@ pip install easybench[all]
 
 ## クイックスタート
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/smurak/easybench/blob/main/notebooks/easybench_quickstart.ipynb)
+
 `easybench`を使用する方法は3種類あります：
 
 1. `@bench`デコレータ
