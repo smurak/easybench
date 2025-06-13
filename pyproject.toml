@@ -95,6 +95,11 @@ quote-style = "double"
   "S101",      # Allow `assert` in tests
   "SLF001"     # Private member accessed
 ]
+"*.ipynb" = [
+  "D",    # docstring
+  "ANN",  # type annotation
+  "E501",  # Line too long
+]
 
 [tool.black]
 line-length = 88
