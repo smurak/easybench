@@ -21,6 +21,8 @@ nav:
     - Core: reference/core.md
     - Decorator: reference/decorator.md
     - Reporters: reference/reporters.md
+    - Visualization: reference/visualization.md
+    - Utils: reference/utils.md
 
 markdown_extensions:
   - admonition
