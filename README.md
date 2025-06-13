@@ -35,6 +35,22 @@ English | [日本語](README_ja.md)
 pip install easybench
 ```
 
+### Optional Dependencies
+
+EasyBench supports optional dependencies for additional features:
+
+```bash
+# Install with visualization and analysis support
+pip install easybench[all]
+```
+
+The `all` option includes:
+
+- `matplotlib`: For visualization and plotting benchmark results
+- `seaborn`: For enhanced statistical visualizations
+- `pandas`: For outputting benchmark results as DataFrames
+- `tqdm`: For progress tracking during benchmark execution
+
 ## Quick Start
 
 There are 3 ways to benchmark with `easybench`:
