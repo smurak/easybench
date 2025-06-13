@@ -1,5 +1,7 @@
 # Quick Start
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/smurak/easybench/blob/main/notebooks/easybench_quickstart.ipynb)
+
 There are 3 ways to benchmark with `easybench`:
 
 1. `@bench` decorator

@@ -66,6 +66,7 @@ dev = [
   "mkdocs-material>=9.6.14",
   "mkdocstrings[python]>=0.29.1",
   "mypy>=1.15.0",
+  "nbstripout>=0.8.1",
   "pandas>=2.2.3",
   "pandas-stubs>=2.2.3.250527",
   "pytest-cov>=6.1.1",
@@ -93,6 +94,11 @@ quote-style = "double"
 "tests/**/*.py" = [
   "S101",      # Allow `assert` in tests
   "SLF001"     # Private member accessed
+]
+"*.ipynb" = [
+  "D",    # docstring
+  "ANN",  # type annotation
+  "E501",  # Line too long
 ]
 
 [tool.black]
