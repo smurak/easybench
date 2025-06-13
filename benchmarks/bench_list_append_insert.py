@@ -1,6 +1,6 @@
 """Benchmark comparing different list operations like append and insert."""
 
-from easybench import BenchConfig, EasyBench, fixture
+from easybench import BenchConfig, EasyBench, customize, fixture
 
 
 @fixture(scope="trial")
@@ -26,9 +26,12 @@ class BenchList(EasyBench):
     bench_config = BenchConfig(
         memory=True,
         sort_by="avg",
-        trials=10,
+        trials=100,
+        warmups=100,
+        loops_per_trial=100,
     )
 
+    @customize(loops_per_trial=1000)
     def bench_append(self, big_list: list[int]) -> None:
         """
         Benchmark appending an item to the end of a list.
@@ -39,9 +42,9 @@ class BenchList(EasyBench):
         """
         big_list.append(-1)
 
-    def bench_insert_start(self, big_list: list[int]) -> None:
+    def bench_insert_first(self, big_list: list[int]) -> None:
         """
-        Benchmark inserting an item at the start of a list.
+        Benchmark inserting an item at the first of a list.
 
         Args:
             big_list: A large list to perform operations on.
@@ -59,6 +62,7 @@ class BenchList(EasyBench):
         """
         big_list.insert(len(big_list) // 2, -1)
 
+    @customize(loops_per_trial=1000)
     def bench_pop(self, big_list: list[int]) -> None:
         """
         Benchmark popping an item from the end of a list.
