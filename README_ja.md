@@ -35,6 +35,22 @@
 pip install easybench
 ```
 
+### オプション依存関係
+
+EasyBenchは追加機能のためのオプション依存関係をサポートしています：
+
+```bash
+# 可視化と分析サポート付きでインストール
+pip install easybench[all]
+```
+
+`all` オプションには以下が含まれます：
+
+- `matplotlib`: ベンチマーク結果の可視化とプロット作成用
+- `seaborn`: 高度な統計的可視化用
+- `pandas`: ベンチマーク結果のDataFrame出力用
+- `tqdm`: ベンチマーク実行中の進行状況表示用
+
 ## クイックスタート
 
 `easybench`を使用する方法は3種類あります：

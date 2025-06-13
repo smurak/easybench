@@ -23,6 +23,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+all = [
+    "matplotlib",
+    "seaborn", 
+    "pandas",
+    "tqdm",
+]
 dev = [
     "ruff",
     "black",
