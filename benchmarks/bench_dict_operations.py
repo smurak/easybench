@@ -72,10 +72,6 @@ class BenchDictOperation(EasyBench):
 
 
 if __name__ == "__main__":
-    import seaborn as sns
-
-    sns.set_theme(style="darkgrid", palette="Set2")
-
     BenchDictOperation(size=100_000).bench(
         config=BenchConfig(
             trials=100,

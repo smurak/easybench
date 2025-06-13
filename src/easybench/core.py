@@ -76,27 +76,38 @@ SortType = Literal["def", "avg", "min", "max", "avg_memory", "max_memory"]
 def get_reporter(name: str, kwargs: dict | None = None) -> Reporter:
     """Convert string to reporter."""
     kwargs = kwargs or {}
+    reporter: Reporter | None = None
 
     match name.lower():
         case "console":
-            return ConsoleReporter(**kwargs)
+            reporter = ConsoleReporter(**kwargs)
         case "simple":
-            return SimpleConsoleReporter(**kwargs)
+            reporter = SimpleConsoleReporter(**kwargs)
         case "file":
-            return FileReporter(**kwargs)
+            reporter = FileReporter(**kwargs)
         case _ if name.endswith((".csv", ".json")):
-            return FileReporter(name, **kwargs)
+            reporter = FileReporter(name, **kwargs)
         case "plot" | "boxplot":
             from .visualization import BoxPlotFormatter, PlotReporter
 
-            return PlotReporter(BoxPlotFormatter(**kwargs))
+            reporter = PlotReporter(BoxPlotFormatter(**kwargs))
         case "lineplot":
             from .visualization import LinePlotFormatter, PlotReporter
 
-            return PlotReporter(LinePlotFormatter(**kwargs))
+            reporter = PlotReporter(LinePlotFormatter(**kwargs))
+        case "plot-sns" | "boxplot-sns":
+            from .visualization import BoxPlotFormatter, PlotReporter
+
+            reporter = PlotReporter(BoxPlotFormatter(engine="seaborn", **kwargs))
+        case "lineplot-sns":
+            from .visualization import LinePlotFormatter, PlotReporter
+
+            reporter = PlotReporter(LinePlotFormatter(engine="seaborn", **kwargs))
         case _:
             err = f"Unknown reporter type: {name}"
             raise ValueError(err)
+
+    return reporter
 
 
 class ResultType(TypedDict):

@@ -619,7 +619,9 @@ EasyBenchでは、**レポーター**（Reporter）という仕組みを使用�
    - `"console"`: 標準的なテーブル形式のコンソール出力
    - `"simple"`: シンプルなコンソール出力
    - `"plot"` or `"boxplot"`: ボックスプロットによる可視化
+   - `"plot-sns"` or `"boxplot-sns"`: seabornスタイルのボックスプロットによる可視化
    - `"lineplot"`: ラインプロットによる視覚化
+   - `"lineplot-sns"`: seabornスタイルのラインプロットによる視覚化
    - `"*.csv"` または `"*.json"`: ファイル出力
 
 2. **引数付きで指定**：`(レポーター名, パラメータ辞書)`の形式で指定する
@@ -732,10 +734,6 @@ class BenchList(EasyBench):
 
 
 if __name__ == "__main__":
-    import seaborn as sns
-
-    # seabornのスタイル設定（オプション）
-    sns.set_theme(style="darkgrid", palette="Set2")
     BenchList().bench()
 ```
 
@@ -751,6 +749,7 @@ if __name__ == "__main__":
 - `figsize`: 図のサイズ（デフォルト: `(10, 6)`）
 - `engine`: プロットエンジン（`"matplotlib"` または `"seaborn"`）
 - `orientation`: ボックスプロットの方向（`"vertical"` または `"horizontal"`）
+- `sns_theme`: seabornテーマのパラメータ辞書（例: `{"style": "darkgrid", "palette": "Set2"}`）
 
 #### `PlotReporter` のオプション
 

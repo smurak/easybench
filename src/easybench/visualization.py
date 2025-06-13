@@ -179,7 +179,11 @@ class BoxPlotFormatter(PlotFormatter):
 
         """
         # Use the temporary seaborn theme context if needed
-        with set_seaborn_theme(self.sns_theme):
+        with (
+            set_seaborn_theme(self.sns_theme)
+            if self.engine == "seaborn"
+            else contextlib.nullcontext()
+        ):
             # Extract and preprocess data
             time_data, labels = self._preprocess_data(results, stats, config)
             time_unit = TimeUnit.from_config(config)
@@ -623,7 +627,11 @@ class LinePlotFormatter(PlotFormatter):
 
         """
         # Apply seaborn theme if needed
-        with set_seaborn_theme(self.sns_theme):
+        with (
+            set_seaborn_theme(self.sns_theme)
+            if self.engine == "seaborn"
+            else contextlib.nullcontext()
+        ):
             # Sort method names according to configuration
             sorted_methods = self.sort_keys(stats, config)
 
