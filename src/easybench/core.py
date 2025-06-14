@@ -43,6 +43,7 @@ from .reporters import (
     MemoryUnit,
     Reporter,
     SimpleConsoleReporter,
+    TableFormatter,
     TimeUnit,
 )
 
@@ -80,7 +81,7 @@ def get_reporter(name: str, kwargs: dict | None = None) -> Reporter:
 
     match name.lower():
         case "console":
-            reporter = ConsoleReporter(**kwargs)
+            reporter = ConsoleReporter(TableFormatter(**kwargs))
         case "simple":
             reporter = SimpleConsoleReporter(**kwargs)
         case "file":

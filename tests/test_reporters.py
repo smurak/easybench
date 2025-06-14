@@ -1496,12 +1496,12 @@ class TestGetReporter:
         from easybench.core import get_reporter
         from easybench.reporters import ConsoleReporter, TableFormatter
 
-        # Create a custom formatter to pass through kwargs
-        custom_formatter = TableFormatter()
-        reporter = get_reporter("console", {"formatter": custom_formatter})
+        precision = 3
+        reporter = get_reporter("console", {"precision": precision})
 
         assert isinstance(reporter, ConsoleReporter)
-        assert reporter.formatter is custom_formatter
+        assert isinstance(reporter.formatter, TableFormatter)
+        assert reporter.formatter.precision == precision
 
     def test_get_reporter_with_invalid_name(self) -> None:
         """Test getting a reporter with an invalid name."""
