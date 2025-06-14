@@ -146,11 +146,15 @@ pip install easybench[all]
 
   ![EasyBench Benchmark Result](https://raw.githubusercontent.com/smurak/easybench/main/images/easybench_screenshot.png)
 
-* ボックスプロットによる視覚化
+* ボックスプロットによる可視化
 
   ![Boxplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_boxplot.png)
 
-* ラインプロットによる視覚化
+* バイオリンプロットによる可視化
+
+  ![Violinplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_violinplot.png)
+
+* ラインプロットによる可視化
 
   ![Lineplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_lineplot.png)
 
@@ -618,10 +622,12 @@ EasyBenchでは、**レポーター**（Reporter）という仕組みを使用�
 1. **文字列で指定**：レポーター名を文字列として指定する
    - `"console"`: 標準的なテーブル形式のコンソール出力
    - `"simple"`: シンプルなコンソール出力
-   - `"plot"` or `"boxplot"`: ボックスプロットによる可視化
-   - `"plot-sns"` or `"boxplot-sns"`: seabornスタイルのボックスプロットによる可視化
-   - `"lineplot"`: ラインプロットによる視覚化
-   - `"lineplot-sns"`: seabornスタイルのラインプロットによる視覚化
+   - `"boxplot"`: ボックスプロットによる可視化
+   - `"violinplot"`: バイオリンプロットによる可視化
+   - `"boxplot-sns"`: seabornスタイルのボックスプロットによる可視化
+   - `"violinlot-sns"`: seabornスタイルのバイオリンプロットによる可視化
+   - `"lineplot"`: ラインプロットによる可視化
+   - `"lineplot-sns"`: seabornスタイルのラインプロットによる可視化
    - `"*.csv"` または `"*.json"`: ファイル出力
 
 2. **引数付きで指定**：`(レポーター名, パラメータ辞書)`の形式で指定する
@@ -640,7 +646,7 @@ EasyBenchでは、**レポーター**（Reporter）という仕組みを使用�
         reporters=[
             "console",                                  # 文字列で指定
             ("simple", {"metric": "min"}),              # 引数付きで指定
-            ("plot", {"log_scale": False}),             # 引数付きでプロット指定
+            ("boxplot", {"log_scale": False}),             # 引数付きでプロット指定
             "results.csv",                              # ファイルパスで指定
             FileReporter("results.csv"),                # オブジェクトで指定
         ]
@@ -648,7 +654,7 @@ EasyBenchでは、**レポーター**（Reporter）という仕組みを使用�
     
     # より単純な設定
     bench_config = BenchConfig(reporters=["console"])       # コンソール出力のみ
-    bench_config = BenchConfig(reporters=["plot"])          # ボックスプロットのみ
+    bench_config = BenchConfig(reporters=["boxplot"])          # ボックスプロットのみ
     bench_config = BenchConfig(reporters=["output.csv"])    # CSVファイル出力のみ
     ```
 
@@ -685,7 +691,7 @@ bench_config = BenchConfig(
 
 ### ボックスプロットによる可視化 (`BoxPlotFormatter`)
 
-ベンチマーク結果をボックスプロット（箱ひげ図）として視覚化することができます。  
+ベンチマーク結果をボックスプロット（箱ひげ図）として可視化することができます。  
 これは複数試行間の分布や外れ値を分析するのに役立ちます。
 
 ```python

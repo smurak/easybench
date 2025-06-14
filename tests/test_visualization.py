@@ -23,6 +23,7 @@ from easybench.visualization import (
     BoxPlotFormatter,
     LinePlotFormatter,
     PlotReporter,
+    ViolinPlotFormatter,
 )
 
 # Constants for test values
@@ -1182,6 +1183,445 @@ class TestBoxPlotFormatterTimeUnits:
             # Test BoxPlotFormatter
             boxplot_formatter = BoxPlotFormatter()
             figure = boxplot_formatter.format(results, stats, config)
+
+            # Check the label on the axis
+            display_unit = "μs" if time_unit == "us" else time_unit
+            assert hasattr(figure, "axes"), "Figure has no axes attribute"
+            assert figure.axes, "Figure has no axes"
+
+            axis = figure.axes[0]
+            time_label = f"Time ({display_unit})"
+
+            # The label might be on x-axis or y-axis depending on orientation
+            assert (
+                time_label in axis.get_xlabel() or time_label in axis.get_ylabel()
+            ), f"Time unit {display_unit} not found in plot labels"
+
+
+class TestViolinPlotFormatter:
+    """Tests for the ViolinPlotFormatter class."""
+
+    def test_init_with_defaults(self) -> None:
+        """Test initialization with default parameters."""
+        formatter = ViolinPlotFormatter()
+        assert formatter.log_scale is False
+        assert formatter.data_limit is None
+        assert formatter.figsize == (10, 6)
+        assert formatter.engine == "matplotlib"
+        assert formatter.orientation == "horizontal"
+        assert formatter.plot_type == "violin"
+
+    def test_init_with_custom_params(self) -> None:
+        """Test initialization with custom parameters."""
+        formatter = ViolinPlotFormatter(
+            log_scale=True,
+            data_limit=(0.0, 1.0),
+            trim_outliers=DEFAULT_TRIM_OUTLIERS,
+            winsorize_outliers=None,
+            figsize=(8, 4),
+            label_rotation_threshold=DEFAULT_LABEL_ROTATION_THRESHOLD,
+            engine="seaborn",
+            orientation="vertical",
+        )
+        assert formatter.log_scale is True
+        assert formatter.data_limit == (0.0, 1.0)
+        assert formatter.trim_outliers == DEFAULT_TRIM_OUTLIERS
+        assert formatter.winsorize_outliers is None
+        assert formatter.figsize == (8, 4)
+        assert formatter.label_rotation_threshold == DEFAULT_LABEL_ROTATION_THRESHOLD
+        assert formatter.engine == "seaborn"
+        assert formatter.orientation == "vertical"
+        assert formatter.plot_type == "violin"
+
+    def test_preprocess_data_no_outlier_handling(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test data preprocessing with no outlier handling."""
+        formatter = ViolinPlotFormatter()
+        data, labels = formatter._preprocess_data(
+            sample_results,
+            sample_stats,
+            sample_config,
+        )
+
+        assert len(data) == NUM_TEST_FUNCTIONS
+        assert "test_func1" in data
+        assert "test_func2" in data
+        assert data["test_func1"] == TEST_TIME_VALUES
+        assert len(labels) == NUM_TEST_FUNCTIONS
+        assert "test_func1" in labels
+        assert "test_func2" in labels
+
+    @pytest.mark.parametrize("engine", ["matplotlib", "seaborn"])
+    def test_format_with_different_engines(
+        self,
+        engine: str,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test formatting with different plotting engines."""
+        # Skip test if seaborn not installed when testing seaborn engine
+        if engine == "seaborn":
+            if not find_spec("seaborn"):
+                pytest.skip("seaborn not installed")
+
+            warnings.catch_warnings()
+            warnings.simplefilter("ignore", PendingDeprecationWarning)
+
+        formatter = ViolinPlotFormatter(engine=engine)  # type: ignore [arg-type]
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+            assert fig is not None
+            assert len(fig.axes) > 0
+        plt.close()
+
+    @pytest.mark.parametrize("orientation", ["horizontal", "vertical"])
+    def test_format_with_different_orientations(
+        self,
+        orientation: str,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test formatting with different orientations."""
+        formatter = ViolinPlotFormatter(orientation=orientation)  # type: ignore [arg-type]
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+            assert fig is not None
+            assert len(fig.axes) > 0
+        plt.close()
+
+    def test_trim_outliers(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test outlier trimming functionality."""
+        if not find_spec("numpy"):
+            pytest.skip("numpy not installed")
+
+        formatter = ViolinPlotFormatter(trim_outliers=DEFAULT_TRIM_OUTLIERS)
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+            assert fig is not None
+        plt.close()
+
+    def test_winsorize_outliers(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test outlier winsorization functionality."""
+        if not find_spec("numpy"):
+            pytest.skip("numpy not installed")
+
+        formatter = ViolinPlotFormatter(winsorize_outliers=DEFAULT_TRIM_OUTLIERS)
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+            assert fig is not None
+        plt.close()
+
+    def test_create_matplotlib_violinplot(self) -> None:
+        """Test creation of violinplot with matplotlib engine."""
+        formatter = ViolinPlotFormatter()
+
+        # Mock a matplotlib Axes object
+        with mock.patch("matplotlib.pyplot.Axes") as mock_axes:
+            mock_axes.violinplot = mock.MagicMock()
+            formatter._create_matplotlib_violinplot(
+                mock_axes,
+                [[0.1, 0.2, 0.3], [0.2, 0.3, 0.4]],
+                ["test1", "test2"],
+            )
+
+            # Verify violinplot was called
+            mock_axes.violinplot.assert_called_once()
+
+            # Check that set_yticks was called for horizontal orientation
+            mock_axes.set_yticks.assert_called_once()
+            mock_axes.set_yticklabels.assert_called_once()
+
+    def test_create_seaborn_violinplot(self) -> None:
+        """Test creation of violinplot with seaborn engine."""
+        if not find_spec("seaborn"):
+            pytest.skip("seaborn not installed")
+
+        formatter = ViolinPlotFormatter(engine="seaborn")
+
+        with mock.patch("seaborn.violinplot") as mock_violinplot:
+            # Mock a matplotlib Axes object
+            mock_axes = mock.MagicMock()
+
+            formatter._create_seaborn_violinplot(
+                mock_axes,
+                [[0.1, 0.2, 0.3], [0.2, 0.3, 0.4]],
+                ["test1", "test2"],
+            )
+
+            # Verify seaborn.violinplot was called
+            mock_violinplot.assert_called_once()
+
+    def test_create_matplotlib_violinplot_horizontal_fallback(self) -> None:
+        """
+        Test fallback to vert parameter when orientation isn't supported.
+
+        Tests the horizontal orientation case.
+        """
+        formatter = ViolinPlotFormatter(orientation="horizontal")
+
+        # Create mock Axes
+        mock_axes = mock.MagicMock()
+
+        # Make the first violinplot call raise TypeError to simulate orientation
+        # not being supported
+        mock_axes.violinplot.side_effect = [
+            TypeError("orientation not supported"),
+            None,
+        ]
+
+        formatter._create_matplotlib_violinplot(
+            mock_axes,
+            [[0.1, 0.2, 0.3], [0.2, 0.3, 0.4]],
+            ["test1", "test2"],
+        )
+
+        # Check that violinplot was called twice
+        # (first with orientation, then with vert)
+        assert mock_axes.violinplot.call_count == EXPECTED_CALL_COUNT
+
+        # Second call should have used vert
+        args, kwargs = mock_axes.violinplot.call_args_list[1]
+        assert "vert" in kwargs
+        assert kwargs["vert"] is False  # horizontal means vert=False
+
+        # Ensure tick settings were called
+        mock_axes.set_yticks.assert_called_once()
+        mock_axes.set_yticklabels.assert_called_once()
+
+    def test_create_matplotlib_violinplot_vertical_fallback(self) -> None:
+        """
+        Test fallback to vert parameter when orientation isn't supported.
+
+        Tests the vertical orientation case.
+        """
+        formatter = ViolinPlotFormatter(orientation="vertical")
+
+        # Create mock Axes
+        mock_axes = mock.MagicMock()
+
+        # Make the first violinplot call raise TypeError to simulate orientation
+        # not being supported
+        mock_axes.violinplot.side_effect = [
+            TypeError("orientation not supported"),
+            None,
+        ]
+
+        formatter._create_matplotlib_violinplot(
+            mock_axes,
+            [[0.1, 0.2, 0.3], [0.2, 0.3, 0.4]],
+            ["test1", "test2"],
+        )
+
+        # Check that violinplot was called twice
+        # (first with orientation, then with vert)
+        assert mock_axes.violinplot.call_count == EXPECTED_CALL_COUNT
+
+        # Second call should have used vert
+        args, kwargs = mock_axes.violinplot.call_args_list[1]
+        assert "vert" in kwargs
+        assert kwargs["vert"] is True  # vertical means vert=True
+
+        # Ensure tick settings were called
+        mock_axes.set_xticks.assert_called_once()
+        mock_axes.set_xticklabels.assert_called_once()
+
+    def test_format_with_memory_enabled(
+        self,
+    ) -> None:
+        """Test formatting with memory metrics enabled."""
+        # Modify sample results and stats to include memory data
+        memory_results: dict[str, ResultType] = {
+            "test_func1": {
+                "times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME],
+                "memory": [1024, 2048, 3072],
+            },
+            "test_func2": {
+                "times": [TEST_SLOWER_TIME, TEST_TIME_VALUE, TEST_SLOW_TIME],
+                "memory": [2048, 1024, 3072],
+            },
+        }
+
+        memory_stats = {
+            "test_func1": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                    "avg_memory": 2048,
+                    "max_memory": 3072,
+                },
+                memory=True,
+            ),
+            "test_func2": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                    "avg_memory": 2048,
+                    "max_memory": 3072,
+                },
+                memory=True,
+            ),
+        }
+
+        # Create a config with memory enabled
+        memory_config = BenchConfig(trials=3, memory=True)
+
+        formatter = ViolinPlotFormatter()
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("matplotlib.pyplot.subplots") as mock_subplots,
+            mock.patch.object(plt, "tight_layout"),
+        ):
+            # Create mock axes for time and memory subplots
+            mock_ax_time = mock.MagicMock()
+            mock_ax_mem = mock.MagicMock()
+            mock_fig = mock.MagicMock()
+            mock_subplots.return_value = (mock_fig, (mock_ax_time, mock_ax_mem))
+
+            # Call format with memory enabled
+            fig = formatter.format(memory_results, memory_stats, memory_config)
+
+            # Verify subplots were created (2 plots for time and memory)
+            mock_subplots.assert_called_once()
+            args, kwargs = mock_subplots.call_args
+            assert args == (2, 1)  # 2 rows, 1 column
+
+            # Verify violinplot was called for both time and memory plots
+            assert mock_ax_time.violinplot.call_count == 1
+            assert mock_ax_mem.violinplot.call_count == 1
+
+            # Verify memory subplot had styling applied
+            mock_ax_mem.set_title.assert_called_once()
+
+            assert fig is not None
+        plt.close()
+
+    def test_sns_theme_application(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that sns_theme parameters are correctly applied."""
+        # Skip if seaborn is not available
+        if not find_spec("seaborn"):
+            pytest.skip("seaborn not installed")
+
+        custom_theme = {"style": "darkgrid", "palette": "Set2"}
+        formatter = ViolinPlotFormatter(sns_theme=custom_theme)
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+            warnings.catch_warnings(),
+        ):
+            # Ignore seaborn's PendingDeprecationWarning
+            warnings.filterwarnings(
+                "ignore",
+                category=PendingDeprecationWarning,
+                module="seaborn",
+            )
+
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+            # Verify that seaborn.set_theme was called with the custom theme
+            mock_set_theme.assert_called_once_with(**custom_theme)
+        plt.close()
+
+    def test_sns_theme_forces_seaborn_engine(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that providing sns_theme automatically sets engine to seaborn."""
+        # Skip if seaborn is not available
+        if not find_spec("seaborn"):
+            pytest.skip("seaborn not installed")
+
+        # Create formatter with matplotlib engine but sns_theme provided
+        custom_theme = {"style": "whitegrid"}
+        formatter = ViolinPlotFormatter(engine="matplotlib", sns_theme=custom_theme)
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+            mock.patch("seaborn.violinplot") as mock_violinplot,
+        ):
+            # Mock seaborn.violinplot to return a mock axes
+            mock_violinplot.return_value = mock.MagicMock()
+
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+            # Verify seaborn functions were called (indicating seaborn engine was used)
+            mock_set_theme.assert_called_once_with(**custom_theme)
+            mock_violinplot.assert_called()
+        plt.close()
+
+
+class TestViolinPlotFormatterTimeUnits:
+    """Test ViolinPlotFormatter handling of different time units from BenchConfig."""
+
+    def test_violinplot_formatter_with_time_units(self) -> None:
+        """Test ViolinPlotFormatter with different time units."""
+        # Skip if matplotlib is not available
+        pytest.importorskip("matplotlib")
+
+        time_units = ["s", "ms", "μs", "us", "ns", "m"]
+        # Create sample results and stats
+        results: dict[str, ResultType] = {"test_func": {"times": [1.0, 2.0, 3.0]}}
+        stats = {"test_func": complete_stat({"avg": 2.0, "min": 1.0, "max": 3.0})}
+
+        for time_unit in time_units:
+            config = BenchConfig(time=time_unit)
+
+            # Test ViolinPlotFormatter
+            violinplot_formatter = ViolinPlotFormatter()
+            figure = violinplot_formatter.format(results, stats, config)
 
             # Check the label on the axis
             display_unit = "μs" if time_unit == "us" else time_unit

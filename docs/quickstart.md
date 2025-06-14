@@ -98,6 +98,10 @@ There are 3 ways to benchmark with `easybench`:
 
     ![Boxplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_boxplot.png)
 
+* Violinplot Visualization
+
+    ![Violinplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_violinplot.png)
+
 * Lineplot Visualization
 
     ![Lineplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_lineplot.png)
