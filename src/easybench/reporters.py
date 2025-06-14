@@ -256,7 +256,7 @@ class TableFormatter(Formatter):
         memory_unit = MemoryUnit.from_config(config)
         time_unit = TimeUnit.from_config(config)
 
-        data = {
+        data: dict[str, Any] = {
             "memory_unit": memory_unit,
             "time_unit": time_unit,
             "converted_stats": {},
