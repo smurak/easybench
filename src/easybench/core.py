@@ -612,7 +612,7 @@ class EasyBench:
             progress_func = tqdm if config.progress is True else config.progress
             trial_range = progress_func(
                 range(total_trials),
-                desc=f"Method: {getattr(method, '__name__', 'unknown')}",
+                desc=f"Function: {getattr(method, '__name__', 'unknown')}",
                 total=total_trials,
             )
         else:

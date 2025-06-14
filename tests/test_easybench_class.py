@@ -1937,10 +1937,10 @@ class TestParametrizedDecorator:
         assert any(call["desc"] == "Benchmarking" for call in progress_calls)
         # Should have at least one call for each benchmark method's trials
         assert any(
-            "Method: bench_test1" in call.get("desc", "") for call in progress_calls
+            "Function: bench_test1" in call.get("desc", "") for call in progress_calls
         )
         assert any(
-            "Method: bench_test2" in call.get("desc", "") for call in progress_calls
+            "Function: bench_test2" in call.get("desc", "") for call in progress_calls
         )
 
         # Verify benchmark still ran correctly
@@ -1985,7 +1985,7 @@ class TestParametrizedDecorator:
             "Params for bench_test" in call.get("desc", "") for call in progress_calls
         )
         assert any(
-            "Method: bench_test" in call.get("desc", "") for call in progress_calls
+            "Function: bench_test" in call.get("desc", "") for call in progress_calls
         )
 
 
