@@ -222,11 +222,13 @@ class TestTableFormatter:
         value = TEST_FLOAT_VALUE
         min_value = TEST_METRIC_MIN
         max_value = TEST_METRIC_MAX
+        width = 15
 
         result = formatter._format_metric(
             value,
             min_value,
             max_value,
+            width=width,
             color=False,
         )
 
@@ -239,11 +241,13 @@ class TestTableFormatter:
         value = TEST_METRIC_MIN
         min_value = TEST_METRIC_MIN
         max_value = TEST_METRIC_MAX
+        width = 15
 
         result = formatter._format_metric(
             value,
             min_value,
             max_value,
+            width=width,
             color=True,
         )
 
@@ -256,11 +260,13 @@ class TestTableFormatter:
         value = TEST_METRIC_MAX
         min_value = TEST_METRIC_MIN
         max_value = TEST_METRIC_MAX
+        width = 15
 
         result = formatter._format_metric(
             value,
             min_value,
             max_value,
+            width=width,
             color=True,
         )
 
@@ -407,6 +413,160 @@ class TestTableFormatter:
         ]
 
         # All line length are equal
+        assert len({visual_width(line) for line in lines}) == 1
+
+    def test_precision_parameter(self) -> None:
+        """Test the precision parameter for controlling decimal places."""
+        # Test with different precision values
+        for precision in [2, 3, 4, 8]:
+            formatter = TableFormatter(precision=precision)
+            results: dict[str, ResultType] = {
+                "test_func": {"times": [1.123456789]},
+            }
+            stats: dict[str, StatType] = {
+                "test_func": complete_stat({"avg": 1.123456789}),
+            }
+            config = BenchConfig(trials=1)
+
+            output = formatter.format(results, stats, config)
+
+            # Check that the formatted number has the correct precision
+            expected_format = f"{1.123456789:.{precision}f}"
+            assert expected_format in output
+
+    def test_calculate_column_widths_single_trial(self) -> None:
+        """Test column width calculation for single trial."""
+        formatter = TableFormatter(precision=3)
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": 1.123, "avg_memory": 1024.5}),
+        }
+        config = BenchConfig(trials=1, memory=True)
+
+        # Use _prepare_formatting_data instead of _calculate_column_widths directly
+        formatting_data = formatter._prepare_formatting_data(stats, config)
+        widths = formatting_data["column_widths"]
+
+        # Width should be at least the length of the formatted value
+        expected_time_width = len("1.123") + 2  # +2 for padding
+        expected_memory_width = len("1.000") + 2  # 1024.5 bytes = 1.000 KB
+
+        assert widths["time"] >= expected_time_width
+        assert widths["memory"] >= expected_memory_width
+
+    def test_calculate_column_widths_multiple_trials(self) -> None:
+        """Test column width calculation for multiple trials."""
+        formatter = TableFormatter(precision=2)
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": 12.34,
+                    "min": 1.23,
+                    "max": 123.45,
+                    "avg_memory": 1024,
+                    "max_memory": 2048,
+                },
+            ),
+        }
+        config = BenchConfig(trials=3, memory=True)
+
+        # Use _prepare_formatting_data instead of _calculate_column_widths directly
+        formatting_data = formatter._prepare_formatting_data(stats, config)
+        widths = formatting_data["column_widths"]
+
+        # Check that widths accommodate the largest values
+        assert "avg_time" in widths
+        assert "min_time" in widths
+        assert "max_time" in widths
+        assert "avg_memory" in widths
+        assert "max_memory" in widths
+
+        # Width should be at least the length of the largest formatted value
+        max_time_value = max(12.34, 1.23, 123.45)
+        expected_min_width = len(f"{max_time_value:.2f}") + 2
+
+        assert widths["avg_time"] >= expected_min_width
+        assert widths["min_time"] >= expected_min_width
+        assert widths["max_time"] >= expected_min_width
+
+    def test_calculate_column_widths_considers_headers(self) -> None:
+        """Test that column width calculation considers header lengths."""
+        formatter = TableFormatter(precision=1)
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": 1.0}),  # Short value
+        }
+        config = BenchConfig(trials=1)
+
+        # Use _prepare_formatting_data instead of _calculate_column_widths directly
+        formatting_data = formatter._prepare_formatting_data(stats, config)
+        widths = formatting_data["column_widths"]
+
+        # Width should be at least the header length
+        header_length = len("Time (s)")
+        assert widths["time"] >= header_length + 2  # +2 for padding
+
+    def test_calculate_column_widths_with_different_memory_units(self) -> None:
+        """Test column width calculation with different memory units."""
+        formatter = TableFormatter(precision=2)
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg": 1.0,
+                    "avg_memory": 1024 * 1024 * 1024,  # 1 GB in bytes
+                    "max_memory": 2 * 1024 * 1024 * 1024,  # 2 GB in bytes
+                },
+            ),
+        }
+        config = BenchConfig(trials=1, memory="GB")
+
+        # Use _prepare_formatting_data instead of _calculate_column_widths directly
+        formatting_data = formatter._prepare_formatting_data(stats, config)
+        widths = formatting_data["column_widths"]
+
+        # When converted to GB, values should be 1.00 and 2.00
+        expected_width = max(len("1.00"), len("2.00"), len("Memory (GB)")) + 2
+        assert widths["memory"] >= expected_width
+
+    def test_dynamic_width_with_large_values(self) -> None:
+        """Test that dynamic width handles large values correctly."""
+        formatter = TableFormatter(precision=2)
+        results: dict[str, ResultType] = {
+            "test_func": {"times": [1234567.89]},
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": 1234567.89}),
+        }
+        config = BenchConfig(trials=1)
+
+        output = formatter.format(results, stats, config)
+
+        # Check that the large value is properly formatted and displayed
+        expected_format = f"{1234567.89:.2f}"
+        assert expected_format in output
+
+    def test_dynamic_width_with_mixed_value_sizes(self) -> None:
+        """Test dynamic width with mixed small and large values."""
+        formatter = TableFormatter(precision=3)
+        results: dict[str, ResultType] = {
+            "small_func": {"times": [0.001]},
+            "large_func": {"times": [1000.123]},
+        }
+        stats: dict[str, StatType] = {
+            "small_func": complete_stat({"avg": 0.001}),
+            "large_func": complete_stat({"avg": 1000.123}),
+        }
+        config = BenchConfig(trials=1)
+
+        output = formatter.format(results, stats, config)
+
+        # Both values should be properly formatted
+        assert "0.001" in output
+        assert "1000.123" in output
+
+        # Check that columns are properly aligned
+        lines = [line for line in output.split("\n") if "func" in line]
+        assert len(lines) == len(results)
+
+        # All data lines should have the same visual width
         assert len({visual_width(line) for line in lines}) == 1
 
 

@@ -193,10 +193,16 @@ class Formatter(ABC):
 class TableFormatter(Formatter):
     """Format results as text tables (current default format)."""
 
-    def __init__(self, width: int = 14) -> None:
-        """Initialize."""
+    def __init__(self, precision: int = 6) -> None:
+        """
+        Initialize.
+
+        Args:
+            precision: Number of decimal places to display for numeric values
+
+        """
         super().__init__()
-        self.width = width
+        self.precision = precision
 
     def format(
         self,
@@ -208,6 +214,9 @@ class TableFormatter(Formatter):
         output = []
         self.max_name_len = max(visual_width(name) for name in results)
         self.sorted_methods = self.sort_keys(stats, config)
+
+        # Pre-calculate all formatting data in one go
+        self.formatting_data = self._prepare_formatting_data(stats, config)
 
         # Add title line
         output.append(self._format_title(config))
@@ -222,23 +231,137 @@ class TableFormatter(Formatter):
 
         # Format result lines
         if config.trials == 1:
-            self._format_single_trial_results(
-                output,
-                stats,
-                config,
-            )
+            self._format_single_trial_results(output, config)
         else:
-            self._format_multiple_trial_results(
-                output,
-                stats,
-                config,
-            )
+            self._format_multiple_trial_results(output, config)
 
         # Add function outputs if requested
         if config.show_output:
             self._format_output_section(output, results)
 
         return "\n".join(output) + "\n"
+
+    def _prepare_formatting_data(
+        self,
+        stats: StatsType,
+        config: BenchConfig,
+    ) -> dict[str, Any]:
+        """
+        Prepare all formatting data.
+
+        Returns:
+            Dictionary containing all pre-calculated formatting data
+
+        """
+        memory_unit = MemoryUnit.from_config(config)
+        time_unit = TimeUnit.from_config(config)
+
+        data = {
+            "memory_unit": memory_unit,
+            "time_unit": time_unit,
+            "converted_stats": {},
+            "column_widths": {},
+            "extremes": {},
+        }
+
+        # Convert all values once and store them
+        for method_name in stats:
+            stat = stats[method_name]
+            converted = {
+                "avg_time": time_unit.convert_seconds(stat["avg"]),
+                "min_time": time_unit.convert_seconds(stat["min"]),
+                "max_time": time_unit.convert_seconds(stat["max"]),
+            }
+
+            if config.memory:
+                avg_memory = stat.get("avg_memory", 0.0)
+                max_memory = stat.get("max_memory", avg_memory)
+                converted["avg_memory"] = memory_unit.convert_bytes(avg_memory)
+                converted["max_memory"] = memory_unit.convert_bytes(max_memory)
+
+            data["converted_stats"][method_name] = converted
+
+        # Calculate column widths based on converted values
+        self._calculate_column_widths(data, config)
+
+        # Calculate extremes for coloring (only for multiple trials)
+        if config.trials > 1:
+            self._calculate_extremes(data, config)
+
+        return data
+
+    def _calculate_column_widths(
+        self,
+        data: dict[str, Any],
+        config: BenchConfig,
+    ) -> None:
+        """Calculate optimal column widths and store in formatting data."""
+        converted_stats = data["converted_stats"]
+        memory_unit = data["memory_unit"]
+        time_unit = data["time_unit"]
+
+        # Collect all time values for width calculation
+        time_values = []
+        for converted in converted_stats.values():
+            time_values.extend(
+                [converted["avg_time"], converted["min_time"], converted["max_time"]],
+            )
+
+        max_time_str_len = max(len(f"{val:.{self.precision}f}") for val in time_values)
+
+        # Calculate time column widths
+        if config.trials == 1:
+            time_header_len = len(f"Time ({time_unit})")
+            data["column_widths"]["time"] = max(max_time_str_len, time_header_len) + 2
+        else:
+            headers = [
+                f"Avg Time ({time_unit})",
+                f"Min Time ({time_unit})",
+                f"Max Time ({time_unit})",
+            ]
+            for i, key in enumerate(["avg_time", "min_time", "max_time"]):
+                data["column_widths"][key] = max(max_time_str_len, len(headers[i])) + 2
+
+        # Calculate memory column widths if needed
+        if config.memory:
+            memory_values = []
+            for converted in converted_stats.values():
+                memory_values.extend([converted["avg_memory"], converted["max_memory"]])
+
+            max_memory_str_len = max(
+                len(f"{val:.{self.precision}f}") for val in memory_values
+            )
+
+            if config.trials == 1:
+                memory_header_len = len(f"Memory ({memory_unit})")
+                data["column_widths"]["memory"] = (
+                    max(max_memory_str_len, memory_header_len) + 2
+                )
+            else:
+                headers = [f"Avg Mem ({memory_unit})", f"Max Mem ({memory_unit})"]
+                for i, key in enumerate(["avg_memory", "max_memory"]):
+                    data["column_widths"][key] = (
+                        max(max_memory_str_len, len(headers[i])) + 2
+                    )
+
+    def _calculate_extremes(self, data: dict[str, Any], config: BenchConfig) -> None:
+        """Calculate min/max values for coloring and store in formatting data."""
+        converted_stats = data["converted_stats"]
+
+        # Time extremes
+        time_metrics = ["avg_time", "min_time", "max_time"]
+        for metric in time_metrics:
+            values = [converted[metric] for converted in converted_stats.values()]
+            data["extremes"][f"min_{metric}"] = min(values)
+            data["extremes"][f"max_{metric}"] = max(values)
+
+        # Memory extremes
+        if config.memory:
+            memory_metrics = ["avg_memory", "max_memory"]
+            for metric in memory_metrics:
+                values = [converted[metric] for converted in converted_stats.values()]
+                data["extremes"][f"min_{metric}"] = min(values)
+                data["extremes"][f"max_{metric}"] = max(values)
 
     def _format_title(self, config: BenchConfig) -> str:
         """Format the benchmark title."""
@@ -249,105 +372,106 @@ class TableFormatter(Formatter):
 
     def _format_header(self, config: BenchConfig) -> str:
         """Format the header row."""
-        memory_unit = MemoryUnit.from_config(config)
-        time_unit = TimeUnit.from_config(config)
+        memory_unit = self.formatting_data["memory_unit"]
+        time_unit = self.formatting_data["time_unit"]
+        column_widths = self.formatting_data["column_widths"]
+
         if config.trials == 1:
-            header = "Function".ljust(
-                self.max_name_len + 2,
-            ) + f"{'Time (' + str(time_unit) + ')'}".rjust(self.width)
+            header = "Function".ljust(self.max_name_len + 2)
+            header += f"Time ({time_unit})".rjust(column_widths["time"])
             if config.memory:
-                header += f"Memory ({memory_unit})".rjust(self.width)
+                header += f"Memory ({memory_unit})".rjust(column_widths["memory"])
         else:
-            header = (
-                "Function".ljust(self.max_name_len + 2)
-                + f"{'Avg Time (' + str(time_unit) + ')'}".rjust(self.width)
-                + f"{'Min Time (' + str(time_unit) + ')'}".rjust(self.width)
-                + f"{'Max Time (' + str(time_unit) + ')'}".rjust(self.width)
-            )
+            header = "Function".ljust(self.max_name_len + 2)
+            header += f"Avg Time ({time_unit})".rjust(column_widths["avg_time"])
+            header += f"Min Time ({time_unit})".rjust(column_widths["min_time"])
+            header += f"Max Time ({time_unit})".rjust(column_widths["max_time"])
             if config.memory:
-                header += f"Avg Mem ({memory_unit})".rjust(
-                    self.width,
-                ) + f"Max Mem ({memory_unit})".rjust(self.width)
+                header += f"Avg Mem ({memory_unit})".rjust(column_widths["avg_memory"])
+                header += f"Max Mem ({memory_unit})".rjust(column_widths["max_memory"])
         return header
 
     def _calculate_dash_length(self, config: BenchConfig) -> int:
         """Calculate dash line length."""
+        column_widths = self.formatting_data["column_widths"]
+
+        total_width = self.max_name_len + 2
+
         if config.trials == 1:
-            return (
-                self.max_name_len
-                + 2
-                + (self.width if not config.memory else self.width * 2)
+            total_width += column_widths["time"]
+            if config.memory:
+                total_width += column_widths["memory"]
+        else:
+            total_width += (
+                column_widths["avg_time"]
+                + column_widths["min_time"]
+                + column_widths["max_time"]
             )
-        return (
-            self.max_name_len
-            + 2
-            + (self.width * 3 if not config.memory else self.width * 5)
-        )
+            if config.memory:
+                total_width += column_widths["avg_memory"] + column_widths["max_memory"]
+
+        return total_width
 
     def _format_single_trial_results(
         self,
         output: list[str],
-        stats: StatsType,
         config: BenchConfig,
     ) -> None:
         """Format results for a single trial benchmark."""
-        memory_unit = MemoryUnit.from_config(config)
-        time_unit = TimeUnit.from_config(config)
+        converted_stats = self.formatting_data["converted_stats"]
+        column_widths = self.formatting_data["column_widths"]
+
         for method_name in self.sorted_methods:
-            stat = stats[method_name]
-            time_val = f"{time_unit.convert_seconds(stat['avg']):.6f}".rjust(self.width)
+            converted = converted_stats[method_name]
+
+            time_val = f"{converted['avg_time']:.{self.precision}f}".rjust(
+                column_widths["time"],
+            )
             line = visual_ljust(method_name, self.max_name_len + 2) + time_val
+
             if config.memory:
-                mem_val = f"{memory_unit.convert_bytes(stat['avg_memory']):.6f}".rjust(
-                    self.width,
+                mem_val = f"{converted['avg_memory']:.{self.precision}f}".rjust(
+                    column_widths["memory"],
                 )
                 line += mem_val
+
             output.append(line)
 
     def _format_multiple_trial_results(
         self,
         output: list[str],
-        stats: StatsType,
         config: BenchConfig,
     ) -> None:
         """Format results for multiple trial benchmarks."""
-        # Find min and max values for each metric for coloring
-        min_avg = min(stat["avg"] for stat in stats.values())
-        max_avg = max(stat["avg"] for stat in stats.values())
-        min_min = min(stat["min"] for stat in stats.values())
-        max_min = max(stat["min"] for stat in stats.values())
-        min_max = min(stat["max"] for stat in stats.values())
-        max_max = max(stat["max"] for stat in stats.values())
-        memory_unit = MemoryUnit.from_config(config)
-        time_unit = TimeUnit.from_config(config)
+        converted_stats = self.formatting_data["converted_stats"]
+        column_widths = self.formatting_data["column_widths"]
+        extremes = self.formatting_data["extremes"]
 
-        if config.memory:
-            min_avg_memory = min(stat["avg_memory"] for stat in stats.values())
-            max_avg_memory = max(stat["avg_memory"] for stat in stats.values())
-            min_max_memory = min(stat["max_memory"] for stat in stats.values())
-            max_max_memory = max(stat["max_memory"] for stat in stats.values())
+        color = config.color if len(converted_stats) > 1 else False
 
-        color = config.color if len(stats) > 1 else False
         for method_name in self.sorted_methods:
-            stat = stats[method_name]
+            converted = converted_stats[method_name]
 
-            # Format values with appropriate coloring and conversion
+            # Format time values with coloring
             avg_val = self._format_metric(
-                time_unit.convert_seconds(stat["avg"]),
-                time_unit.convert_seconds(min_avg),
-                time_unit.convert_seconds(max_avg),
+                converted["avg_time"],
+                extremes["min_avg_time"],
+                extremes["max_avg_time"],
+                width=column_widths["avg_time"],
                 color=color,
             )
             min_val = self._format_metric(
-                time_unit.convert_seconds(stat["min"]),
-                time_unit.convert_seconds(min_min),
-                time_unit.convert_seconds(max_min),
+                converted["min_time"],
+                extremes["min_min_time"],
+                extremes["max_min_time"],
+                width=column_widths["min_time"],
                 color=color,
             )
             max_val = self._format_metric(
-                time_unit.convert_seconds(stat["max"]),
-                time_unit.convert_seconds(min_max),
-                time_unit.convert_seconds(max_max),
+                converted["max_time"],
+                extremes["min_max_time"],
+                extremes["max_max_time"],
+                width=column_widths["max_time"],
                 color=color,
             )
 
@@ -355,26 +479,30 @@ class TableFormatter(Formatter):
             method_col = visual_ljust(method_name, self.max_name_len + 2)
             line = (
                 method_col
-                + avg_val.rjust(self.width)
-                + min_val.rjust(self.width)
-                + max_val.rjust(self.width)
+                + avg_val.rjust(column_widths["avg_time"])
+                + min_val.rjust(column_widths["min_time"])
+                + max_val.rjust(column_widths["max_time"])
             )
 
             if config.memory:
-                # Format memory values with proper coloring and conversion
+                # Format memory values with coloring
                 avg_mem = self._format_metric(
-                    memory_unit.convert_bytes(stat["avg_memory"]),
-                    memory_unit.convert_bytes(min_avg_memory),
-                    memory_unit.convert_bytes(max_avg_memory),
+                    converted["avg_memory"],
+                    extremes["min_avg_memory"],
+                    extremes["max_avg_memory"],
+                    width=column_widths["avg_memory"],
                     color=color,
                 )
                 peak_mem = self._format_metric(
-                    memory_unit.convert_bytes(stat["max_memory"]),
-                    memory_unit.convert_bytes(min_max_memory),
-                    memory_unit.convert_bytes(max_max_memory),
+                    converted["max_memory"],
+                    extremes["min_max_memory"],
+                    extremes["max_max_memory"],
+                    width=column_widths["max_memory"],
                     color=color,
                 )
-                line += avg_mem.rjust(self.width) + peak_mem.rjust(self.width)
+                line += avg_mem.rjust(column_widths["avg_memory"]) + peak_mem.rjust(
+                    column_widths["max_memory"],
+                )
 
             output.append(line)
 
@@ -404,6 +532,7 @@ class TableFormatter(Formatter):
         value: float,
         min_value: float,
         max_value: float,
+        width: int,
         *,
         color: bool = True,
     ) -> str:
@@ -414,6 +543,7 @@ class TableFormatter(Formatter):
             value: The value to format
             min_value: The minimum value across all benchmarks
             max_value: The maximum value across all benchmarks
+            width: The width to format the value to
             color: Whether to use colored output
 
         Returns:
@@ -424,7 +554,7 @@ class TableFormatter(Formatter):
         min_color = "\033[32m"  # GREEN
         max_color = "\033[31m"  # RED
         reset = "\033[0m"
-        formatted = f"{value:.6f}".rjust(self.width)
+        formatted = f"{value:.{self.precision}f}".rjust(width)
 
         if not color:
             return formatted
