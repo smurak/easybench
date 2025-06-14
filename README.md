@@ -150,6 +150,10 @@ There are 3 ways to benchmark with `easybench`:
 
   ![Boxplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_boxplot.png)
 
+* Violinplot Visualization
+
+  ![Violinplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_violinplot.png)
+
 * Lineplot Visualization
 
   ![Lineplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_lineplot.png)
@@ -620,8 +624,10 @@ There are three ways to specify reporters:
 1. **As a string**: Specify the reporter name as a string
    - `"console"`: Standard tabular console output
    - `"simple"`: Simple console output
-   - `"plot"` or `"boxplot"`: Visualization with boxplot
-   - `"plot-sns"` or `"boxplot-sns"`: Visualization with seaborn-styled boxplot
+   - `"boxplot"`: Visualization with boxplot
+   - `"violinplot"`: Visualization with violinplot
+   - `"boxplot-sns"`: Visualization with seaborn-styled boxplot
+   - `"violinplot-sns"`: Visualization with seaborn-styled violinplot
    - `"lineplot"`: Visualization with lineplot
    - `"lineplot-sns"`: Visualization with seaborn-styled lineplot
    - `"*.csv"` or `"*.json"`: File output
@@ -641,7 +647,7 @@ There are three ways to specify reporters:
         reporters=[
             "console",                                  # Specified as string
             ("simple", {"metric": "min"}),              # Specified with arguments
-            ("plot", {"log_scale": False}),             # Plot with arguments
+            ("boxplot", {"log_scale": False}),             # Plot with arguments
             "results.csv",                              # Specified as file path
             FileReporter("results.json"),               # Specified as object
         ]
@@ -649,8 +655,7 @@ There are three ways to specify reporters:
     
     # Simpler configurations
     bench_config = BenchConfig(reporters=["console"])       # Console output only
-    bench_config = BenchConfig(reporters=["plot"])          # Boxplot only
-
+    bench_config = BenchConfig(reporters=["boxplot"])          # Boxplot only
     bench_config = BenchConfig(reporters=["output.csv"])    # CSV file output only
     ```
 

@@ -110,8 +110,8 @@ class PlotFormatter(Formatter):
         """
 
 
-class BoxPlotFormatter(PlotFormatter):
-    """Format benchmark results as a matplotlib boxplot."""
+class DistributionPlotFormatter(PlotFormatter):
+    """Format benchmark results as a matplotlib distribution plot (box or violin)."""
 
     def __init__(
         self,
@@ -124,14 +124,15 @@ class BoxPlotFormatter(PlotFormatter):
         label_rotation_threshold: int = 4,
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
         orientation: Literal["vertical", "horizontal"] = "horizontal",
+        plot_type: Literal["box", "violin"] = "box",
         sns_theme: dict[str, Any] | None = None,
-        **boxplot_kwargs: object,
+        **plot_kwargs: object,
     ) -> None:
         """
-        Initialize BoxPlotFormatter.
+        Initialize DistributionPlotFormatter.
 
         Args:
-            showfliers: Whether to show outliers in the boxplot (default: True)
+            showfliers: Whether to show outliers (only for boxplot) (default: True)
             log_scale: Whether to use logarithmic scale for y-axis (default: False)
             data_limit: Optional tuple of (min, max) for data axis limits
             trim_outliers: Optional percentile for trimming outliers (0.0-0.5)
@@ -139,9 +140,10 @@ class BoxPlotFormatter(PlotFormatter):
             figsize: Figure size (default: (10, 6))
             label_rotation_threshold: Rotate x-axis labels if method count exceeds this.
             engine: Plotting backend to use ('matplotlib' or 'seaborn')
-            orientation: Direction of boxplot ('vertical' or 'horizontal')
+            orientation: Direction of plot ('vertical' or 'horizontal')
+            plot_type: Type of plot ('box' for boxplot or 'violin' for violinplot)
             sns_theme: Optional dictionary of seaborn theme parameters
-            **boxplot_kwargs: Additional keyword arguments for boxplot function
+            **plot_kwargs: Additional keyword arguments for plot function
 
         """
         self.log_scale = log_scale
@@ -149,10 +151,11 @@ class BoxPlotFormatter(PlotFormatter):
         self.trim_outliers = trim_outliers
         self.winsorize_outliers = winsorize_outliers
         self.figsize = figsize
-        self.boxplot_kwargs = boxplot_kwargs
+        self.plot_kwargs = plot_kwargs
         self.label_rotation_threshold = label_rotation_threshold
         self.showfliers = showfliers
         self.orientation = orientation
+        self.plot_type = plot_type
 
         # Handle seaborn engine and theme relationship
         self.engine, self.sns_theme = _handle_seaborn_engine_and_theme(
@@ -167,7 +170,7 @@ class BoxPlotFormatter(PlotFormatter):
         config: BenchConfig,
     ) -> Figure:
         """
-        Format benchmark results as a matplotlib boxplot.
+        Format benchmark results as a distribution plot.
 
         Args:
             results: Dictionary mapping benchmark names to result data
@@ -175,7 +178,7 @@ class BoxPlotFormatter(PlotFormatter):
             config: Benchmark configuration
 
         Returns:
-            Matplotlib Figure object containing the boxplot
+            Matplotlib Figure object containing the distribution plot
 
         """
         # Use the temporary seaborn theme context if needed
@@ -200,9 +203,9 @@ class BoxPlotFormatter(PlotFormatter):
                 # Process time data
                 box_data_time = [time_data[method] for method in labels]
                 if self.engine == "seaborn":
-                    self._create_seaborn_boxplot(ax_time, box_data_time, labels)
+                    self._create_seaborn_plot(ax_time, box_data_time, labels)
                 else:
-                    self._create_matplotlib_boxplot(ax_time, box_data_time, labels)
+                    self._create_matplotlib_plot(ax_time, box_data_time, labels)
 
                 # Apply styling to time plot with time unit
                 self._apply_styling(
@@ -220,9 +223,9 @@ class BoxPlotFormatter(PlotFormatter):
                 fig, ax = plt.subplots(figsize=self.figsize)
                 box_data = [time_data[method] for method in labels]
                 if self.engine == "seaborn":
-                    self._create_seaborn_boxplot(ax, box_data, labels)
+                    self._create_seaborn_plot(ax, box_data, labels)
                 else:
-                    self._create_matplotlib_boxplot(ax, box_data, labels)
+                    self._create_matplotlib_plot(ax, box_data, labels)
 
                 # Apply styling with time unit
                 self._apply_styling(
@@ -248,7 +251,6 @@ class BoxPlotFormatter(PlotFormatter):
         Args:
             ax: The matplotlib axes for the memory subplot
             results: Dictionary mapping benchmark names to result data
-            stats: Dictionary of calculated statistics
             config: Benchmark configuration
             labels: List of method names to include
 
@@ -259,9 +261,9 @@ class BoxPlotFormatter(PlotFormatter):
 
         # Create memory plot
         if self.engine == "seaborn":
-            self._create_seaborn_boxplot(ax, box_data_mem, labels)
+            self._create_seaborn_plot(ax, box_data_mem, labels)
         else:
-            self._create_matplotlib_boxplot(ax, box_data_mem, labels)
+            self._create_matplotlib_plot(ax, box_data_mem, labels)
 
         # Apply styling to memory plot with proper unit
         memory_unit = MemoryUnit.from_config(config)
@@ -305,7 +307,7 @@ class BoxPlotFormatter(PlotFormatter):
             import numpy as np
         except ImportError as err:
             error_msg = (
-                "numpy is required for outlier handling in BoxPlotFormatter. "
+                "numpy is required for outlier handling in DistributionPlotFormatter. "
                 "Install with pip install numpy."
             )
             raise ImportError(error_msg) from err
@@ -420,6 +422,36 @@ class BoxPlotFormatter(PlotFormatter):
 
         return memory_data
 
+    def _create_matplotlib_plot(
+        self,
+        ax: plt.Axes,
+        data: list[list[float]],
+        labels: list[str],
+    ) -> None:
+        """Create a plot using matplotlib."""
+        if self.plot_type == "box":
+            self._create_matplotlib_boxplot(ax, data, labels)
+        elif self.plot_type == "violin":
+            self._create_matplotlib_violinplot(ax, data, labels)
+        else:
+            msg = f"Unsupported plot type: {self.plot_type}"
+            raise ValueError(msg)
+
+    def _create_seaborn_plot(
+        self,
+        ax: plt.Axes,
+        data: list[list[float]],
+        labels: list[str],
+    ) -> None:
+        """Create a plot using seaborn."""
+        if self.plot_type == "box":
+            self._create_seaborn_boxplot(ax, data, labels)
+        elif self.plot_type == "violin":
+            self._create_seaborn_violinplot(ax, data, labels)
+        else:
+            msg = f"Unsupported plot type: {self.plot_type}"
+            raise ValueError(msg)
+
     def _create_matplotlib_boxplot(
         self,
         ax: plt.Axes,
@@ -433,7 +465,7 @@ class BoxPlotFormatter(PlotFormatter):
                     box_data,
                     showfliers=self.showfliers,
                     orientation=self.orientation,
-                    **self.boxplot_kwargs,  # type: ignore[arg-type]
+                    **self.plot_kwargs,  # type: ignore[arg-type]
                 )
             except TypeError:
                 # Fall back to vert parameter if orientation is not supported
@@ -441,7 +473,7 @@ class BoxPlotFormatter(PlotFormatter):
                     box_data,
                     showfliers=self.showfliers,
                     vert=(self.orientation == "vertical"),
-                    **self.boxplot_kwargs,  # type: ignore[arg-type]
+                    **self.plot_kwargs,  # type: ignore[arg-type]
                 )
             # Set y-tick positions explicitly before setting labels
             ax.set_yticks(range(1, len(labels) + 1))
@@ -452,7 +484,7 @@ class BoxPlotFormatter(PlotFormatter):
                     box_data,
                     showfliers=self.showfliers,
                     orientation=self.orientation,
-                    **self.boxplot_kwargs,  # type: ignore[arg-type]
+                    **self.plot_kwargs,  # type: ignore[arg-type]
                 )
             except TypeError:
                 # Fall back to vert parameter if orientation is not supported
@@ -460,8 +492,59 @@ class BoxPlotFormatter(PlotFormatter):
                     box_data,
                     showfliers=self.showfliers,
                     vert=(self.orientation == "vertical"),
-                    **self.boxplot_kwargs,  # type: ignore[arg-type]
+                    **self.plot_kwargs,  # type: ignore[arg-type]
                 )
+            # Set x-tick positions explicitly before setting labels
+            ax.set_xticks(range(1, len(labels) + 1))
+            ax.set_xticklabels(labels)
+
+    def _create_matplotlib_violinplot(
+        self,
+        ax: plt.Axes,
+        violin_data: list[list[float]],
+        labels: list[str],
+    ) -> None:
+        """Create a violin plot using matplotlib."""
+        # For violin plot in matplotlib, we need to adjust the positions
+        positions = range(1, len(violin_data) + 1)
+
+        if self.orientation == "horizontal":
+            try:
+                ax.violinplot(
+                    violin_data,
+                    positions=positions,
+                    orientation=self.orientation,
+                    **self.plot_kwargs,  # type: ignore[arg-type]
+                )
+            except TypeError:
+                # Fall back if some parameters aren't supported
+                ax.violinplot(
+                    violin_data,
+                    positions=positions,
+                    vert=False,
+                    **self.plot_kwargs,  # type: ignore[arg-type]
+                )
+
+            # Set y-tick positions explicitly before setting labels
+            ax.set_yticks(range(1, len(labels) + 1))
+            ax.set_yticklabels(labels)
+        else:
+            try:
+                ax.violinplot(
+                    violin_data,
+                    positions=positions,
+                    orientation=self.orientation,
+                    **self.plot_kwargs,  # type: ignore[arg-type]
+                )
+            except TypeError:
+                # Fall back if some parameters aren't supported
+                ax.violinplot(
+                    violin_data,
+                    positions=positions,
+                    vert=True,
+                    **self.plot_kwargs,  # type: ignore[arg-type]
+                )
+
             # Set x-tick positions explicitly before setting labels
             ax.set_xticks(range(1, len(labels) + 1))
             ax.set_xticklabels(labels)
@@ -488,7 +571,40 @@ class BoxPlotFormatter(PlotFormatter):
             ax=ax,
             showfliers=self.showfliers,
             orient=("h" if self.orientation == "horizontal" else "v"),
-            **self.boxplot_kwargs,  # type: ignore[arg-type]
+            **self.plot_kwargs,  # type: ignore[arg-type]
+        )
+
+        if self.orientation == "horizontal":
+            # Set y-tick positions explicitly before setting labels
+            ax.set_yticks(range(len(labels)))
+            ax.set_yticklabels(labels)
+        else:
+            # Set x-tick positions explicitly before setting labels
+            ax.set_xticks(range(len(labels)))
+            ax.set_xticklabels(labels)
+
+    def _create_seaborn_violinplot(
+        self,
+        ax: plt.Axes,
+        violin_data: list[list[float]],
+        labels: list[str],
+    ) -> None:
+        """Create a violin plot using seaborn."""
+        try:
+            import seaborn as sns
+        except ImportError as err:
+            error_msg = (
+                "seaborn is required for seaborn engine. "
+                "Install with pip install seaborn."
+            )
+            raise ImportError(error_msg) from err
+
+        # Try to use seaborn directly with the data
+        sns.violinplot(
+            data=violin_data,
+            ax=ax,
+            orient=("h" if self.orientation == "horizontal" else "v"),
+            **self.plot_kwargs,  # type: ignore[arg-type]
         )
 
         if self.orientation == "horizontal":
@@ -568,6 +684,104 @@ class BoxPlotFormatter(PlotFormatter):
             else:
                 # For vertical plots, rotate x-tick labels
                 plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
+
+
+class BoxPlotFormatter(DistributionPlotFormatter):
+    """Format benchmark results as a matplotlib boxplot."""
+
+    def __init__(
+        self,
+        showfliers: bool = True,
+        log_scale: bool = False,
+        data_limit: tuple[float, float] | None = None,
+        trim_outliers: float | None = None,
+        winsorize_outliers: float | None = None,
+        figsize: tuple[int, int] = (10, 6),
+        label_rotation_threshold: int = 4,
+        engine: Literal["matplotlib", "seaborn"] = "matplotlib",
+        orientation: Literal["vertical", "horizontal"] = "horizontal",
+        sns_theme: dict[str, Any] | None = None,
+        **boxplot_kwargs: object,
+    ) -> None:
+        """
+        Initialize BoxPlotFormatter.
+
+        Args:
+            showfliers: Whether to show outliers in the boxplot (default: True)
+            log_scale: Whether to use logarithmic scale for y-axis (default: False)
+            data_limit: Optional tuple of (min, max) for data axis limits
+            trim_outliers: Optional percentile for trimming outliers (0.0-0.5)
+            winsorize_outliers: Optional percentile for winsorizing outliers (0.0-0.5)
+            figsize: Figure size (default: (10, 6))
+            label_rotation_threshold: Rotate x-axis labels if method count exceeds this.
+            engine: Plotting backend to use ('matplotlib' or 'seaborn')
+            orientation: Direction of boxplot ('vertical' or 'horizontal')
+            sns_theme: Optional dictionary of seaborn theme parameters
+            **boxplot_kwargs: Additional keyword arguments for boxplot function
+
+        """
+        super().__init__(
+            showfliers=showfliers,
+            log_scale=log_scale,
+            data_limit=data_limit,
+            trim_outliers=trim_outliers,
+            winsorize_outliers=winsorize_outliers,
+            figsize=figsize,
+            label_rotation_threshold=label_rotation_threshold,
+            engine=engine,
+            orientation=orientation,
+            plot_type="box",
+            sns_theme=sns_theme,
+            **boxplot_kwargs,
+        )
+
+
+class ViolinPlotFormatter(DistributionPlotFormatter):
+    """Format benchmark results as a matplotlib violin plot."""
+
+    def __init__(
+        self,
+        log_scale: bool = False,
+        data_limit: tuple[float, float] | None = None,
+        trim_outliers: float | None = None,
+        winsorize_outliers: float | None = None,
+        figsize: tuple[int, int] = (10, 6),
+        label_rotation_threshold: int = 4,
+        engine: Literal["matplotlib", "seaborn"] = "matplotlib",
+        orientation: Literal["vertical", "horizontal"] = "horizontal",
+        sns_theme: dict[str, Any] | None = None,
+        **violinplot_kwargs: object,
+    ) -> None:
+        """
+        Initialize ViolinPlotFormatter.
+
+        Args:
+            log_scale: Whether to use logarithmic scale for y-axis (default: False)
+            data_limit: Optional tuple of (min, max) for data axis limits
+            trim_outliers: Optional percentile for trimming outliers (0.0-0.5)
+            winsorize_outliers: Optional percentile for winsorizing outliers (0.0-0.5)
+            figsize: Figure size (default: (10, 6))
+            label_rotation_threshold: Rotate x-axis labels if method count exceeds this.
+            engine: Plotting backend to use ('matplotlib' or 'seaborn')
+            orientation: Direction of violin plot ('vertical' or 'horizontal')
+            sns_theme: Optional dictionary of seaborn theme parameters
+            **violinplot_kwargs: Additional keyword arguments for violin plot function
+
+        """
+        super().__init__(
+            showfliers=True,
+            log_scale=log_scale,
+            data_limit=data_limit,
+            trim_outliers=trim_outliers,
+            winsorize_outliers=winsorize_outliers,
+            figsize=figsize,
+            label_rotation_threshold=label_rotation_threshold,
+            engine=engine,
+            orientation=orientation,
+            plot_type="violin",
+            sns_theme=sns_theme,
+            **violinplot_kwargs,
+        )
 
 
 class LinePlotFormatter(PlotFormatter):

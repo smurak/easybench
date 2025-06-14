@@ -74,41 +74,80 @@ ScopeType = Literal["trial", "function", "class"]
 SortType = Literal["def", "avg", "min", "max", "avg_memory", "max_memory"]
 
 
+_BASIC_REPORTERS = {"console", "simple", "file"}
+
+_VISUALIZATION_REPORTERS = {
+    "plot",
+    "boxplot",
+    "violinplot",
+    "lineplot",
+    "plot-sns",
+    "boxplot-sns",
+    "violinplot-sns",
+    "lineplot-sns",
+}
+
+
 def get_reporter(name: str, kwargs: dict | None = None) -> Reporter:
     """Convert string to reporter."""
     kwargs = kwargs or {}
-    reporter: Reporter | None = None
+    reporter_name = name.lower()
 
-    match name.lower():
-        case "console":
-            reporter = ConsoleReporter(TableFormatter(**kwargs))
-        case "simple":
-            reporter = SimpleConsoleReporter(**kwargs)
-        case "file":
-            reporter = FileReporter(**kwargs)
-        case _ if name.endswith((".csv", ".json")):
-            reporter = FileReporter(name, **kwargs)
-        case "plot" | "boxplot":
-            from .visualization import BoxPlotFormatter, PlotReporter
+    # Basic reporter
+    if reporter_name in _BASIC_REPORTERS:
+        return _get_basic_reporter(reporter_name, kwargs)
 
-            reporter = PlotReporter(BoxPlotFormatter(**kwargs))
-        case "lineplot":
-            from .visualization import LinePlotFormatter, PlotReporter
+    # File reporter
+    if name.endswith((".csv", ".json")):
+        return FileReporter(name, **kwargs)
 
-            reporter = PlotReporter(LinePlotFormatter(**kwargs))
-        case "plot-sns" | "boxplot-sns":
-            from .visualization import BoxPlotFormatter, PlotReporter
+    # Visualization reporter
+    if reporter_name in _VISUALIZATION_REPORTERS:
+        return _get_visualization_reporter(reporter_name, kwargs)
 
-            reporter = PlotReporter(BoxPlotFormatter(engine="seaborn", **kwargs))
-        case "lineplot-sns":
-            from .visualization import LinePlotFormatter, PlotReporter
+    # Unknown reporter
+    err = f"Unknown reporter type: {name}"
+    raise ValueError(err)
 
-            reporter = PlotReporter(LinePlotFormatter(engine="seaborn", **kwargs))
-        case _:
-            err = f"Unknown reporter type: {name}"
-            raise ValueError(err)
 
-    return reporter
+def _get_basic_reporter(name: str, kwargs: dict) -> Reporter:
+    """Create basic reporters."""
+    if name == "console":
+        return ConsoleReporter(TableFormatter(**kwargs))
+    if name == "simple":
+        return SimpleConsoleReporter(**kwargs)
+    if name == "file":
+        return FileReporter(**kwargs)
+
+    # This should never happen due to validation in get_reporter
+    err = f"Unknown basic reporter: {name}"
+    raise ValueError(err)
+
+
+def _get_visualization_reporter(name: str, kwargs: dict) -> Reporter:
+    """Create visualization reporters."""
+    from .visualization import (
+        BoxPlotFormatter,
+        LinePlotFormatter,
+        PlotReporter,
+        ViolinPlotFormatter,
+    )
+
+    engine: Literal["seaborn", "matplotlib"] = (
+        "seaborn" if name.endswith("-sns") else "matplotlib"
+    )
+    base_name = name.replace("-sns", "")
+
+    if base_name in ("plot", "boxplot"):
+        return PlotReporter(BoxPlotFormatter(engine=engine, **kwargs))
+    if base_name == "violinplot":
+        return PlotReporter(ViolinPlotFormatter(engine=engine, **kwargs))
+    if base_name == "lineplot":
+        return PlotReporter(LinePlotFormatter(engine=engine, **kwargs))
+
+    # This should never happen due to validation in get_reporter
+    err = f"Unknown visualization reporter: {name}"
+    raise ValueError(err)
 
 
 class ResultType(TypedDict):
