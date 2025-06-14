@@ -327,6 +327,7 @@ Time measurement options (`time`):
 - `"m"`: Display time in minutes
 
 Progress tracking options (`progress`):
+
 - `False`: Disable progress tracking
 - `True`: Enable progress tracking using tqdm (default)
 - Custom function: Use a custom progress tracking function that follows the tqdm interface
