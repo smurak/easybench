@@ -148,8 +148,9 @@ def cli_main() -> None:
     Execute the main command line interface for easybench.
 
     Usage:
-    easybench [`--trials N`] [`--loops-per-trial N`] [`--memory`] [`--sort-by METRIC`]
-    [`--reverse`] [`--show-output`] [`--time-unit UNIT`] [`path`]
+    easybench [`--trials N`] [`--loops-per-trial N`] [`--memory`] [`--memory-unit UNIT`]
+    [`--sort-by METRIC`] [`--reverse`] [`--show-output`] [`--time-unit UNIT`]
+    [`--warmups N`] [`--no-progress`] [`path`]
     """
     default_config = BenchConfig()
     parser = argparse.ArgumentParser(
@@ -183,9 +184,24 @@ def cli_main() -> None:
         ),
     )
     parser.add_argument(
+        "--warmups",
+        type=int,
+        default=None,
+        help=(
+            "Number of warmup trials to run before timing "
+            f"(default: {default_config.warmups})"
+        ),
+    )
+    parser.add_argument(
         "--memory",
         action="store_true",
         help="Measure memory usage during benchmarks",
+    )
+    parser.add_argument(
+        "--memory-unit",
+        choices=["B", "KB", "MB", "GB"],
+        default=None,
+        help="Memory unit for displaying results (default: KB when --memory is used)",
     )
     parser.add_argument(
         "--time-unit",
@@ -209,20 +225,30 @@ def cli_main() -> None:
         action="store_true",
         help="Display function return values",
     )
+    parser.add_argument(
+        "--no-progress",
+        action="store_true",
+        help="Disable progress bars during benchmarking",
+    )
 
     args = parser.parse_args()
 
     try:
+        # Set memory value based on arguments
+        memory = args.memory_unit if args.memory_unit else True if args.memory else None
+
         # Create config from CLI arguments
         config = PartialBenchConfig(
             trials=args.trials,
             loops_per_trial=args.loops_per_trial,
-            memory=args.memory or None,
+            warmups=args.warmups,
+            memory=memory,
             time=args.time_unit,
             sort_by=args.sort_by,
             reverse=args.reverse or None,
             color=False if args.no_color else None,
             show_output=args.show_output or None,
+            progress=False if args.no_progress else None,
         )
 
         # Discover benchmark files

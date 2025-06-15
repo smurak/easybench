@@ -568,15 +568,20 @@ easybench [オプション] [パス]
 #### コマンドオプション
 
 ```bash
-easybench [--trials N] [--memory] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [パス]
+easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [パス]
 ```
 
 - `--trials N`: 試行回数 (デフォルト: 5)
+- `--loops-per-trial N`: 精度向上のために1試行あたりに実行するループ回数
+- `--warmups N`: 計測前に実行するウォームアップ試行回数
 - `--memory`: メモリ測定を有効化
+- `--memory-unit UNIT`: メモリ測定の表示単位 (B/KB/MB/GB)
 - `--sort-by METRIC`: ソート基準 (def/avg/min/max/avg_memory/max_memory)
 - `--reverse`: 結果を降順でソート
 - `--no-color`: カラー出力を無効化
 - `--show-output`: 関数の戻り値を表示
+- `--time-unit UNIT`: 結果表示の時間単位 (s/ms/us/ns/m)
+- `--no-progress`: ベンチマーク中の進捗バーを無効化
 - `パス`: ベンチマークファイルを含むディレクトリまたは特定のベンチマークファイル (デフォルト: "benchmarks")
 
 #### 関数ベースのベンチマーク例
