@@ -260,7 +260,7 @@ def pop_first(lst):
 
 #### **実行時ベンチマーク**
 
-必要に応じてベンチマークを実行したい場合は、`.bench()`メソッドを使用します：
+関数を実行時に一緒にベンチマーク計測も行いたい場合は、`.bench()`メソッドを使用します：
 
 ```python
 @bench
@@ -273,7 +273,7 @@ result = insert_first(3, list(range(1_000_000)))
 
 # ベンチマークと共に実行
 result = insert_first.bench(3, list(range(1_000_000)))
-print(result)  # 10000001
+print(result)  # 1000001
 ```
 * 試行回数はデフォルトでは `1` 回です。
 * 複数回試行したい場合は、`bench_trials`パラメータを指定します：
@@ -435,16 +435,16 @@ from easybench import BenchConfig, EasyBench, customize
 
 class MyBenchmark(EasyBench):
     bench_config = BenchConfig(
-        trials=5,            # 試行回数
-        warmups=2,           # 測定前のウォームアップ試行回数
-        sort_by="avg",       # ソート基準
-        reverse=False,       # ソート順序（False=昇順、True=降順）
-        memory="MB",         # メモリ測定を有効化し、メガバイト単位で表示
-        color=True,          # 結果にカラー出力を使用
-        show_output=False,   # 関数の戻り値をベンチマーク結果に表示
-        loops_per_trial=1,   # 試行毎の関数実行回数 (後述の解説を参照)
-        reporters=[],        # カスタムレポーター (後述の解説を参照)
-        progress=True,       # tqdmによる進捗表示を有効化
+        trials=5,               # 試行回数
+        warmups=2,              # 測定前のウォームアップ試行回数
+        sort_by="avg",          # ソート基準
+        reverse=False,          # ソート順序（False=昇順、True=降順）
+        memory="MB",            # メモリ測定を有効化し、メガバイト単位で表示
+        color=True,             # 結果にカラー出力を使用
+        show_output=False,      # 関数の戻り値をベンチマーク結果に表示
+        loops_per_trial=1,      # 試行毎の関数実行回数 (後述の解説を参照)
+        reporters=["console"],  # カスタムレポーター (後述の解説を参照)
+        progress=True,          # tqdmによる進捗表示を有効化
     )
 
     # メソッド個別のカスタマイズも可能です
@@ -644,18 +644,13 @@ EasyBenchでは、**レポーター**（Reporter）という仕組みを使用�
     bench_config = BenchConfig(
         trials=10,
         reporters=[
-            "console",                                  # 文字列で指定
-            ("simple", {"metric": "min"}),              # 引数付きで指定
-            ("boxplot", {"log_scale": False}),             # 引数付きでプロット指定
-            "results.csv",                              # ファイルパスで指定
-            FileReporter("results.csv"),                # オブジェクトで指定
+            "console",                          # 文字列で指定
+            ("simple", {"metric": "min"}),      # 引数付きで指定
+            ("boxplot", {"log_scale": False}),  # 引数付きでプロット指定
+            "results.csv",                      # ファイルパスで指定
+            FileReporter("results.csv"),        # オブジェクトで指定
         ]
     )
-    
-    # より単純な設定
-    bench_config = BenchConfig(reporters=["console"])       # コンソール出力のみ
-    bench_config = BenchConfig(reporters=["boxplot"])          # ボックスプロットのみ
-    bench_config = BenchConfig(reporters=["output.csv"])    # CSVファイル出力のみ
     ```
 
 #### カスタムレポーターの作成
@@ -674,7 +669,7 @@ class WebAPIReporter(Reporter):
         self.api_url = api_url
         self.auth_token = auth_token
     
-    def _send(self, formatted_output):
+    def report_formatted(self, formatted_output):
         # フォーマットされた結果をAPIエンドポイントに送信
         import requests
         headers = {"Authorization": f"Bearer {self.auth_token}"}

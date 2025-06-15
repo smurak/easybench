@@ -1107,7 +1107,7 @@ class PlotReporter(Reporter):
         self.save_path = save_path
         self.dpi = dpi
 
-    def _send(self, formatted_output: Formatted) -> None:
+    def report_formatted(self, formatted_output: Formatted) -> None:
         """
         Display or save the formatted output (matplotlib Figure).
 

@@ -101,7 +101,7 @@ def pop_first(lst):
 
 ### **On-demand benchmarking**
 
-If you want to run the benchmark only when needed, use the `.bench()` method:
+If you want to execute a function while simultaneously measuring its performance, use the `.bench()` method:
 
 ```python
 @bench
@@ -114,7 +114,7 @@ result = insert_first(3, list(range(1_000_000)))
 
 # Run with benchmarking
 result = insert_first.bench(3, list(range(1_000_000)))
-print(result)  # 10000001
+print(result)  # 1000001
 ```
 
 * By default, the benchmark runs for `1` trial.
@@ -281,16 +281,16 @@ from easybench import BenchConfig, EasyBench, customize
 
 class MyBenchmark(EasyBench):
     bench_config = BenchConfig(
-        trials=5,            # Number of trials
-        warmups=2,           # Number of warmup trials before actual measurement
-        sort_by="avg",       # Sort criterion
-        reverse=False,       # Sort order (False=ascending, True=descending)
-        memory=True,         # Enable memory measurement (True or "B"/"KB"/"MB"/"GB")
-        color=True,          # Use color output in results
-        show_output=False,   # Display function return values
-        loops_per_trial=1,   # Number of function executions per trial (see explanation below)
-        reporters=[],        # Custom reporters (see explanation below)
-        progress=True,       # Enable progress tracking with tqdm
+        trials=5,               # Number of trials
+        warmups=2,              # Number of warmup trials before actual measurement
+        sort_by="avg",          # Sort criterion
+        reverse=False,          # Sort order (False=ascending, True=descending)
+        memory=True,            # Enable memory measurement (True or "B"/"KB"/"MB"/"GB")
+        color=True,             # Use color output in results
+        show_output=False,      # Display function return values
+        loops_per_trial=1,      # Number of function executions per trial (see explanation below)
+        reporters=["console"],  # Custom reporters (see explanation below)
+        progress=True,          # Enable progress tracking with tqdm
     )
 
     # You can also customize settings for individual methods
