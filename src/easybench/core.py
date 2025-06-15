@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import inspect
 import logging
+import re
 import sys
 import time
 import tracemalloc
@@ -682,10 +683,33 @@ class EasyBench:
 
         return result_dict
 
-    def _process_parametrized_method(
+    def _get_params_list(
         self,
         method_name: str,
         method: Callable[..., object],
+        include: str | None = None,
+        exclude: str | None = None,
+    ) -> list[BenchParams]:
+        """Get the parameter sets from the method."""
+        method = cast("ParametrizedFunction", method)
+        params_list = method._bench_params  # noqa: SLF001
+        if include:
+            params_list = [
+                params
+                for params in params_list
+                if re.search(include, f"{method_name} ({params.name})")
+            ]
+        if exclude:
+            params_list = [
+                params
+                for params in params_list
+                if not re.search(exclude, f"{method_name} ({params.name})")
+            ]
+        return params_list
+
+    def _process_parametrized_method(
+        self,
+        method_info: tuple[str, Callable[..., object], list[BenchParams]],
         config: BenchConfig,
         fixture_registry: FixtureRegistry,
         values: dict[str, object],
@@ -694,8 +718,10 @@ class EasyBench:
         Process a parametrized benchmark method with multiple parameter sets.
 
         Args:
-            method_name: Name of the benchmark method
-            method: The benchmark method to run
+            method_info: (method_name, method, params_list)
+                method_name: Name of the benchmark method
+                method: The benchmark method to run
+                params_list: Parameter sets of the method
             config: Benchmark configuration
             fixture_registry: Registry containing fixtures
             values: Dictionary to store fixture values
@@ -704,10 +730,8 @@ class EasyBench:
             A dictionary of all results
 
         """
+        method_name, method, params_list = method_info
         all_results: ResultsType = {}
-
-        # Get the parameter sets from the method
-        params_list = getattr(method, "_bench_params", [])
 
         # Setup progress for parameter sets if enabled
         if config.progress:
@@ -768,6 +792,8 @@ class EasyBench:
         self,
         config: BenchConfig,
         fixture_registry: FixtureRegistry,
+        include: str | None = None,
+        exclude: str | None = None,
     ) -> ResultsType:
         """
         Execute all benchmark methods for the specified number of trials.
@@ -775,14 +801,25 @@ class EasyBench:
         Args:
             config: Benchmark configuration
             fixture_registry: Registry containing fixtures
+            include: Method name or regex pattern to include
+              (if specified, only matching methods will run)
+            exclude: Method name or regex pattern to exclude
+              (will not run even if included)
 
         Returns:
             Dictionary mapping benchmark names to their results
 
         """
-        benchmark_methods = self._discover_benchmark_methods()
+        benchmark_methods = self._discover_benchmark_methods(include, exclude)
         results: ResultsType = {}
         values: dict[str, object] = {}
+
+        if not benchmark_methods:
+            logger.warning(
+                "No benchmark methods found to run."
+                " Check your include/exclude patterns.",
+            )
+            return results
 
         with self._manage_scope("class", values, fixture_registry):
             # Use progress bar if enabled
@@ -801,10 +838,15 @@ class EasyBench:
             for method_name, method in method_items:
                 # Check if this method is parametrized
                 if hasattr(method, "_bench_params"):
-                    # Process parametrized method
-                    param_results = self._process_parametrized_method(
+                    # Process parametrized method with include/exclude patterns
+                    params_list = self._get_params_list(
                         method_name=method_name,
                         method=method,
+                        include=include,
+                        exclude=exclude,
+                    )
+                    param_results = self._process_parametrized_method(
+                        method_info=(method_name, method, params_list),
                         config=config,
                         fixture_registry=fixture_registry,
                         values=values,
@@ -825,6 +867,8 @@ class EasyBench:
         self,
         config: PartialBenchConfig | None = None,
         fixture_registry: FixtureRegistry | None = None,
+        include: str | None = None,
+        exclude: str | None = None,
         **kwargs: object,
     ) -> ResultsType:
         """
@@ -833,6 +877,10 @@ class EasyBench:
         Args:
             config: Configuration for the benchmark, can be complete or partial
             fixture_registry: Registry containing fixtures to use for the benchmarks
+            include: Method name or regex pattern to include
+                (if specified, only matching methods will run)
+            exclude: Method name or regex pattern to exclude
+                (will not run even if included)
             **kwargs: Legacy keyword arguments for backward compatibility
 
         Returns:
@@ -862,6 +910,8 @@ class EasyBench:
         results = self._run_benchmarks(
             config=complete_config,
             fixture_registry=fixture_registry,
+            include=include,
+            exclude=exclude,
         )
 
         # Display results using reporters
@@ -1104,7 +1154,7 @@ class EasyBench:
 
         return (end_time - start_time) / loops_per_trial, memory_usage, result
 
-    def _discover_benchmark_methods(self) -> dict[str, Callable[..., object]]:
+    def _find_benchmark_methods(self) -> dict[str, Callable[..., object]]:
         """
         Find all callable attributes in the class that start with 'bench_'.
 
@@ -1115,13 +1165,93 @@ class EasyBench:
         benchmark_methods = {}
 
         # Find all attributes that are callable and start with 'bench_'
-        for name in self.__class__.__dict__:
+        attrs = list(self.__class__.__dict__.keys())  # preserve definition order
+        attrs += [attr for attr in dir(self) if attr not in attrs]  # add instance attrs
+        for name in attrs:
             if name.startswith("bench_"):
                 attr = getattr(self, name)
                 if callable(attr):
                     benchmark_methods[name] = attr
 
         return benchmark_methods
+
+    def _filter_benchmark_methods(
+        self,
+        methods: dict[str, Callable[..., object]],
+        include: str | None = None,
+        exclude: str | None = None,
+    ) -> dict[str, Callable[..., object]]:
+        """
+        Filter benchmark methods according to include/exclude patterns.
+
+        Args:
+            methods: Dictionary of benchmark methods to filter
+            include: Method name or regex pattern to include
+                    (if specified, only matching methods will run)
+            exclude: Method name or regex pattern to exclude
+                    (will not run even if included)
+
+        Returns:
+            Filtered dictionary mapping benchmark names to method objects
+
+        """
+        # If both include and exclude are None, return all methods
+        if include is None and exclude is None:
+            return methods
+
+        filtered_methods = {}
+
+        # Apply include filter if specified
+        if include is not None:
+            filtered_methods = {
+                name: method
+                for name, method in methods.items()
+                if (
+                    re.search(include, name)
+                    or (
+                        hasattr(method, "_bench_params")
+                        and any(
+                            re.search(include, f"{name} ({params.name})")
+                            for params in getattr(method, "_bench_params", [])
+                        )
+                    )
+                )
+            }
+        else:
+            # If no include filter, start with all methods
+            filtered_methods = methods.copy()
+
+        # Apply exclude filter
+        if exclude is not None:
+            for name in list(filtered_methods.keys()):
+                if re.search(exclude, name):
+                    del filtered_methods[name]
+
+        return filtered_methods
+
+    def _discover_benchmark_methods(
+        self,
+        include: str | None = None,
+        exclude: str | None = None,
+    ) -> dict[str, Callable[..., object]]:
+        """
+        Find benchmark methods and filter according to include/exclude patterns.
+
+        Args:
+            include: Method name or regex pattern to include
+              (if specified, only matching methods will run)
+            exclude: Method name or regex pattern to exclude
+              (will not run even if included)
+
+        Returns:
+            Dictionary mapping benchmark names to method objects
+
+        """
+        # Find all benchmark methods
+        benchmark_methods = self._find_benchmark_methods()
+
+        # Apply filters
+        return self._filter_benchmark_methods(benchmark_methods, include, exclude)
 
     def _get_required_fixtures(self, method: Callable[..., object]) -> list[str]:
         """
@@ -1253,25 +1383,30 @@ class FunctionBench(EasyBench):
         )
         self.__doc__ = func.__doc__
 
-    def _discover_benchmark_methods(self) -> dict[str, Callable[..., object]]:
+    def _discover_benchmark_methods(
+        self,
+        include: str | None = None,
+        exclude: str | None = None,
+    ) -> dict[str, Callable[..., object]]:
         """
-        Find all callable attributes in the class that start with 'bench_'.
+        Find benchmark methods and remove 'bench_' prefix from names.
+
+        Args:
+            include: Method name or regex pattern to include
+            exclude: Method name or regex pattern to exclude
 
         Returns:
-            Dictionary mapping benchmark names to method objects
+            Dictionary mapping benchmark names (without 'bench_' prefix) to methods
 
         """
-        benchmark_methods = {}
+        # Get benchmark methods using parent implementation
+        benchmark_methods = super()._discover_benchmark_methods(include, exclude)
 
-        # Find all attributes that are callable and start with 'bench_'
-        for name in dir(self):
-            if name.startswith("bench_"):
-                attr = getattr(self, name)
-                if callable(attr):
-                    # remove 'bench_' prefix
-                    benchmark_methods[name.removeprefix("bench_")] = attr
-
-        return benchmark_methods
+        # Remove 'bench_' prefix from keys
+        return {
+            name.removeprefix("bench_"): method
+            for name, method in benchmark_methods.items()
+        }
 
     def __call__(
         self,

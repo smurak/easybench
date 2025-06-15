@@ -488,6 +488,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "ruff" },
     { name = "seaborn" },
+    { name = "tqdm" },
     { name = "types-seaborn" },
     { name = "types-tqdm" },
 ]
@@ -531,6 +532,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=6.1.1" },
     { name = "ruff", specifier = ">=0.11.11" },
     { name = "seaborn", specifier = ">=0.13.2" },
+    { name = "tqdm", specifier = ">=4.67.1" },
     { name = "types-seaborn", specifier = ">=0.13.2.20250516" },
     { name = "types-tqdm", specifier = ">=4.67.0.20250516" },
 ]
