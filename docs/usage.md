@@ -101,7 +101,7 @@ def pop_first(lst):
 
 ### **On-demand benchmarking**
 
-If you want to run the benchmark only when needed, use the `.bench()` method:
+If you want to execute a function while simultaneously measuring its performance, use the `.bench()` method:
 
 ```python
 @bench
@@ -114,7 +114,7 @@ result = insert_first(3, list(range(1_000_000)))
 
 # Run with benchmarking
 result = insert_first.bench(3, list(range(1_000_000)))
-print(result)  # 10000001
+print(result)  # 1000001
 ```
 
 * By default, the benchmark runs for `1` trial.

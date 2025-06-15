@@ -35,20 +35,15 @@ There are three ways to specify reporters:
     
     # Multiple output formats with different specification methods
     config = BenchConfig(
-        memory="MB",         # Show memory usage in megabytes
+        memory="MB",                            # Show memory usage in megabytes
         reporters=[
-            "console",                                  # Specified as string
-            ("simple", {"metric": "min"}),              # Specified with arguments
-            ("boxplot", {"log_scale": False}),             # Plot with arguments
-            "results.csv",                              # Specified as file path
-            FileReporter("results.json"),               # Specified as object
+            "console",                          # Specified as string
+            ("simple", {"metric": "min"}),      # Specified with arguments
+            ("boxplot", {"log_scale": False}),  # Plot with arguments
+            "results.csv",                      # Specified as file path
+            FileReporter("results.json"),       # Specified as object
         ]
     )
-    
-    # Simpler configurations
-    bench_config = BenchConfig(reporters=["console"])       # Console output only
-    bench_config = BenchConfig(reporters=["boxplot"])          # Boxplot only
-    bench_config = BenchConfig(reporters=["output.csv"])    # CSV file output only
     ```
 
 ### Creating Custom Reporters
