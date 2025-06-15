@@ -850,9 +850,9 @@ class EasyBench:
             config: Configuration for the benchmark, can be complete or partial
             fixture_registry: Registry containing fixtures to use for the benchmarks
             include: Method name(s) or regex pattern(s) to include
-              (if specified, only these will run)
+                (if specified, only these will run)
             exclude: Method name(s) or regex pattern(s) to exclude
-              (will not run even if included)
+                (will not run even if included)
             **kwargs: Legacy keyword arguments for backward compatibility
 
         Returns:
