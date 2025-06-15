@@ -266,7 +266,8 @@ class TestEasyBenchOutput:
 
         # Test include with parameter name
         bench = ParamBench()
-        bench.bench(include="medium")
+        config = BenchConfig(include="medium")
+        bench.bench(config=config)
         captured = capsys.readouterr()
         parsed_out = parse_benchmark_output(captured.out)
 
@@ -279,7 +280,8 @@ class TestEasyBenchOutput:
 
         # Test exclude with parameter name
         bench = ParamBench()
-        bench.bench(exclude="small|large")
+        config = BenchConfig(exclude="small|large")
+        bench.bench(config=config)
         captured = capsys.readouterr()
         parsed_out = parse_benchmark_output(captured.out)
 

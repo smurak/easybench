@@ -315,18 +315,6 @@ class BenchListOperation(EasyBench):
 
 if __name__ == "__main__":
     BenchListOperation().bench()
-    
-    # includeパターンを使用して特定のメソッドのみ実行
-    # ("insert"を含むメソッドのみ実行)
-    # BenchListOperation().bench(include="insert")
-    
-    # excludeパターンを使用して特定のメソッドを除外
-    # ("pop"を含むメソッド以外をすべて実行)
-    # BenchListOperation().bench(exclude="pop")
-    
-    # 正規表現パターンの使用
-    # ("bench_pop"で始まるメソッドを実行)
-    # BenchListOperation().bench(include=r"^bench_pop")
 ```
 
 クラスベースアプローチの使い方：
@@ -336,7 +324,6 @@ if __name__ == "__main__":
 4. `bench_`で始まるメソッドがベンチマーク対象になります
 5. `bench()`メソッドを呼び出してベンチマークを実行
    * ベンチマークの結果を画面に表示し、実測値の辞書を戻り値として返します
-   * `include`または`exclude`パラメータを使用して、正規表現を用いたベンチマークメソッドの選択的実行が可能です
 
 #### ライフサイクルメソッド
 
@@ -458,6 +445,8 @@ class MyBenchmark(EasyBench):
         loops_per_trial=1,      # 試行毎の関数実行回数 (後述の解説を参照)
         reporters=["console"],  # カスタムレポーター (後述の解説を参照)
         progress=True,          # tqdmによる進捗表示を有効化
+        include="list",         # "list"を名前に含むベンチマークのみ実行
+        exclude="slow",         # "slow"を名前に含むベンチマークをスキップ
     )
 
     # メソッド個別のカスタマイズも可能です
@@ -494,6 +483,12 @@ class MyBenchmark(EasyBench):
 - `False`: 進捗表示を無効化
 - `True`: tqdmを使用した進捗表示を有効化 (デフォルト)
 - カスタム関数: 独自の進捗表示関数を使用（tqdmインターフェースに準拠する関数）
+
+ベンチマーク選択オプション：
+- `include`: 指定した正規表現パターンに一致するベンチマークのみを実行
+- `exclude`: 指定した正規表現パターンに一致するベンチマークを実行から除外
+  - パラメータ化されたベンチマークでは、フルネーム（"bench_func (param_name)"）に対してマッチングが行われます
+  - 両方のオプションが指定された場合、`exclude`が優先されます
 
 ### ウォームアップによる測定精度の向上（`warmups`）
 
