@@ -769,8 +769,8 @@ class EasyBench:
         self,
         config: BenchConfig,
         fixture_registry: FixtureRegistry,
-        include: list[str] | str | None = None,
-        exclude: list[str] | str | None = None,
+        include: str | None = None,
+        exclude: str | None = None,
     ) -> ResultsType:
         """
         Execute all benchmark methods for the specified number of trials.
@@ -778,9 +778,9 @@ class EasyBench:
         Args:
             config: Benchmark configuration
             fixture_registry: Registry containing fixtures
-            include: Method name(s) or regex pattern(s) to include
-              (if specified, only these will run)
-            exclude: Method name(s) or regex pattern(s) to exclude
+            include: Method name or regex pattern to include
+              (if specified, only matching methods will run)
+            exclude: Method name or regex pattern to exclude
               (will not run even if included)
 
         Returns:
@@ -839,8 +839,8 @@ class EasyBench:
         self,
         config: PartialBenchConfig | None = None,
         fixture_registry: FixtureRegistry | None = None,
-        include: list[str] | str | None = None,
-        exclude: list[str] | str | None = None,
+        include: str | None = None,
+        exclude: str | None = None,
         **kwargs: object,
     ) -> ResultsType:
         """
@@ -849,9 +849,9 @@ class EasyBench:
         Args:
             config: Configuration for the benchmark, can be complete or partial
             fixture_registry: Registry containing fixtures to use for the benchmarks
-            include: Method name(s) or regex pattern(s) to include
-                (if specified, only these will run)
-            exclude: Method name(s) or regex pattern(s) to exclude
+            include: Method name or regex pattern to include
+                (if specified, only matching methods will run)
+            exclude: Method name or regex pattern to exclude
                 (will not run even if included)
             **kwargs: Legacy keyword arguments for backward compatibility
 
@@ -1150,17 +1150,17 @@ class EasyBench:
     def _filter_benchmark_methods(
         self,
         methods: dict[str, Callable[..., object]],
-        include: list[str] | str | None = None,
-        exclude: list[str] | str | None = None,
+        include: str | None = None,
+        exclude: str | None = None,
     ) -> dict[str, Callable[..., object]]:
         """
         Filter benchmark methods according to include/exclude patterns.
 
         Args:
             methods: Dictionary of benchmark methods to filter
-            include: Method name(s) or regex pattern(s) to include
-                    (if specified, only these will run)
-            exclude: Method name(s) or regex pattern(s) to exclude
+            include: Method name or regex pattern to include
+                    (if specified, only matching methods will run)
+            exclude: Method name or regex pattern to exclude
                     (will not run even if included)
 
         Returns:
@@ -1171,44 +1171,39 @@ class EasyBench:
         if include is None and exclude is None:
             return methods
 
-        # Convert string patterns to lists for consistent handling
-        include_patterns = [include] if isinstance(include, str) else include or []
-        exclude_patterns = [exclude] if isinstance(exclude, str) else exclude or []
-
         filtered_methods = {}
 
         # Apply include filter if specified
-        if include_patterns:
-            for name, method in methods.items():
-                for pattern in include_patterns:
-                    if re.search(pattern, name):
-                        filtered_methods[name] = method
-                        break
+        if include is not None:
+            filtered_methods = {
+                name: method
+                for name, method in methods.items()
+                if re.search(include, name)
+            }
         else:
             # If no include filter, start with all methods
             filtered_methods = methods.copy()
 
         # Apply exclude filter
-        if exclude_patterns:
-            for pattern in exclude_patterns:
-                for name in list(filtered_methods.keys()):
-                    if re.search(pattern, name):
-                        del filtered_methods[name]
+        if exclude is not None:
+            for name in list(filtered_methods.keys()):
+                if re.search(exclude, name):
+                    del filtered_methods[name]
 
         return filtered_methods
 
     def _discover_benchmark_methods(
         self,
-        include: list[str] | str | None = None,
-        exclude: list[str] | str | None = None,
+        include: str | None = None,
+        exclude: str | None = None,
     ) -> dict[str, Callable[..., object]]:
         """
         Find benchmark methods and filter according to include/exclude patterns.
 
         Args:
-            include: Method name(s) or regex pattern(s) to include
-              (if specified, only these will run)
-            exclude: Method name(s) or regex pattern(s) to exclude
+            include: Method name or regex pattern to include
+              (if specified, only matching methods will run)
+            exclude: Method name or regex pattern to exclude
               (will not run even if included)
 
         Returns:
@@ -1353,15 +1348,15 @@ class FunctionBench(EasyBench):
 
     def _discover_benchmark_methods(
         self,
-        include: list[str] | str | None = None,
-        exclude: list[str] | str | None = None,
+        include: str | None = None,
+        exclude: str | None = None,
     ) -> dict[str, Callable[..., object]]:
         """
         Find benchmark methods and remove 'bench_' prefix from names.
 
         Args:
-            include: Method name(s) or regex pattern(s) to include
-            exclude: Method name(s) or regex pattern(s) to exclude
+            include: Method name or regex pattern to include
+            exclude: Method name or regex pattern to exclude
 
         Returns:
             Dictionary mapping benchmark names (without 'bench_' prefix) to methods

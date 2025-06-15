@@ -327,9 +327,6 @@ if __name__ == "__main__":
     # 正規表現パターンの使用
     # ("bench_pop"で始まるメソッドを実行)
     # BenchListOperation().bench(include=r"^bench_pop")
-    
-    # 複数のパターンを渡す
-    # BenchListOperation().bench(include=["insert", "remove"])
 ```
 
 クラスベースアプローチの使い方：

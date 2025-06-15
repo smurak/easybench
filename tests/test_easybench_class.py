@@ -2086,7 +2086,7 @@ class TestEasyBenchMethodFiltering:
         assert "bench_two" in captured.out
         assert "bench_three" not in captured.out
 
-    def test_include_list_pattern(self, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_include_or_pattern(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Test filtering benchmark methods with a list of include patterns."""
 
         class FilterBench(EasyBench):
@@ -2102,7 +2102,7 @@ class TestEasyBenchMethodFiltering:
                 return 3
 
         bench = FilterBench()
-        bench.bench(include=["one", "three"])
+        bench.bench(include="one|three")
 
         captured = capsys.readouterr()
         assert "bench_one" in captured.out
@@ -2132,7 +2132,7 @@ class TestEasyBenchMethodFiltering:
         assert "bench_two" not in captured.out
         assert "bench_three" in captured.out
 
-    def test_exclude_list_pattern(self, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_exclude_or_pattern(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Test filtering benchmark methods with a list of exclude patterns."""
 
         class FilterBench(EasyBench):
@@ -2148,7 +2148,7 @@ class TestEasyBenchMethodFiltering:
                 return 3
 
         bench = FilterBench()
-        bench.bench(exclude=["one", "three"])
+        bench.bench(exclude="one|three")
 
         captured = capsys.readouterr()
         assert "bench_one" not in captured.out
