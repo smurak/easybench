@@ -435,16 +435,16 @@ from easybench import BenchConfig, EasyBench, customize
 
 class MyBenchmark(EasyBench):
     bench_config = BenchConfig(
-        trials=5,            # 試行回数
-        warmups=2,           # 測定前のウォームアップ試行回数
-        sort_by="avg",       # ソート基準
-        reverse=False,       # ソート順序（False=昇順、True=降順）
-        memory="MB",         # メモリ測定を有効化し、メガバイト単位で表示
-        color=True,          # 結果にカラー出力を使用
-        show_output=False,   # 関数の戻り値をベンチマーク結果に表示
-        loops_per_trial=1,   # 試行毎の関数実行回数 (後述の解説を参照)
-        reporters=[],        # カスタムレポーター (後述の解説を参照)
-        progress=True,       # tqdmによる進捗表示を有効化
+        trials=5,               # 試行回数
+        warmups=2,              # 測定前のウォームアップ試行回数
+        sort_by="avg",          # ソート基準
+        reverse=False,          # ソート順序（False=昇順、True=降順）
+        memory="MB",            # メモリ測定を有効化し、メガバイト単位で表示
+        color=True,             # 結果にカラー出力を使用
+        show_output=False,      # 関数の戻り値をベンチマーク結果に表示
+        loops_per_trial=1,      # 試行毎の関数実行回数 (後述の解説を参照)
+        reporters=["console"],  # カスタムレポーター (後述の解説を参照)
+        progress=True,          # tqdmによる進捗表示を有効化
     )
 
     # メソッド個別のカスタマイズも可能です

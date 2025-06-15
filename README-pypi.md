@@ -431,16 +431,16 @@ from easybench import BenchConfig, EasyBench, customize
 
 class MyBenchmark(EasyBench):
     bench_config = BenchConfig(
-        trials=5,            # Number of trials
-        warmups=2,           # Number of warmup trials before actual measurement
-        sort_by="avg",       # Sort criterion
-        reverse=False,       # Sort order (False=ascending, True=descending)
-        memory="MB",         # Enable memory measurement and show in megabytes
-        color=True,          # Use color output in results
-        show_output=False,   # Display function return values
-        loops_per_trial=1,   # Number of function executions per trial (see explanation below)
-        reporters=[],        # Custom reporters (see explanation below)
-        progress=True,       # Enable progress tracking with tqdm
+        trials=5,               # Number of trials
+        warmups=2,              # Number of warmup trials before actual measurement
+        sort_by="avg",          # Sort criterion
+        reverse=False,          # Sort order (False=ascending, True=descending)
+        memory="MB",            # Enable memory measurement and show in megabytes
+        color=True,             # Use color output in results
+        show_output=False,      # Display function return values
+        loops_per_trial=1,      # Number of function executions per trial (see explanation below)
+        reporters=["console"],  # Custom reporters (see explanation below)
+        progress=True,          # Enable progress tracking with tqdm
     )
     
     # You can also customize settings for individual methods
