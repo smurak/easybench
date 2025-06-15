@@ -246,6 +246,59 @@ class TestEasyBenchOutput:
             "bench_a",
         ], "Expected performance order not followed"
 
+    def test_include_exclude_with_parametrize_names(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test that include/exclude can filter by parametrize parameter names."""
+        small_params = BenchParams(name="small", params={"value": 10})
+        medium_params = BenchParams(name="medium", params={"value": 100})
+        large_params = BenchParams(name="large", params={"value": 1000})
+
+        class ParamBench(EasyBench):
+            @parametrize([small_params, medium_params, large_params])
+            def bench_func(self, value: int) -> int:
+                return value * 2
+
+            def bench_other(self) -> int:
+                return 42
+
+        # Test include with parameter name
+        bench = ParamBench()
+        bench.bench(include="medium")
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # Should only include the medium parameter benchmark
+        assert len(parsed_out["functions"]) == 1
+        assert "bench_func (medium)" in parsed_out["functions"]
+        assert "bench_func (small)" not in parsed_out["functions"]
+        assert "bench_func (large)" not in parsed_out["functions"]
+        assert "bench_other" not in parsed_out["functions"]
+
+        # Test exclude with parameter name
+        bench = ParamBench()
+        bench.bench(exclude="small|large")
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # Should exclude the small and large parameter benchmarks
+        assert "bench_func (medium)" in parsed_out["functions"]
+        assert "bench_other" in parsed_out["functions"]
+        assert "bench_func (small)" not in parsed_out["functions"]
+        assert "bench_func (large)" not in parsed_out["functions"]
+
+        # Test include with function name and parameter name
+        bench = ParamBench()
+        bench.bench(include=r"bench_func \(small\)")
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # Should only include the small parameter benchmark
+        assert len(parsed_out["functions"]) == 1
+        assert "bench_func (small)" in parsed_out["functions"]
+
 
 class TestEasyBenchTime:
     """Tests for time measurement functionality in EasyBench."""

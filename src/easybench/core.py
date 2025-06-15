@@ -683,10 +683,33 @@ class EasyBench:
 
         return result_dict
 
-    def _process_parametrized_method(
+    def _get_params_list(
         self,
         method_name: str,
         method: Callable[..., object],
+        include: str | None = None,
+        exclude: str | None = None,
+    ) -> list[BenchParams]:
+        """Get the parameter sets from the method."""
+        method = cast("ParametrizedFunction", method)
+        params_list = method._bench_params  # noqa: SLF001
+        if include:
+            params_list = [
+                params
+                for params in params_list
+                if re.search(include, f"{method_name} ({params.name})")
+            ]
+        if exclude:
+            params_list = [
+                params
+                for params in params_list
+                if not re.search(exclude, f"{method_name} ({params.name})")
+            ]
+        return params_list
+
+    def _process_parametrized_method(
+        self,
+        method_info: tuple[str, Callable[..., object], list[BenchParams]],
         config: BenchConfig,
         fixture_registry: FixtureRegistry,
         values: dict[str, object],
@@ -695,8 +718,10 @@ class EasyBench:
         Process a parametrized benchmark method with multiple parameter sets.
 
         Args:
-            method_name: Name of the benchmark method
-            method: The benchmark method to run
+            method_info: (method_name, method, params_list)
+                method_name: Name of the benchmark method
+                method: The benchmark method to run
+                params_list: Parameter sets of the method
             config: Benchmark configuration
             fixture_registry: Registry containing fixtures
             values: Dictionary to store fixture values
@@ -705,10 +730,8 @@ class EasyBench:
             A dictionary of all results
 
         """
+        method_name, method, params_list = method_info
         all_results: ResultsType = {}
-
-        # Get the parameter sets from the method
-        params_list = getattr(method, "_bench_params", [])
 
         # Setup progress for parameter sets if enabled
         if config.progress:
@@ -815,10 +838,15 @@ class EasyBench:
             for method_name, method in method_items:
                 # Check if this method is parametrized
                 if hasattr(method, "_bench_params"):
-                    # Process parametrized method
-                    param_results = self._process_parametrized_method(
+                    # Process parametrized method with include/exclude patterns
+                    params_list = self._get_params_list(
                         method_name=method_name,
                         method=method,
+                        include=include,
+                        exclude=exclude,
+                    )
+                    param_results = self._process_parametrized_method(
+                        method_info=(method_name, method, params_list),
                         config=config,
                         fixture_registry=fixture_registry,
                         values=values,
@@ -1178,7 +1206,16 @@ class EasyBench:
             filtered_methods = {
                 name: method
                 for name, method in methods.items()
-                if re.search(include, name)
+                if (
+                    re.search(include, name)
+                    or (
+                        hasattr(method, "_bench_params")
+                        and any(
+                            re.search(include, f"{name} ({params.name})")
+                            for params in getattr(method, "_bench_params", [])
+                        )
+                    )
+                )
             }
         else:
             # If no include filter, start with all methods
