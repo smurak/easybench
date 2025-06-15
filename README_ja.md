@@ -315,6 +315,21 @@ class BenchListOperation(EasyBench):
 
 if __name__ == "__main__":
     BenchListOperation().bench()
+    
+    # includeパターンを使用して特定のメソッドのみ実行
+    # ("insert"を含むメソッドのみ実行)
+    # BenchListOperation().bench(include="insert")
+    
+    # excludeパターンを使用して特定のメソッドを除外
+    # ("pop"を含むメソッド以外をすべて実行)
+    # BenchListOperation().bench(exclude="pop")
+    
+    # 正規表現パターンの使用
+    # ("bench_pop"で始まるメソッドを実行)
+    # BenchListOperation().bench(include=r"^bench_pop")
+    
+    # 複数のパターンを渡す
+    # BenchListOperation().bench(include=["insert", "remove"])
 ```
 
 クラスベースアプローチの使い方：
@@ -324,6 +339,7 @@ if __name__ == "__main__":
 4. `bench_`で始まるメソッドがベンチマーク対象になります
 5. `bench()`メソッドを呼び出してベンチマークを実行
    * ベンチマークの結果を画面に表示し、実測値の辞書を戻り値として返します
+   * `include`または`exclude`パラメータを使用して、正規表現を用いたベンチマークメソッドの選択的実行が可能です
 
 #### ライフサイクルメソッド
 

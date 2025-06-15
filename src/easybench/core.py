@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import inspect
 import logging
+import re
 import sys
 import time
 import tracemalloc
@@ -768,6 +769,8 @@ class EasyBench:
         self,
         config: BenchConfig,
         fixture_registry: FixtureRegistry,
+        include: list[str] | str | None = None,
+        exclude: list[str] | str | None = None,
     ) -> ResultsType:
         """
         Execute all benchmark methods for the specified number of trials.
@@ -775,14 +778,25 @@ class EasyBench:
         Args:
             config: Benchmark configuration
             fixture_registry: Registry containing fixtures
+            include: Method name(s) or regex pattern(s) to include
+              (if specified, only these will run)
+            exclude: Method name(s) or regex pattern(s) to exclude
+              (will not run even if included)
 
         Returns:
             Dictionary mapping benchmark names to their results
 
         """
-        benchmark_methods = self._discover_benchmark_methods()
+        benchmark_methods = self._discover_benchmark_methods(include, exclude)
         results: ResultsType = {}
         values: dict[str, object] = {}
+
+        if not benchmark_methods:
+            logger.warning(
+                "No benchmark methods found to run."
+                " Check your include/exclude patterns.",
+            )
+            return results
 
         with self._manage_scope("class", values, fixture_registry):
             # Use progress bar if enabled
@@ -825,6 +839,8 @@ class EasyBench:
         self,
         config: PartialBenchConfig | None = None,
         fixture_registry: FixtureRegistry | None = None,
+        include: list[str] | str | None = None,
+        exclude: list[str] | str | None = None,
         **kwargs: object,
     ) -> ResultsType:
         """
@@ -833,6 +849,10 @@ class EasyBench:
         Args:
             config: Configuration for the benchmark, can be complete or partial
             fixture_registry: Registry containing fixtures to use for the benchmarks
+            include: Method name(s) or regex pattern(s) to include
+              (if specified, only these will run)
+            exclude: Method name(s) or regex pattern(s) to exclude
+              (will not run even if included)
             **kwargs: Legacy keyword arguments for backward compatibility
 
         Returns:
@@ -862,6 +882,8 @@ class EasyBench:
         results = self._run_benchmarks(
             config=complete_config,
             fixture_registry=fixture_registry,
+            include=include,
+            exclude=exclude,
         )
 
         # Display results using reporters
@@ -1104,7 +1126,7 @@ class EasyBench:
 
         return (end_time - start_time) / loops_per_trial, memory_usage, result
 
-    def _discover_benchmark_methods(self) -> dict[str, Callable[..., object]]:
+    def _find_benchmark_methods(self) -> dict[str, Callable[..., object]]:
         """
         Find all callable attributes in the class that start with 'bench_'.
 
@@ -1115,13 +1137,89 @@ class EasyBench:
         benchmark_methods = {}
 
         # Find all attributes that are callable and start with 'bench_'
-        for name in self.__class__.__dict__:
+        attrs = list(self.__class__.__dict__.keys())  # preserve definition order
+        attrs += [attr for attr in dir(self) if attr not in attrs]  # add instance attrs
+        for name in attrs:
             if name.startswith("bench_"):
                 attr = getattr(self, name)
                 if callable(attr):
                     benchmark_methods[name] = attr
 
         return benchmark_methods
+
+    def _filter_benchmark_methods(
+        self,
+        methods: dict[str, Callable[..., object]],
+        include: list[str] | str | None = None,
+        exclude: list[str] | str | None = None,
+    ) -> dict[str, Callable[..., object]]:
+        """
+        Filter benchmark methods according to include/exclude patterns.
+
+        Args:
+            methods: Dictionary of benchmark methods to filter
+            include: Method name(s) or regex pattern(s) to include
+                    (if specified, only these will run)
+            exclude: Method name(s) or regex pattern(s) to exclude
+                    (will not run even if included)
+
+        Returns:
+            Filtered dictionary mapping benchmark names to method objects
+
+        """
+        # If both include and exclude are None, return all methods
+        if include is None and exclude is None:
+            return methods
+
+        # Convert string patterns to lists for consistent handling
+        include_patterns = [include] if isinstance(include, str) else include or []
+        exclude_patterns = [exclude] if isinstance(exclude, str) else exclude or []
+
+        filtered_methods = {}
+
+        # Apply include filter if specified
+        if include_patterns:
+            for name, method in methods.items():
+                for pattern in include_patterns:
+                    if re.search(pattern, name):
+                        filtered_methods[name] = method
+                        break
+        else:
+            # If no include filter, start with all methods
+            filtered_methods = methods.copy()
+
+        # Apply exclude filter
+        if exclude_patterns:
+            for pattern in exclude_patterns:
+                for name in list(filtered_methods.keys()):
+                    if re.search(pattern, name):
+                        del filtered_methods[name]
+
+        return filtered_methods
+
+    def _discover_benchmark_methods(
+        self,
+        include: list[str] | str | None = None,
+        exclude: list[str] | str | None = None,
+    ) -> dict[str, Callable[..., object]]:
+        """
+        Find benchmark methods and filter according to include/exclude patterns.
+
+        Args:
+            include: Method name(s) or regex pattern(s) to include
+              (if specified, only these will run)
+            exclude: Method name(s) or regex pattern(s) to exclude
+              (will not run even if included)
+
+        Returns:
+            Dictionary mapping benchmark names to method objects
+
+        """
+        # Find all benchmark methods
+        benchmark_methods = self._find_benchmark_methods()
+
+        # Apply filters
+        return self._filter_benchmark_methods(benchmark_methods, include, exclude)
 
     def _get_required_fixtures(self, method: Callable[..., object]) -> list[str]:
         """
@@ -1253,25 +1351,30 @@ class FunctionBench(EasyBench):
         )
         self.__doc__ = func.__doc__
 
-    def _discover_benchmark_methods(self) -> dict[str, Callable[..., object]]:
+    def _discover_benchmark_methods(
+        self,
+        include: list[str] | str | None = None,
+        exclude: list[str] | str | None = None,
+    ) -> dict[str, Callable[..., object]]:
         """
-        Find all callable attributes in the class that start with 'bench_'.
+        Find benchmark methods and remove 'bench_' prefix from names.
+
+        Args:
+            include: Method name(s) or regex pattern(s) to include
+            exclude: Method name(s) or regex pattern(s) to exclude
 
         Returns:
-            Dictionary mapping benchmark names to method objects
+            Dictionary mapping benchmark names (without 'bench_' prefix) to methods
 
         """
-        benchmark_methods = {}
+        # Get benchmark methods using parent implementation
+        benchmark_methods = super()._discover_benchmark_methods(include, exclude)
 
-        # Find all attributes that are callable and start with 'bench_'
-        for name in dir(self):
-            if name.startswith("bench_"):
-                attr = getattr(self, name)
-                if callable(attr):
-                    # remove 'bench_' prefix
-                    benchmark_methods[name.removeprefix("bench_")] = attr
-
-        return benchmark_methods
+        # Remove 'bench_' prefix from keys
+        return {
+            name.removeprefix("bench_"): method
+            for name, method in benchmark_methods.items()
+        }
 
     def __call__(
         self,

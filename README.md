@@ -317,6 +317,18 @@ class BenchListOperation(EasyBench):
 
 if __name__ == "__main__":
     BenchListOperation().bench()
+    
+    # Run only specific methods using include pattern
+    # (Only methods containing "insert")
+    # BenchListOperation().bench(include="insert")
+    
+    # Exclude specific methods using exclude pattern
+    # (All methods except those containing "pop")
+    # BenchListOperation().bench(exclude="pop")
+    
+    # Using regex patterns
+    # (Methods starting with "bench_pop")
+    # BenchListOperation().bench(include=r"^bench_pop")
 ```
 
 How to use the class-based approach:
@@ -326,6 +338,7 @@ How to use the class-based approach:
 4. Methods starting with `bench_` will be benchmarked
 5. Call the `bench()` method to execute the benchmarks
    * `bench()` displays the results on screen and returns a dictionary of measured value
+   * Use `include` or `exclude` parameters to selectively run benchmarks with regex support
 
 #### Lifecycle Methods
 

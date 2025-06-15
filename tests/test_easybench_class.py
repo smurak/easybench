@@ -1277,6 +1277,53 @@ class TestFunctionBench:
         result = fb(2, b=3, c=3)
         assert result == EXPECTED_RESULT_15
 
+    def test_function_bench_with_include_pattern(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test FunctionBench with include pattern."""
+        from easybench.core import FunctionBench
+
+        def test_func() -> int:
+            return 42
+
+        fb = FunctionBench(test_func)
+
+        # The benchmark method in FunctionBench will be named "test_func"
+        # (without the "bench_" prefix that's added internally)
+        results = fb.bench(include="test")
+
+        # Should run the test
+        assert "test_func" in results
+        captured = capsys.readouterr()
+        assert "test_func" in captured.out
+
+        # Should not run with non-matching pattern
+        results = fb.bench(include="nonexistent")
+        assert not results
+
+    def test_function_bench_with_exclude_pattern(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test FunctionBench with exclude pattern."""
+        from easybench.core import FunctionBench
+
+        def test_func() -> int:
+            return 42
+
+        fb = FunctionBench(test_func)
+
+        # Should not run with matching exclude pattern
+        results = fb.bench(exclude="test")
+        assert not results
+
+        # Should run with non-matching exclude pattern
+        results = fb.bench(exclude="nonexistent")
+        assert "test_func" in results
+        captured = capsys.readouterr()
+        assert "test_func" in captured.out
+
 
 class TestEasyBenchConfiguration:
     """Additional tests for EasyBench configuration."""
@@ -2011,3 +2058,243 @@ class TestConfigValidation:
         # Test with an entirely made-up parameter
         with pytest.raises(ValidationError):
             PartialBenchConfig(nonexistent_param=42)  # type: ignore [call-arg]
+
+
+class TestEasyBenchMethodFiltering:
+    """Tests for filtering benchmark methods with include/exclude patterns."""
+
+    def test_include_string_pattern(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test filtering benchmark methods with a string include pattern."""
+
+        class FilterBench(EasyBench):
+            bench_config = BenchConfig(trials=1)
+
+            def bench_one(self) -> int:
+                return 1
+
+            def bench_two(self) -> int:
+                return 2
+
+            def bench_three(self) -> int:
+                return 3
+
+        bench = FilterBench()
+        bench.bench(include="two")
+
+        captured = capsys.readouterr()
+        assert "bench_one" not in captured.out
+        assert "bench_two" in captured.out
+        assert "bench_three" not in captured.out
+
+    def test_include_list_pattern(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test filtering benchmark methods with a list of include patterns."""
+
+        class FilterBench(EasyBench):
+            bench_config = BenchConfig(trials=1)
+
+            def bench_one(self) -> int:
+                return 1
+
+            def bench_two(self) -> int:
+                return 2
+
+            def bench_three(self) -> int:
+                return 3
+
+        bench = FilterBench()
+        bench.bench(include=["one", "three"])
+
+        captured = capsys.readouterr()
+        assert "bench_one" in captured.out
+        assert "bench_two" not in captured.out
+        assert "bench_three" in captured.out
+
+    def test_exclude_string_pattern(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test filtering benchmark methods with a string exclude pattern."""
+
+        class FilterBench(EasyBench):
+            bench_config = BenchConfig(trials=1)
+
+            def bench_one(self) -> int:
+                return 1
+
+            def bench_two(self) -> int:
+                return 2
+
+            def bench_three(self) -> int:
+                return 3
+
+        bench = FilterBench()
+        bench.bench(exclude="two")
+
+        captured = capsys.readouterr()
+        assert "bench_one" in captured.out
+        assert "bench_two" not in captured.out
+        assert "bench_three" in captured.out
+
+    def test_exclude_list_pattern(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test filtering benchmark methods with a list of exclude patterns."""
+
+        class FilterBench(EasyBench):
+            bench_config = BenchConfig(trials=1)
+
+            def bench_one(self) -> int:
+                return 1
+
+            def bench_two(self) -> int:
+                return 2
+
+            def bench_three(self) -> int:
+                return 3
+
+        bench = FilterBench()
+        bench.bench(exclude=["one", "three"])
+
+        captured = capsys.readouterr()
+        assert "bench_one" not in captured.out
+        assert "bench_two" in captured.out
+        assert "bench_three" not in captured.out
+
+    def test_combined_include_exclude_patterns(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test combining include and exclude patterns."""
+
+        class FilterBench(EasyBench):
+            bench_config = BenchConfig(trials=1)
+
+            def bench_fast_one(self) -> int:
+                return 1
+
+            def bench_fast_two(self) -> int:
+                return 2
+
+            def bench_slow_three(self) -> int:
+                return 3
+
+        bench = FilterBench()
+        # Include methods with "fast" but exclude those with "two"
+        bench.bench(include="fast", exclude="two")
+
+        captured = capsys.readouterr()
+        assert "bench_fast_one" in captured.out
+        assert "bench_fast_two" not in captured.out
+        assert "bench_slow_three" not in captured.out
+
+    def test_regex_patterns(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test using regex patterns for filtering."""
+
+        class FilterBench(EasyBench):
+            bench_config = BenchConfig(trials=1)
+
+            def bench_test_a1(self) -> int:
+                return 1
+
+            def bench_test_a2(self) -> int:
+                return 2
+
+            def bench_test_b1(self) -> int:
+                return 3
+
+            def bench_other(self) -> int:
+                return 4
+
+        bench = FilterBench()
+        # Use regex to match methods ending with a number
+        bench.bench(include=r"_[ab]\d$")
+
+        captured = capsys.readouterr()
+        assert "bench_test_a1" in captured.out
+        assert "bench_test_a2" in captured.out
+        assert "bench_test_b1" in captured.out
+        assert "bench_other" not in captured.out
+
+    def test_no_matches(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Test behavior when no methods match the filtering criteria."""
+
+        class FilterBench(EasyBench):
+            bench_config = BenchConfig(trials=1)
+
+            def bench_one(self) -> int:
+                return 1
+
+            def bench_two(self) -> int:
+                return 2
+
+        with caplog.at_level(logging.WARNING):
+            bench = FilterBench()
+            results = bench.bench(include="nonexistent")
+
+            assert not results, "Results should be empty when no methods match"
+            assert any(
+                "No benchmark methods found to run" in record.message
+                for record in caplog.records
+            )
+
+    def test_definition_order_preservation(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that method definition order is preserved."""
+
+        class OrderBench(EasyBench):
+            bench_config = BenchConfig(trials=1, sort_by="def")
+
+            def bench_c(self) -> None:
+                pass
+
+            def bench_a(self) -> None:
+                pass
+
+            def bench_b(self) -> None:
+                pass
+
+        bench = OrderBench()
+        bench.bench()
+
+        captured = capsys.readouterr()
+        # Extract the order from the output
+        output_lines = captured.out.splitlines()
+        c_idx = next(
+            (i for i, line in enumerate(output_lines) if "bench_c" in line),
+            -1,
+        )
+        a_idx = next(
+            (i for i, line in enumerate(output_lines) if "bench_a" in line),
+            -1,
+        )
+        b_idx = next(
+            (i for i, line in enumerate(output_lines) if "bench_b" in line),
+            -1,
+        )
+
+        # Verify that the methods appear in definition order
+        assert c_idx < a_idx < b_idx, "Methods should be displayed in definition order"
+
+    def test_instance_methods_discovery(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test discovery of benchmark methods defined at instance level."""
+
+        class DynamicBench(EasyBench):
+            bench_config = BenchConfig(trials=1)
+
+            def __init__(self) -> None:
+                super().__init__()
+                # Add a dynamic instance method
+                self.bench_dynamic = self._dynamic_method
+
+            def _dynamic_method(self) -> int:
+                return 42
+
+            def bench_normal(self) -> int:
+                return 10
+
+        bench = DynamicBench()
+        bench.bench()
+
+        captured = capsys.readouterr()
+        assert "bench_dynamic" in captured.out
+        assert "bench_normal" in captured.out
