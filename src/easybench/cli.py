@@ -149,7 +149,8 @@ def cli_main() -> None:
 
     Usage:
     easybench [`--trials N`] [`--loops-per-trial N`] [`--memory`] [`--sort-by METRIC`]
-    [`--reverse`] [`--show-output`] [`--time-unit UNIT`] [`path`]
+    [`--reverse`] [`--show-output`] [`--time-unit UNIT`] [`--warmups N`]
+    [`--no-progress`] [`path`]
     """
     default_config = BenchConfig()
     parser = argparse.ArgumentParser(
@@ -183,6 +184,15 @@ def cli_main() -> None:
         ),
     )
     parser.add_argument(
+        "--warmups",
+        type=int,
+        default=None,
+        help=(
+            "Number of warmup trials to run before timing "
+            f"(default: {default_config.warmups})"
+        ),
+    )
+    parser.add_argument(
         "--memory",
         action="store_true",
         help="Measure memory usage during benchmarks",
@@ -209,6 +219,11 @@ def cli_main() -> None:
         action="store_true",
         help="Display function return values",
     )
+    parser.add_argument(
+        "--no-progress",
+        action="store_true",
+        help="Disable progress bars during benchmarking",
+    )
 
     args = parser.parse_args()
 
@@ -217,12 +232,14 @@ def cli_main() -> None:
         config = PartialBenchConfig(
             trials=args.trials,
             loops_per_trial=args.loops_per_trial,
+            warmups=args.warmups,
             memory=args.memory or None,
             time=args.time_unit,
             sort_by=args.sort_by,
             reverse=args.reverse or None,
             color=False if args.no_color else None,
             show_output=args.show_output or None,
+            progress=False if args.no_progress else None,
         )
 
         # Discover benchmark files
