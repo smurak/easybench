@@ -129,6 +129,7 @@ def cli_args_mock() -> MagicMock:
     args.trials = DEFAULT_TEST_TRIALS
     args.loops_per_trial = 1
     args.memory = False
+    args.memory_unit = None
     args.sort_by = "avg"
     args.reverse = False
     args.no_color = False
@@ -722,6 +723,7 @@ class TestCliArguments:
         mock_args.time_unit = "s"
         mock_args.warmups = None
         mock_args.no_progress = None
+        mock_args.memory_unit = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Set up other mocks
@@ -754,6 +756,44 @@ class TestCliArguments:
         mock_args.trials = None
         mock_args.loops_per_trial = None
         mock_args.memory = True  # Enable memory flag
+        mock_args.memory_unit = None
+        mock_args.sort_by = None
+        mock_args.reverse = False
+        mock_args.no_color = False
+        mock_args.show_output = False
+        mock_args.time_unit = "s"
+        mock_args.warmups = None
+        mock_args.no_progress = None
+        mock_args.memory_unit = None
+        cli_setup["parse_args"].return_value = mock_args
+
+        # Mock finding benchmark files
+        mock_file = Path("benchmarks/bench_test.py")
+        cli_setup["discover_files"].return_value = [mock_file]
+
+        # Mock loading module and discovering benchmarks
+        mock_module = MagicMock()
+        cli_setup["load_module"].return_value = mock_module
+        mock_benchmarks = {"bench1": MagicMock()}
+        cli_setup["discover_benchmarks"].return_value = mock_benchmarks
+
+        # Run the CLI
+        cli_main()
+
+        # Verify run_benchmarks was called with memory=True
+        cli_setup["run_benchmarks"].assert_called_once()
+        args, kwargs = cli_setup["run_benchmarks"].call_args
+        assert kwargs["config"].memory
+
+    def test_memory_unit_parameter(self, cli_setup: dict[str, MagicMock]) -> None:
+        """Test the --memory-unit parameter."""
+        # Setup mocks
+        mock_args = MagicMock()
+        mock_args.directory = "benchmarks"
+        mock_args.trials = None
+        mock_args.loops_per_trial = None
+        mock_args.memory = True
+        mock_args.memory_unit = "MB"  # Set memory unit to MB
         mock_args.sort_by = None
         mock_args.reverse = False
         mock_args.no_color = False
@@ -776,10 +816,10 @@ class TestCliArguments:
         # Run the CLI
         cli_main()
 
-        # Verify run_benchmarks was called with memory=True
+        # Verify run_benchmarks was called with memory=MB
         cli_setup["run_benchmarks"].assert_called_once()
         args, kwargs = cli_setup["run_benchmarks"].call_args
-        assert kwargs["config"].memory
+        assert kwargs["config"].memory == "MB"
 
     def test_sort_by_options(self, cli_setup: dict[str, MagicMock]) -> None:
         """Test different sort_by options."""
@@ -799,6 +839,7 @@ class TestCliArguments:
             mock_args.time_unit = "s"
             mock_args.warmups = None
             mock_args.no_progress = None
+            mock_args.memory_unit = None
             cli_setup["parse_args"].return_value = mock_args
 
             # Mock finding benchmark files
@@ -837,6 +878,7 @@ class TestCliArguments:
         mock_args.time_unit = "s"
         mock_args.warmups = None
         mock_args.no_progress = None
+        mock_args.memory_unit = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -872,6 +914,7 @@ class TestCliArguments:
         mock_args.time_unit = "s"
         mock_args.warmups = None
         mock_args.no_progress = None
+        mock_args.memory_unit = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -907,6 +950,7 @@ class TestCliArguments:
         mock_args.time_unit = "s"
         mock_args.warmups = DEFAULT_TEST_VALUE  # Custom warmups count
         mock_args.no_progress = None
+        mock_args.memory_unit = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -942,6 +986,7 @@ class TestCliArguments:
         mock_args.time_unit = "s"
         mock_args.warmups = None
         mock_args.no_progress = True  # Enable no_progress flag
+        mock_args.memory_unit = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files

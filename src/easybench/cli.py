@@ -148,9 +148,9 @@ def cli_main() -> None:
     Execute the main command line interface for easybench.
 
     Usage:
-    easybench [`--trials N`] [`--loops-per-trial N`] [`--memory`] [`--sort-by METRIC`]
-    [`--reverse`] [`--show-output`] [`--time-unit UNIT`] [`--warmups N`]
-    [`--no-progress`] [`path`]
+    easybench [`--trials N`] [`--loops-per-trial N`] [`--memory`] [`--memory-unit UNIT`]
+    [`--sort-by METRIC`] [`--reverse`] [`--show-output`] [`--time-unit UNIT`]
+    [`--warmups N`] [`--no-progress`] [`path`]
     """
     default_config = BenchConfig()
     parser = argparse.ArgumentParser(
@@ -198,6 +198,12 @@ def cli_main() -> None:
         help="Measure memory usage during benchmarks",
     )
     parser.add_argument(
+        "--memory-unit",
+        choices=["B", "KB", "MB", "GB"],
+        default=None,
+        help="Memory unit for displaying results (default: KB when --memory is used)",
+    )
+    parser.add_argument(
         "--time-unit",
         choices=["ns", "μs", "ms", "s", "m", "us"],
         default="s",
@@ -228,12 +234,15 @@ def cli_main() -> None:
     args = parser.parse_args()
 
     try:
+        # Set memory value based on arguments
+        memory = args.memory_unit if args.memory_unit else True if args.memory else None
+
         # Create config from CLI arguments
         config = PartialBenchConfig(
             trials=args.trials,
             loops_per_trial=args.loops_per_trial,
             warmups=args.warmups,
-            memory=args.memory or None,
+            memory=memory,
             time=args.time_unit,
             sort_by=args.sort_by,
             reverse=args.reverse or None,

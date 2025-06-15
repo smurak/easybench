@@ -424,13 +424,14 @@ easybench [options] [path]
 ### Command Options
 
 ```bash
-easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [path]
+easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [path]
 ```
 
 - `--trials N`: Number of trials (default: 5)
 - `--loops-per-trial N`: Number of loops to run per trial for improved precision
 - `--warmups N`: Number of warmup trials to run before timing
 - `--memory`: Enable memory measurement
+- `--memory-unit UNIT`: Memory unit for displaying results (B/KB/MB/GB)
 - `--sort-by METRIC`: Sort criterion (def/avg/min/max/avg_memory/max_memory)
 - `--reverse`: Sort results in descending order
 - `--no-color`: Disable colored output

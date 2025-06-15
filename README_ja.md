@@ -568,13 +568,14 @@ easybench [オプション] [パス]
 #### コマンドオプション
 
 ```bash
-easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [パス]
+easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [パス]
 ```
 
 - `--trials N`: 試行回数 (デフォルト: 5)
 - `--loops-per-trial N`: 精度向上のために1試行あたりに実行するループ回数
 - `--warmups N`: 計測前に実行するウォームアップ試行回数
 - `--memory`: メモリ測定を有効化
+- `--memory-unit UNIT`: メモリ測定の表示単位 (B/KB/MB/GB)
 - `--sort-by METRIC`: ソート基準 (def/avg/min/max/avg_memory/max_memory)
 - `--reverse`: 結果を降順でソート
 - `--no-color`: カラー出力を無効化
