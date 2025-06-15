@@ -1217,19 +1217,19 @@ class TestReporters:
 
         formatter = TableFormatter()
 
-        # Create a concrete subclass that implements _send
+        # Create a concrete subclass that implements report_formatted
         class ConcreteReporter(Reporter):
-            def _send(self, formatted_output: Formatted) -> None:
+            def report_formatted(self, formatted_output: Formatted) -> None:
                 pass
 
         reporter = ConcreteReporter(formatter)
 
         assert reporter.formatter is formatter
 
-        # Mock the _send method to track if it's called
-        original_send = reporter._send
+        # Mock the report_formatted method to track if it's called
+        original_send = reporter.report_formatted
         mock_send = MagicMock()
-        reporter._send = mock_send  # type: ignore [method-assign]
+        reporter.report_formatted = mock_send  # type: ignore [method-assign]
 
         # Test data
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
@@ -1238,14 +1238,14 @@ class TestReporters:
         }
         config = BenchConfig(trials=1)
 
-        # Call report which should call _send
+        # Call report which should call report_formatted
         reporter.report(results, stats, config)
 
-        # Verify _send was called
+        # Verify report_formatted was called
         mock_send.assert_called_once()
 
         # Restore the original method
-        reporter._send = original_send  # type: ignore [method-assign]
+        reporter.report_formatted = original_send  # type: ignore [method-assign]
 
     def test_stream_reporter(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Test the StreamReporter class."""
@@ -1253,7 +1253,7 @@ class TestReporters:
         reporter = StreamReporter(formatter)
 
         test_output = "Test benchmark output"
-        reporter._send(test_output)
+        reporter.report_formatted(test_output)
 
         captured = capsys.readouterr()
         assert test_output in captured.out
@@ -1265,7 +1265,7 @@ class TestReporters:
         reporter = StreamReporter(formatter, file=output)
 
         test_output = "Test benchmark output"
-        reporter._send(test_output)
+        reporter.report_formatted(test_output)
 
         assert test_output in output.getvalue()
 
@@ -1275,7 +1275,7 @@ class TestReporters:
         reporter = ConsoleReporter(formatter)
 
         test_output = "Test benchmark output"
-        reporter._send(test_output)
+        reporter.report_formatted(test_output)
 
         captured = capsys.readouterr()
         assert test_output in captured.out
@@ -1288,7 +1288,7 @@ class TestReporters:
         reporter = FileReporter(str(output_file), formatter)
 
         test_output = "Test benchmark output"
-        reporter._send(test_output)
+        reporter.report_formatted(test_output)
 
         assert output_file.exists()
         content = output_file.read_text()
@@ -1302,7 +1302,7 @@ class TestReporters:
         reporter = FileReporter(str(output_file), formatter)
 
         test_output = "Test benchmark output"
-        reporter._send(test_output)
+        reporter.report_formatted(test_output)
 
         assert output_file.exists()
         content = output_file.read_text()
@@ -1315,11 +1315,11 @@ class TestReporters:
 
         # First write - fixed parameter order
         reporter = FileReporter(str(output_file), formatter)
-        reporter._send("First line")
+        reporter.report_formatted("First line")
 
         # Second write with append mode - fixed parameter order
         reporter = FileReporter(str(output_file), formatter, mode="a")
-        reporter._send("Second line")
+        reporter.report_formatted("Second line")
 
         content = output_file.read_text()
         assert "First line" in content
@@ -1336,7 +1336,7 @@ class TestReporters:
         reporter = CallbackReporter(callback_func, formatter)
 
         test_output = "Test benchmark output"
-        reporter._send(test_output)
+        reporter.report_formatted(test_output)
 
         assert len(callback_results) == 1
         assert callback_results[0] == test_output
@@ -1350,14 +1350,14 @@ class TestReporters:
         formatter = MagicMock(spec=Formatter)
         formatter.format.return_value = "Formatted output"
 
-        # Create a concrete reporter subclass that implements _send
+        # Create a concrete reporter subclass that implements report_formatted
         class TestReporter(Reporter):
-            def _send(self, formatted_output: str | object) -> None:
+            def report_formatted(self, formatted_output: str | object) -> None:
                 pass
 
-        # Create a reporter with the mock formatter and mock its _send method
+        # Create a reporter with the mock formatter and mock its report_formatted method
         reporter = TestReporter(formatter)
-        reporter._send = MagicMock()  # type: ignore [method-assign]
+        reporter.report_formatted = MagicMock()  # type: ignore [method-assign]
 
         # Test data
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
@@ -1376,8 +1376,8 @@ class TestReporters:
             config=config,
         )
 
-        # Verify _send was called with the formatter's output
-        reporter._send.assert_called_once_with("Formatted output")
+        # Verify report_formatted was called with the formatter's output
+        reporter.report_formatted.assert_called_once_with("Formatted output")
 
 
 class TestSimpleConsoleReporter:

@@ -858,10 +858,10 @@ class Reporter:
             stats=stats,
             config=config,
         )
-        self._send(formatted)
+        self.report_formatted(formatted)
 
     @abstractmethod
-    def _send(self, formatted_output: Formatted) -> None:
+    def report_formatted(self, formatted_output: Formatted) -> None:
         """
         Send formatted output to the destination.
 
@@ -890,7 +890,7 @@ class StreamReporter(Reporter):
         super().__init__(formatter or TableFormatter())
         self.file = file
 
-    def _send(self, formatted_output: Formatted) -> None:
+    def report_formatted(self, formatted_output: Formatted) -> None:
         """
         Print formatted output to stream.
 
@@ -952,7 +952,7 @@ class FileReporter(Reporter):
         self.mode = mode
         self.encoding = encoding
 
-    def _send(self, formatted_output: Formatted) -> None:
+    def report_formatted(self, formatted_output: Formatted) -> None:
         """
         Write formatted output to file.
 
@@ -983,7 +983,7 @@ class CallbackReporter(Reporter):
         super().__init__(formatter or DataFrameFormatter())
         self.callback = callback
 
-    def _send(self, formatted_output: Formatted) -> None:
+    def report_formatted(self, formatted_output: Formatted) -> None:
         """
         Send formatted output to callback.
 

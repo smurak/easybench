@@ -669,7 +669,7 @@ class WebAPIReporter(Reporter):
         self.api_url = api_url
         self.auth_token = auth_token
     
-    def _send(self, formatted_output):
+    def report_formatted(self, formatted_output):
         # フォーマットされた結果をAPIエンドポイントに送信
         import requests
         headers = {"Authorization": f"Bearer {self.auth_token}"}
