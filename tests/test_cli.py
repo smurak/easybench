@@ -16,7 +16,7 @@ import types
 from collections.abc import Callable, Generator
 from pathlib import Path
 from typing import Any, Protocol, cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -137,6 +137,8 @@ def cli_args_mock() -> MagicMock:
     args.time_unit = "s"
     args.warmups = 0
     args.no_progress = True
+    args.include = None
+    args.exclude = None
     return args
 
 
@@ -537,8 +539,8 @@ class TestCliMain:
         cli_mocks["load_module"].assert_any_call(mock_file1)
         cli_mocks["load_module"].assert_any_call(mock_file2)
         assert cli_mocks["load_module"].call_count == NUM_FUNCTIONBENCH_CALLS
-        cli_mocks["discover_benchmarks"].assert_any_call(mock_module1)
-        cli_mocks["discover_benchmarks"].assert_any_call(mock_module2)
+        cli_mocks["discover_benchmarks"].assert_any_call(mock_module1, config=ANY)
+        cli_mocks["discover_benchmarks"].assert_any_call(mock_module2, config=ANY)
         assert cli_mocks["discover_benchmarks"].call_count == NUM_FUNCTIONBENCH_CALLS
 
         # Verify run_benchmarks was called with the right parameters
@@ -625,7 +627,7 @@ class TestCliMain:
         # Verify the correct functions were called
         mock_discover_files.assert_called_once_with("test_dir")
         mock_load_module.assert_called_once_with(mock_file)
-        mock_discover_benchmarks.assert_called_once_with(mock_module)
+        mock_discover_benchmarks.assert_called_once_with(mock_module, config=ANY)
 
     @patch("argparse.ArgumentParser.parse_args")
     @patch("easybench.cli.discover_benchmark_files")
@@ -724,6 +726,8 @@ class TestCliArguments:
         mock_args.warmups = None
         mock_args.no_progress = None
         mock_args.memory_unit = None
+        mock_args.include = None
+        mock_args.exclude = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Set up other mocks
@@ -765,6 +769,8 @@ class TestCliArguments:
         mock_args.warmups = None
         mock_args.no_progress = None
         mock_args.memory_unit = None
+        mock_args.include = None
+        mock_args.exclude = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -801,6 +807,8 @@ class TestCliArguments:
         mock_args.time_unit = "s"
         mock_args.warmups = None
         mock_args.no_progress = None
+        mock_args.include = None
+        mock_args.exclude = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -837,6 +845,8 @@ class TestCliArguments:
         mock_args.time_unit = "s"
         mock_args.warmups = None
         mock_args.no_progress = None
+        mock_args.include = None
+        mock_args.exclude = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -876,6 +886,8 @@ class TestCliArguments:
             mock_args.warmups = None
             mock_args.no_progress = None
             mock_args.memory_unit = None
+            mock_args.include = None
+            mock_args.exclude = None
             cli_setup["parse_args"].return_value = mock_args
 
             # Mock finding benchmark files
@@ -915,6 +927,8 @@ class TestCliArguments:
         mock_args.warmups = None
         mock_args.no_progress = None
         mock_args.memory_unit = None
+        mock_args.include = None
+        mock_args.exclude = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -951,6 +965,8 @@ class TestCliArguments:
         mock_args.warmups = None
         mock_args.no_progress = None
         mock_args.memory_unit = None
+        mock_args.include = None
+        mock_args.exclude = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -987,6 +1003,8 @@ class TestCliArguments:
         mock_args.warmups = DEFAULT_TEST_VALUE  # Custom warmups count
         mock_args.no_progress = None
         mock_args.memory_unit = None
+        mock_args.include = None
+        mock_args.exclude = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1023,6 +1041,8 @@ class TestCliArguments:
         mock_args.warmups = None
         mock_args.no_progress = True  # Enable no_progress flag
         mock_args.memory_unit = None
+        mock_args.include = None
+        mock_args.exclude = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1042,6 +1062,99 @@ class TestCliArguments:
         cli_setup["run_benchmarks"].assert_called_once()
         args, kwargs = cli_setup["run_benchmarks"].call_args
         assert kwargs["config"].progress is False
+
+    def test_include_exclude_options(self, cli_setup: dict[str, MagicMock]) -> None:
+        """Test the --include and --exclude options."""
+        # Test cases to verify
+        test_cases: list[dict[str, Any]] = [
+            {"include": "fast_*", "exclude": None},
+            {"include": None, "exclude": "slow_*"},
+            {"include": "bench_*", "exclude": "*_slow"},
+        ]
+
+        for case in test_cases:
+            # Setup mocks
+            mock_args = MagicMock()
+            mock_args.path = "benchmarks"
+            mock_args.trials = None
+            mock_args.loops_per_trial = None
+            mock_args.memory = False
+            mock_args.sort_by = None
+            mock_args.reverse = False
+            mock_args.no_color = False
+            mock_args.show_output = False
+            mock_args.time_unit = "s"
+            mock_args.warmups = None
+            mock_args.no_progress = None
+            mock_args.memory_unit = None
+            mock_args.include = case["include"]
+            mock_args.exclude = case["exclude"]
+            cli_setup["parse_args"].return_value = mock_args
+
+            # Mock finding benchmark files
+            mock_file = Path("benchmarks/bench_test.py")
+            cli_setup["discover_files"].return_value = [mock_file]
+
+            # Mock loading module and discovering benchmarks
+            mock_module = MagicMock()
+            cli_setup["load_module"].return_value = mock_module
+            mock_benchmarks = {"bench1": MagicMock()}
+            cli_setup["discover_benchmarks"].return_value = mock_benchmarks
+
+            # Reset mocks
+            cli_setup["run_benchmarks"].reset_mock()
+
+            # Run the CLI
+            cli_main()
+
+            # Verify run_benchmarks was called with the correct include/exclude patterns
+            cli_setup["run_benchmarks"].assert_called_once()
+            args, kwargs = cli_setup["run_benchmarks"].call_args
+            assert kwargs["config"].include == case["include"]
+            assert kwargs["config"].exclude == case["exclude"]
+
+    def test_include_exclude_filtering(
+        self,
+        cli_setup: dict[str, MagicMock],
+        cli_args_mock: MagicMock,
+    ) -> None:
+        """Test that include/exclude patterns actually filter the benchmarks."""
+        # Setup mocks
+        cli_args_mock.include = "bench_*"
+        cli_args_mock.exclude = "*_slow"
+        cli_setup["parse_args"].return_value = cli_args_mock
+
+        # Mock finding benchmark file
+        mock_file = Path("test_dir/bench_test.py")
+        cli_setup["discover_files"].return_value = [mock_file]
+
+        # Mock loading module and creating benchmarks dictionary
+        mock_module = MagicMock()
+        cli_setup["load_module"].return_value = mock_module
+
+        # Create mock benchmarks that should be filtered
+        mock_benchmarks = {
+            "bench_fast": MagicMock(),  # Should be included
+            "bench_slow": MagicMock(),  # Should be excluded (*_slow)
+            "test_bench": MagicMock(),  # Should be excluded (not bench_*)
+            "bench_test_slow": MagicMock(),  # Should be excluded (*_slow)
+        }
+        cli_setup["discover_benchmarks"].return_value = mock_benchmarks
+
+        # Define a mock implementation for run_benchmarks that verifies filtering
+        def mock_run_with_filter(*args: dict, **kwargs: object) -> None:
+            # Verify only the expected benchmark is passed
+            _ = kwargs
+            actual_benchmarks = args[0]
+            assert list(actual_benchmarks.keys()) == ["bench_fast"]
+
+        cli_setup["run_benchmarks"].side_effect = mock_run_with_filter
+
+        # Run CLI
+        cli_main()
+
+        # Verify run_benchmarks was called
+        cli_setup["run_benchmarks"].assert_called_once()
 
 
 class TestCliEdgeCases:
@@ -1280,6 +1393,178 @@ def bench_memory_test():
 
         # Check for memory measurement in output
         assert "Memory (KB)" in output, "Memory measurement not shown in output"
+
+    def test_include_exclude_integration(
+        self,
+        temp_dir: Path,
+        create_module_file: Callable,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test the include and exclude options in a real benchmark execution."""
+        # Create a benchmark file with multiple benchmark functions
+        bench_content = """
+# Benchmark file with various functions for testing include/exclude
+import time
+
+def bench_test():
+    \"\"\"A benchmark test function\"\"\"
+    return 42
+
+def bench_fast():
+    \"\"\"A fast benchmark test function\"\"\"
+    return "fast"
+
+def bench_slow():
+    \"\"\"A slow benchmark test function\"\"\"
+    time.sleep(0.01)
+    return "slow"
+
+def not_a_bench():
+    return "exclude me"
+"""
+        bench_file = create_module_file(
+            temp_dir,
+            "bench_test_include_exclude.py",
+            bench_content,
+        )
+
+        # Run the CLI with include and exclude patterns
+        abs_path = str(bench_file.parent.absolute())
+        with patch(
+            "sys.argv",
+            [
+                "easybench",
+                "--trials",
+                str(MIN_TEST_TRIALS),
+                "--include",
+                "bench_",
+                "--exclude",
+                "slow",
+                "--no-color",
+                "--no-progress",
+                abs_path,
+            ],
+        ):
+            cli_main()
+
+        # Capture and check output
+        captured = capsys.readouterr()
+        output = captured.out + captured.err
+
+        # Check for core elements
+        assert "Benchmark Results" in output
+
+        # The following should be included (matches include pattern but not exclude)
+        assert "bench_fast" in output
+        assert "bench_test" in output
+
+        # The following should be excluded (matches exclude pattern)
+        assert "bench_slow" not in output
+        assert "not_a_bench" not in output
+
+    def test_include_exclude_filters_only_methods(
+        self,
+        temp_dir: Path,
+        create_module_file: Callable,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that include/exclude patterns only filter benchmark method names."""
+        # Create a benchmark file with a class name that contains 'slow' in it
+        bench_content = """
+from easybench import EasyBench
+
+# This class has 'Slow' in its name, but --exclude=slow shouldn't filter it out
+class Benchslow(EasyBench):
+    def bench_fast(self):
+        \"\"\"A fast benchmark method that should be included\"\"\"
+        return "fast result"
+
+    def bench_slow(self):
+        \"\"\"A slow benchmark method that should be excluded\"\"\"
+        return "slow result"
+
+# Another class with no 'slow' in its name
+class Benchfast(EasyBench):
+    def bench_another_slow(self):
+        \"\"\"A slow benchmark method that should be excluded\"\"\"
+        return "another slow result"
+
+    def bench_another_fast(self):
+        \"\"\"A fast benchmark method that should be included\"\"\"
+        return "another fast result"
+"""
+        # Deliberately name the file with 'slow' in it,
+        # to test that file names aren't filtered
+        bench_file = create_module_file(
+            temp_dir,
+            "slow_benchmark.py",
+            bench_content,
+        )
+
+        # Run the CLI with exclude pattern that would match
+        # both the class name and file name
+        # But it should only filter method names
+        abs_path = str(bench_file)
+        with patch(
+            "sys.argv",
+            [
+                "easybench",
+                "--trials",
+                "1",
+                "--exclude",
+                "slow",  # Should only exclude methods with 'slow' in name
+                "--no-color",
+                "--no-progress",
+                abs_path,
+            ],
+        ):
+            cli_main()
+
+        # Capture and check output
+        captured = capsys.readouterr()
+        output = captured.out + captured.err
+
+        # Check that proper filtering occurred:
+        # 1. Both classes should be found even though one has 'slow' in its name
+        assert "Benchslow" in output
+        assert "Benchfast" in output
+
+        # 2. Methods with 'slow' in their names should be excluded
+        assert "bench_fast" in output
+        assert "bench_slow" not in output
+        assert "bench_another_fast" in output
+        assert "bench_another_slow" not in output
+
+        # Now test with include pattern
+        with patch(
+            "sys.argv",
+            [
+                "easybench",
+                "--trials",
+                "1",
+                "--include",
+                "fast",  # Should only include methods with 'fast' in name
+                "--no-color",
+                "--no-progress",
+                abs_path,
+            ],
+        ):
+            cli_main()
+
+        # Capture and check output
+        captured = capsys.readouterr()
+        output = captured.out + captured.err
+
+        # Check proper filtering with include:
+        # 1. Both classes should be included regardless of their names
+        assert "Benchslow" in output
+        assert "Benchfast" in output
+
+        # 2. Only methods with 'fast' in their names should be included
+        assert "bench_fast" in output
+        assert "bench_slow" not in output
+        assert "bench_another_fast" in output
+        assert "bench_another_slow" not in output
 
 
 def test_discover_benchmark_files_directory() -> None:

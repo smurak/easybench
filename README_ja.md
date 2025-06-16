@@ -576,7 +576,7 @@ easybench [オプション] [パス]
 #### コマンドオプション
 
 ```bash
-easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [パス]
+easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [--include PATTERN] [--exclude PATTERN] [パス]
 ```
 
 - `--trials N`: 試行回数 (デフォルト: 5)
@@ -590,6 +590,8 @@ easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-
 - `--show-output`: 関数の戻り値を表示
 - `--time-unit UNIT`: 結果表示の時間単位 (s/ms/us/ns/m)
 - `--no-progress`: ベンチマーク中の進捗バーを無効化
+- `--include PATTERN`: 指定した正規表現パターンに一致するベンチマーク関数のみを実行
+- `--exclude PATTERN`: 指定した正規表現パターンに一致するベンチマーク関数を実行から除外
 - `パス`: ベンチマークファイルを含むディレクトリまたは特定のベンチマークファイル (デフォルト: "benchmarks")
 
 #### 関数ベースのベンチマーク例

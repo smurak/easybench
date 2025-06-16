@@ -4,6 +4,7 @@ import argparse
 import importlib
 import inspect
 import logging
+import re
 import sys
 import types
 from pathlib import Path
@@ -71,6 +72,7 @@ def load_benchmark_module(file_path: Path) -> types.ModuleType | None:
 
 def discover_benchmarks(
     module: types.ModuleType,
+    config: PartialBenchConfig | None = None,
 ) -> dict[str, types.FunctionType | EasyBench]:
     """
     Discover all benchmarks in a module.
@@ -79,8 +81,11 @@ def discover_benchmarks(
     - Functions that start with 'bench_'
     - Classes that inherit from EasyBench and start with 'Bench'
 
+    Filters benchmark functions based on include/exclude patterns if provided.
+
     Args:
         module: Module to inspect for benchmarks
+        config: Configuration with optional include/exclude patterns
 
     Returns:
         Dictionary mapping benchmark names to objects
@@ -102,6 +107,29 @@ def discover_benchmarks(
                 benchmarks[name] = obj()
             except (TypeError, ValueError, RuntimeError):
                 logger.exception("Error initializing %s", name)
+
+    # Filter benchmark functions based on include/exclude patterns
+    if config is not None:
+        filtered_benchmarks = {}
+
+        # Apply include filter if specified
+        if config.include is not None:
+            filtered_benchmarks = {
+                name: obj
+                for name, obj in benchmarks.items()
+                if isinstance(obj, EasyBench) or re.search(config.include, name)
+            }
+        else:
+            # If no include filter, start with all benchmarks
+            filtered_benchmarks = benchmarks.copy()
+
+        # Apply exclude filter if specified
+        if config.exclude is not None:
+            for name, value in list(filtered_benchmarks.items()):
+                if not isinstance(value, EasyBench) and re.search(config.exclude, name):
+                    del filtered_benchmarks[name]
+
+        return filtered_benchmarks
 
     return benchmarks
 
@@ -150,7 +178,8 @@ def cli_main() -> None:
     Usage:
     easybench [`--trials N`] [`--loops-per-trial N`] [`--memory`] [`--memory-unit UNIT`]
     [`--sort-by METRIC`] [`--reverse`] [`--show-output`] [`--time-unit UNIT`]
-    [`--warmups N`] [`--no-progress`] [`path`]
+    [`--warmups N`] [`--no-progress`] [`--include PATTERN`]
+    [`--exclude PATTERN`] [`path`]
     """
     default_config = BenchConfig()
     parser = argparse.ArgumentParser(
@@ -230,6 +259,18 @@ def cli_main() -> None:
         action="store_true",
         help="Disable progress bars during benchmarking",
     )
+    parser.add_argument(
+        "--include",
+        type=str,
+        default=None,
+        help="Regular expression pattern to include only matching benchmark functions",
+    )
+    parser.add_argument(
+        "--exclude",
+        type=str,
+        default=None,
+        help="Regular expression pattern to exclude matching benchmark functions",
+    )
 
     args = parser.parse_args()
 
@@ -249,6 +290,8 @@ def cli_main() -> None:
             color=False if args.no_color else None,
             show_output=args.show_output or None,
             progress=False if args.no_progress else None,
+            include=args.include,
+            exclude=args.exclude,
         )
 
         # Discover benchmark files
@@ -267,7 +310,7 @@ def cli_main() -> None:
             try:
                 module = load_benchmark_module(file_path)
                 if module:
-                    benchmarks = discover_benchmarks(module)
+                    benchmarks = discover_benchmarks(module, config=config)
                     if benchmarks:
                         try:
                             run_benchmarks(

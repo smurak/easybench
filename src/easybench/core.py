@@ -812,10 +812,7 @@ class EasyBench:
         values: dict[str, object] = {}
 
         if not benchmark_methods:
-            logger.warning(
-                "No benchmark methods found to run."
-                " Check your include/exclude patterns.",
-            )
+            logger.warning("No benchmark methods found to run.")
             return results
 
         with self._manage_scope("class", values, fixture_registry):
