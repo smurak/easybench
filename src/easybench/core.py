@@ -184,7 +184,7 @@ class ParametrizedFunction(Protocol[P, R_co]):
         """Call method."""
         ...
 
-    _bench_params: list[BenchParams]
+    _bench_params: Iterable[BenchParams]
 
 
 class CustomizedFunction(Protocol[P, R_co]):
@@ -411,7 +411,7 @@ def fixture(
     return decorator
 
 
-def parametrize(params_list: list[BenchParams]) -> Callable:
+def parametrize(params_list: Iterable[BenchParams]) -> Callable:
     """
     Create a decorator for parametrized benchmarks in EasyBench classes.
 
@@ -695,7 +695,7 @@ class EasyBench:
     ) -> list[BenchParams]:
         """Get the parameter sets from the method."""
         method = cast("ParametrizedFunction", method)
-        params_list = method._bench_params  # noqa: SLF001
+        params_list = list(method._bench_params)  # noqa: SLF001
         if config.include:
             params_list = [
                 params
