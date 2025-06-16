@@ -486,8 +486,8 @@ Progress tracking options (`progress`):
 
 Benchmark selection options:
 
-- `include`: Regular expression pattern to include only benchmarks with matching names
-- `exclude`: Regular expression pattern to exclude benchmarks with matching names
+- `include`: Regular expression pattern to include only benchmark functions with matching names
+- `exclude`: Regular expression pattern to exclude benchmark functions with matching names
 
   - For parametrized benchmarks, these options match against the full name (e.g., "bench_func (param_name)")
   - When both options are specified, `exclude` takes precedence
