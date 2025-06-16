@@ -184,7 +184,7 @@ class ParametrizedFunction(Protocol[P, R_co]):
         """Call method."""
         ...
 
-    _bench_params: list[BenchParams]
+    _bench_params: Iterable[BenchParams]
 
 
 class CustomizedFunction(Protocol[P, R_co]):
@@ -217,6 +217,8 @@ class PartialBenchConfig(BaseModel):
     return_output: bool | None = None
     reporters: list[Reporter] | None = None
     progress: bool | Callable | None = None
+    include: str | None = None
+    exclude: str | None = None
 
     def merge_with(self, config: BenchConfig) -> BenchConfig:
         """
@@ -304,6 +306,8 @@ class BenchConfig(PartialBenchConfig):
     return_output: bool = False
     reporters: list[Reporter] = [ConsoleReporter()]
     progress: bool | Callable = True
+    include: str | None = None
+    exclude: str | None = None
 
 
 def ensure_full_config(
@@ -407,7 +411,7 @@ def fixture(
     return decorator
 
 
-def parametrize(params_list: list[BenchParams]) -> Callable:
+def parametrize(params_list: Iterable[BenchParams]) -> Callable:
     """
     Create a decorator for parametrized benchmarks in EasyBench classes.
 
@@ -687,23 +691,22 @@ class EasyBench:
         self,
         method_name: str,
         method: Callable[..., object],
-        include: str | None = None,
-        exclude: str | None = None,
+        config: BenchConfig,
     ) -> list[BenchParams]:
         """Get the parameter sets from the method."""
         method = cast("ParametrizedFunction", method)
-        params_list = method._bench_params  # noqa: SLF001
-        if include:
+        params_list = list(method._bench_params)  # noqa: SLF001
+        if config.include:
             params_list = [
                 params
                 for params in params_list
-                if re.search(include, f"{method_name} ({params.name})")
+                if re.search(config.include, f"{method_name} ({params.name})")
             ]
-        if exclude:
+        if config.exclude:
             params_list = [
                 params
                 for params in params_list
-                if not re.search(exclude, f"{method_name} ({params.name})")
+                if not re.search(config.exclude, f"{method_name} ({params.name})")
             ]
         return params_list
 
@@ -792,8 +795,6 @@ class EasyBench:
         self,
         config: BenchConfig,
         fixture_registry: FixtureRegistry,
-        include: str | None = None,
-        exclude: str | None = None,
     ) -> ResultsType:
         """
         Execute all benchmark methods for the specified number of trials.
@@ -801,24 +802,17 @@ class EasyBench:
         Args:
             config: Benchmark configuration
             fixture_registry: Registry containing fixtures
-            include: Method name or regex pattern to include
-              (if specified, only matching methods will run)
-            exclude: Method name or regex pattern to exclude
-              (will not run even if included)
 
         Returns:
             Dictionary mapping benchmark names to their results
 
         """
-        benchmark_methods = self._discover_benchmark_methods(include, exclude)
+        benchmark_methods = self._discover_benchmark_methods(config)
         results: ResultsType = {}
         values: dict[str, object] = {}
 
         if not benchmark_methods:
-            logger.warning(
-                "No benchmark methods found to run."
-                " Check your include/exclude patterns.",
-            )
+            logger.warning("No benchmark methods found to run.")
             return results
 
         with self._manage_scope("class", values, fixture_registry):
@@ -842,8 +836,7 @@ class EasyBench:
                     params_list = self._get_params_list(
                         method_name=method_name,
                         method=method,
-                        include=include,
-                        exclude=exclude,
+                        config=config,
                     )
                     param_results = self._process_parametrized_method(
                         method_info=(method_name, method, params_list),
@@ -867,8 +860,6 @@ class EasyBench:
         self,
         config: PartialBenchConfig | None = None,
         fixture_registry: FixtureRegistry | None = None,
-        include: str | None = None,
-        exclude: str | None = None,
         **kwargs: object,
     ) -> ResultsType:
         """
@@ -877,10 +868,6 @@ class EasyBench:
         Args:
             config: Configuration for the benchmark, can be complete or partial
             fixture_registry: Registry containing fixtures to use for the benchmarks
-            include: Method name or regex pattern to include
-                (if specified, only matching methods will run)
-            exclude: Method name or regex pattern to exclude
-                (will not run even if included)
             **kwargs: Legacy keyword arguments for backward compatibility
 
         Returns:
@@ -910,8 +897,6 @@ class EasyBench:
         results = self._run_benchmarks(
             config=complete_config,
             fixture_registry=fixture_registry,
-            include=include,
-            exclude=exclude,
         )
 
         # Display results using reporters
@@ -1178,40 +1163,36 @@ class EasyBench:
     def _filter_benchmark_methods(
         self,
         methods: dict[str, Callable[..., object]],
-        include: str | None = None,
-        exclude: str | None = None,
+        config: BenchConfig,
     ) -> dict[str, Callable[..., object]]:
         """
         Filter benchmark methods according to include/exclude patterns.
 
         Args:
             methods: Dictionary of benchmark methods to filter
-            include: Method name or regex pattern to include
-                    (if specified, only matching methods will run)
-            exclude: Method name or regex pattern to exclude
-                    (will not run even if included)
+            config: BenchConfig
 
         Returns:
             Filtered dictionary mapping benchmark names to method objects
 
         """
         # If both include and exclude are None, return all methods
-        if include is None and exclude is None:
+        if config.include is None and config.exclude is None:
             return methods
 
         filtered_methods = {}
 
         # Apply include filter if specified
-        if include is not None:
+        if config.include is not None:
             filtered_methods = {
                 name: method
                 for name, method in methods.items()
                 if (
-                    re.search(include, name)
+                    re.search(config.include, name)
                     or (
                         hasattr(method, "_bench_params")
                         and any(
-                            re.search(include, f"{name} ({params.name})")
+                            re.search(config.include, f"{name} ({params.name})")
                             for params in getattr(method, "_bench_params", [])
                         )
                     )
@@ -1222,26 +1203,22 @@ class EasyBench:
             filtered_methods = methods.copy()
 
         # Apply exclude filter
-        if exclude is not None:
+        if config.exclude is not None:
             for name in list(filtered_methods.keys()):
-                if re.search(exclude, name):
+                if re.search(config.exclude, name):
                     del filtered_methods[name]
 
         return filtered_methods
 
     def _discover_benchmark_methods(
         self,
-        include: str | None = None,
-        exclude: str | None = None,
+        config: BenchConfig,
     ) -> dict[str, Callable[..., object]]:
         """
         Find benchmark methods and filter according to include/exclude patterns.
 
         Args:
-            include: Method name or regex pattern to include
-              (if specified, only matching methods will run)
-            exclude: Method name or regex pattern to exclude
-              (will not run even if included)
+            config: BenchConfig
 
         Returns:
             Dictionary mapping benchmark names to method objects
@@ -1251,7 +1228,7 @@ class EasyBench:
         benchmark_methods = self._find_benchmark_methods()
 
         # Apply filters
-        return self._filter_benchmark_methods(benchmark_methods, include, exclude)
+        return self._filter_benchmark_methods(benchmark_methods, config)
 
     def _get_required_fixtures(self, method: Callable[..., object]) -> list[str]:
         """
@@ -1385,22 +1362,20 @@ class FunctionBench(EasyBench):
 
     def _discover_benchmark_methods(
         self,
-        include: str | None = None,
-        exclude: str | None = None,
+        config: BenchConfig,
     ) -> dict[str, Callable[..., object]]:
         """
         Find benchmark methods and remove 'bench_' prefix from names.
 
         Args:
-            include: Method name or regex pattern to include
-            exclude: Method name or regex pattern to exclude
+            config: BenchConfig
 
         Returns:
             Dictionary mapping benchmark names (without 'bench_' prefix) to methods
 
         """
         # Get benchmark methods using parent implementation
-        benchmark_methods = super()._discover_benchmark_methods(include, exclude)
+        benchmark_methods = super()._discover_benchmark_methods(config)
 
         # Remove 'bench_' prefix from keys
         return {

@@ -312,18 +312,6 @@ class BenchListOperation(EasyBench):
 
 if __name__ == "__main__":
     BenchListOperation().bench()
-    
-    # Run only specific methods using include pattern
-    # (Only methods containing "insert")
-    # BenchListOperation().bench(include="insert")
-    
-    # Exclude specific methods using exclude pattern
-    # (All methods except those containing "pop")
-    # BenchListOperation().bench(exclude="pop")
-    
-    # Using regex patterns
-    # (Methods starting with "bench_pop")
-    # BenchListOperation().bench(include=r"^bench_pop")
 ```
 
 How to use the class-based approach:
@@ -333,7 +321,6 @@ How to use the class-based approach:
 4. Methods starting with `bench_` will be benchmarked
 5. Call the `bench()` method to execute the benchmarks
    * `bench()` displays the results on screen and returns a dictionary of measured value
-   * Use `include` or `exclude` parameters to selectively run benchmarks with regex support
 
 #### Lifecycle Methods
 
@@ -454,6 +441,8 @@ class MyBenchmark(EasyBench):
         loops_per_trial=1,      # Number of function executions per trial (see explanation below)
         reporters=["console"],  # Custom reporters (see explanation below)
         progress=True,          # Enable progress tracking with tqdm
+        include="list",         # Only run benchmarks with "list" in their name
+        exclude="slow",         # Skip benchmarks with "slow" in their name
     )
     
     # You can also customize settings for individual methods
@@ -494,6 +483,14 @@ Progress tracking options (`progress`):
 - `False`: Disable progress tracking
 - `True`: Enable progress tracking using tqdm (default)
 - Custom function: Use a custom progress tracking function that follows the tqdm interface
+
+Benchmark selection options:
+
+- `include`: Regular expression pattern to include only benchmarks with matching names
+- `exclude`: Regular expression pattern to exclude benchmarks with matching names
+
+  - For parametrized benchmarks, these options match against the full name (e.g., "bench_func (param_name)")
+  - When both options are specified, `exclude` takes precedence
 
 ### Improving Measurement Accuracy with `warmups`
 
@@ -583,7 +580,7 @@ easybench [options] [path]
 #### Command Options
 
 ```bash
-easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [path]
+easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [--include PATTERN] [--exclude PATTERN] [--include-files PATTERN] [--exclude-files PATTERN] [path]
 ```
 
 - `--trials N`: Number of trials (default: 5)
@@ -597,6 +594,10 @@ easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-
 - `--show-output`: Display function return values
 - `--time-unit UNIT`: Time unit for displaying results (s/ms/us/ns/m)
 - `--no-progress`: Disable progress bars during benchmarking
+- `--include PATTERN`: Regular expression pattern to include only matching benchmark functions
+- `--exclude PATTERN`: Regular expression pattern to exclude matching benchmark functions
+- `--include-files PATTERN`: Regular expression pattern to include only matching benchmark files
+- `--exclude-files PATTERN`: Regular expression pattern to exclude matching benchmark files
 - `path`: Directory containing benchmark files or a specific benchmark file (default: "benchmarks")
 
 #### Function-based Benchmark Example
