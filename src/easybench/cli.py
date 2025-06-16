@@ -15,14 +15,21 @@ from .core import BenchConfig, EasyBench, FunctionBench, PartialBenchConfig
 logger = logging.getLogger(__name__)
 
 
-def discover_benchmark_files(path: str | Path = "benchmarks") -> list[Path]:
+def discover_benchmark_files(
+    path: str | Path = "benchmarks",
+    include_files: str | None = None,
+    exclude_files: str | None = None,
+) -> list[Path]:
     """
     Discover benchmark files based on the input path.
 
     If path is a directory, find all Python files starting with 'bench_'.
+    Files can be filtered using include_files and exclude_files regex patterns.
 
     Args:
         path: Path to a benchmark file or directory containing benchmark files
+        include_files: Regex pattern to include only matching benchmark files
+        exclude_files: Regex pattern to exclude matching benchmark files
 
     Returns:
         List of paths to benchmark files
@@ -32,15 +39,24 @@ def discover_benchmark_files(path: str | Path = "benchmarks") -> list[Path]:
 
     # If the path is a file
     if path.is_file():
-        return [path]
-
+        files = [path]
     # If the path is a directory
-    if path.is_dir():
-        return sorted(path.glob("bench_*.py"))
+    elif path.is_dir():
+        files = sorted(path.glob("bench_*.py"))
+    else:
+        # If the path doesn't exist
+        logger.error("Path not found: %s", path)
+        return []
 
-    # If the path doesn't exist
-    logger.error("Path not found: %s", path)
-    return []
+    # Apply include_files filter if specified
+    if include_files is not None:
+        files = [f for f in files if re.search(include_files, str(f))]
+
+    # Apply exclude_files filter if specified
+    if exclude_files is not None:
+        files = [f for f in files if not re.search(exclude_files, str(f))]
+
+    return files
 
 
 def load_benchmark_module(file_path: Path) -> types.ModuleType | None:
@@ -178,8 +194,8 @@ def cli_main() -> None:
     Usage:
     easybench [`--trials N`] [`--loops-per-trial N`] [`--memory`] [`--memory-unit UNIT`]
     [`--sort-by METRIC`] [`--reverse`] [`--show-output`] [`--time-unit UNIT`]
-    [`--warmups N`] [`--no-progress`] [`--include PATTERN`]
-    [`--exclude PATTERN`] [`path`]
+    [`--warmups N`] [`--no-progress`] [`--include PATTERN`] [`--exclude PATTERN`]
+    [`--include-files PATTERN`] [`--exclude-files PATTERN`] [`path`]
     """
     default_config = BenchConfig()
     parser = argparse.ArgumentParser(
@@ -271,6 +287,18 @@ def cli_main() -> None:
         default=None,
         help="Regular expression pattern to exclude matching benchmark functions",
     )
+    parser.add_argument(
+        "--include-files",
+        type=str,
+        default=None,
+        help="Regular expression pattern to include only matching benchmark files",
+    )
+    parser.add_argument(
+        "--exclude-files",
+        type=str,
+        default=None,
+        help="Regular expression pattern to exclude matching benchmark files",
+    )
 
     args = parser.parse_args()
 
@@ -294,8 +322,12 @@ def cli_main() -> None:
             exclude=args.exclude,
         )
 
-        # Discover benchmark files
-        benchmark_files = discover_benchmark_files(args.path)
+        # Discover benchmark files with file filtering
+        benchmark_files = discover_benchmark_files(
+            args.path,
+            include_files=args.include_files,
+            exclude_files=args.exclude_files,
+        )
         if not benchmark_files:
             logger.error("No benchmark files found at %s", args.path)
             return

@@ -139,6 +139,8 @@ def cli_args_mock() -> MagicMock:
     args.no_progress = True
     args.include = None
     args.exclude = None
+    args.include_files = None
+    args.exclude_files = None
     return args
 
 
@@ -223,6 +225,120 @@ class TestDiscoverBenchmarkFiles:
         """Test discovering benchmark files with a non-existent path."""
         found_files = discover_benchmark_files("nonexistent_path")
         assert len(found_files) == 0
+
+    def test_discover_benchmark_files_with_include_files(
+        self,
+        temp_dir: Path,
+    ) -> None:
+        """Test discovering benchmark files with include_files filter."""
+        # Create test benchmark files
+        bench_file1 = temp_dir / "bench_test1.py"
+        bench_file2 = temp_dir / "bench_test2.py"
+        bench_file3 = temp_dir / "bench_feature_test.py"
+        normal_file = temp_dir / "normal_file.py"
+
+        bench_file1.touch()
+        bench_file2.touch()
+        bench_file3.touch()
+        normal_file.touch()
+
+        # Test include_files with pattern matching only bench_test files
+        found_files = discover_benchmark_files(
+            temp_dir,
+            include_files=r"bench_test\d+\.py",
+        )
+
+        num_test_files = 2
+        assert len(found_files) == num_test_files
+        assert bench_file1 in found_files
+        assert bench_file2 in found_files
+        assert bench_file3 not in found_files
+        assert normal_file not in found_files
+
+        # Test include_files with pattern matching feature files
+        found_files = discover_benchmark_files(temp_dir, include_files=r"feature")
+
+        assert len(found_files) == 1
+        assert bench_file3 in found_files
+        assert bench_file1 not in found_files
+        assert bench_file2 not in found_files
+
+    def test_discover_benchmark_files_with_exclude_files(
+        self,
+        temp_dir: Path,
+    ) -> None:
+        """Test discovering benchmark files with exclude_files filter."""
+        # Create test benchmark files
+        bench_file1 = temp_dir / "bench_test1.py"
+        bench_file2 = temp_dir / "bench_test2.py"
+        bench_file3 = temp_dir / "bench_feature_test.py"
+
+        bench_file1.touch()
+        bench_file2.touch()
+        bench_file3.touch()
+
+        # Test exclude_files with pattern excluding bench_test2 file
+        found_files = discover_benchmark_files(temp_dir, exclude_files=r"test2\.py")
+
+        num_not_test2 = 2
+        assert len(found_files) == num_not_test2
+        assert bench_file1 in found_files
+        assert bench_file2 not in found_files
+        assert bench_file3 in found_files
+
+        # Test exclude_files with pattern excluding feature files
+        found_files = discover_benchmark_files(temp_dir, exclude_files=r"feature")
+
+        num_not_feature = 2
+        assert len(found_files) == num_not_feature
+        assert bench_file1 in found_files
+        assert bench_file2 in found_files
+        assert bench_file3 not in found_files
+
+    def test_discover_benchmark_files_with_include_and_exclude_files(
+        self,
+        temp_dir: Path,
+    ) -> None:
+        """Test discovering benchmark files with include_files and exclude_files."""
+        # Create test benchmark files
+        bench_file1 = temp_dir / "bench_test1.py"
+        bench_file2 = temp_dir / "bench_test2.py"
+        bench_file3 = temp_dir / "bench_feature_test1.py"
+        bench_file4 = temp_dir / "bench_feature_test2.py"
+
+        bench_file1.touch()
+        bench_file2.touch()
+        bench_file3.touch()
+        bench_file4.touch()
+
+        # Test combining include_files and exclude_files
+        # Include only files with test\d pattern but exclude test2
+        found_files = discover_benchmark_files(
+            temp_dir,
+            include_files=r"test\d",
+            exclude_files=r"test2",
+        )
+
+        num_test1_files = 2
+        assert len(found_files) == num_test1_files
+        assert bench_file1 in found_files
+        assert bench_file2 not in found_files
+        assert bench_file3 in found_files
+        assert bench_file4 not in found_files
+
+        # Another test with different patterns
+        # Include only feature files but exclude feature_test2
+        found_files = discover_benchmark_files(
+            temp_dir,
+            include_files=r"feature",
+            exclude_files=r"test2",
+        )
+
+        assert len(found_files) == 1
+        assert bench_file1 not in found_files
+        assert bench_file2 not in found_files
+        assert bench_file3 in found_files
+        assert bench_file4 not in found_files
 
 
 class TestLoadBenchmarkModule:
@@ -535,7 +651,11 @@ class TestCliMain:
         cli_main()
 
         # Verify the correct functions were called
-        cli_mocks["discover_files"].assert_called_once_with("test_dir")
+        cli_mocks["discover_files"].assert_called_once_with(
+            "test_dir",
+            include_files=None,
+            exclude_files=None,
+        )
         cli_mocks["load_module"].assert_any_call(mock_file1)
         cli_mocks["load_module"].assert_any_call(mock_file2)
         assert cli_mocks["load_module"].call_count == NUM_FUNCTIONBENCH_CALLS
@@ -594,7 +714,11 @@ class TestCliMain:
         cli_main()
 
         # Verify the correct functions were called
-        mock_discover_files.assert_called_once_with("empty_dir")
+        mock_discover_files.assert_called_once_with(
+            "empty_dir",
+            include_files=None,
+            exclude_files=None,
+        )
 
     @patch("argparse.ArgumentParser.parse_args")
     @patch("easybench.cli.discover_benchmark_files")
@@ -625,7 +749,11 @@ class TestCliMain:
         cli_main()
 
         # Verify the correct functions were called
-        mock_discover_files.assert_called_once_with("test_dir")
+        mock_discover_files.assert_called_once_with(
+            "test_dir",
+            include_files=None,
+            exclude_files=None,
+        )
         mock_load_module.assert_called_once_with(mock_file)
         mock_discover_benchmarks.assert_called_once_with(mock_module, config=ANY)
 
@@ -653,7 +781,11 @@ class TestCliMain:
         cli_main()
 
         # Verify the correct functions were called
-        mock_discover_files.assert_called_once_with("test_dir")
+        mock_discover_files.assert_called_once_with(
+            "test_dir",
+            include_files=None,
+            exclude_files=None,
+        )
         mock_load_module.assert_called_once_with(mock_file)
 
     @patch("argparse.ArgumentParser.parse_args")
@@ -728,6 +860,8 @@ class TestCliArguments:
         mock_args.memory_unit = None
         mock_args.include = None
         mock_args.exclude = None
+        mock_args.include_files = None
+        mock_args.exclude_files = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Set up other mocks
@@ -771,6 +905,8 @@ class TestCliArguments:
         mock_args.memory_unit = None
         mock_args.include = None
         mock_args.exclude = None
+        mock_args.include_files = None
+        mock_args.exclude_files = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -809,6 +945,8 @@ class TestCliArguments:
         mock_args.no_progress = None
         mock_args.include = None
         mock_args.exclude = None
+        mock_args.include_files = None
+        mock_args.exclude_files = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -847,6 +985,8 @@ class TestCliArguments:
         mock_args.no_progress = None
         mock_args.include = None
         mock_args.exclude = None
+        mock_args.include_files = None
+        mock_args.exclude_files = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -888,6 +1028,8 @@ class TestCliArguments:
             mock_args.memory_unit = None
             mock_args.include = None
             mock_args.exclude = None
+            mock_args.include_files = None
+            mock_args.exclude_files = None
             cli_setup["parse_args"].return_value = mock_args
 
             # Mock finding benchmark files
@@ -929,6 +1071,8 @@ class TestCliArguments:
         mock_args.memory_unit = None
         mock_args.include = None
         mock_args.exclude = None
+        mock_args.include_files = None
+        mock_args.exclude_files = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -967,6 +1111,8 @@ class TestCliArguments:
         mock_args.memory_unit = None
         mock_args.include = None
         mock_args.exclude = None
+        mock_args.include_files = None
+        mock_args.exclude_files = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1005,6 +1151,8 @@ class TestCliArguments:
         mock_args.memory_unit = None
         mock_args.include = None
         mock_args.exclude = None
+        mock_args.include_files = None
+        mock_args.exclude_files = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1043,6 +1191,8 @@ class TestCliArguments:
         mock_args.memory_unit = None
         mock_args.include = None
         mock_args.exclude = None
+        mock_args.include_files = None
+        mock_args.exclude_files = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1089,6 +1239,8 @@ class TestCliArguments:
             mock_args.memory_unit = None
             mock_args.include = case["include"]
             mock_args.exclude = case["exclude"]
+            mock_args.include_files = None
+            mock_args.exclude_files = None
             cli_setup["parse_args"].return_value = mock_args
 
             # Mock finding benchmark files
