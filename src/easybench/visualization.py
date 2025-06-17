@@ -43,7 +43,7 @@ def set_seaborn_theme(theme_params: dict[str, Any] | None = None) -> Generator:
 
     """
     try:
-        import seaborn as sns
+        import seaborn as sns  # noqa: PLC0415
 
         # Use provided theme or default
         theme_to_use = theme_params if theme_params is not None else DEFAULT_SNS_THEME
@@ -304,7 +304,7 @@ class DistributionPlotFormatter(PlotFormatter):
 
         # If we reach here, we need numpy for outlier handling
         try:
-            import numpy as np
+            import numpy as np  # noqa: PLC0415
         except ImportError as err:
             error_msg = (
                 "numpy is required for outlier handling in DistributionPlotFormatter. "
@@ -374,7 +374,7 @@ class DistributionPlotFormatter(PlotFormatter):
                     < MAX_PERCENTILE_THRESHOLD
                 ):
                     try:
-                        import numpy as np
+                        import numpy as np  # noqa: PLC0415
 
                         lower = float(
                             np.percentile(memory_values, self.trim_outliers * 100),
@@ -398,7 +398,7 @@ class DistributionPlotFormatter(PlotFormatter):
                     < MAX_PERCENTILE_THRESHOLD
                 ):
                     try:
-                        import numpy as np
+                        import numpy as np  # noqa: PLC0415
 
                         lower = float(
                             np.percentile(memory_values, self.winsorize_outliers * 100),
@@ -557,7 +557,7 @@ class DistributionPlotFormatter(PlotFormatter):
     ) -> None:
         """Create a boxplot using seaborn."""
         try:
-            import seaborn as sns
+            import seaborn as sns  # noqa: PLC0415
         except ImportError as err:
             error_msg = (
                 "seaborn is required for seaborn engine. "
@@ -591,7 +591,7 @@ class DistributionPlotFormatter(PlotFormatter):
     ) -> None:
         """Create a violin plot using seaborn."""
         try:
-            import seaborn as sns
+            import seaborn as sns  # noqa: PLC0415
         except ImportError as err:
             error_msg = (
                 "seaborn is required for seaborn engine. "
@@ -973,7 +973,7 @@ class LinePlotFormatter(PlotFormatter):
     ) -> None:
         """Create a line plot using seaborn."""
         try:
-            import seaborn as sns
+            import seaborn as sns  # noqa: PLC0415
         except ImportError as err:
             error_msg = (
                 "seaborn is required for seaborn engine. "

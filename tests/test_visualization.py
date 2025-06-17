@@ -20,6 +20,7 @@ import pytest
 from easybench import BenchConfig
 from easybench.core import ResultsType, ResultType, StatsType, StatType
 from easybench.visualization import (
+    DEFAULT_SNS_THEME,
     BoxPlotFormatter,
     LinePlotFormatter,
     PlotReporter,
@@ -694,8 +695,6 @@ class TestBoxPlotFormatter:
             fig = formatter.format(sample_results, sample_stats, sample_config)
 
             assert fig is not None
-            # Verify default theme was applied
-            from easybench.visualization import DEFAULT_SNS_THEME
 
             mock_set_theme.assert_called_once_with(**DEFAULT_SNS_THEME)
         plt.close()
@@ -1062,8 +1061,6 @@ class TestLinePlotFormatter:
             fig = formatter.format(sample_results, sample_stats, sample_config)
 
             assert fig is not None
-            # Verify default theme was applied
-            from easybench.visualization import DEFAULT_SNS_THEME
 
             mock_set_theme.assert_called_once_with(**DEFAULT_SNS_THEME)
         plt.close()

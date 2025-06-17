@@ -696,7 +696,7 @@ class DataFrameFormatter(Formatter):
         memory_unit = MemoryUnit.from_config(config)
         time_unit = TimeUnit.from_config(config)
         try:
-            import pandas as pd
+            import pandas as pd  # noqa: PLC0415
         except ImportError as err:
             error_msg = (
                 "pandas is required for DataFrame output. "

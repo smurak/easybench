@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from easybench import bench
+from easybench import BenchParams, bench
 
 if TYPE_CHECKING:
     from easybench.decorator import BenchmarkableFunction
@@ -865,8 +865,6 @@ class TestBenchParamsDecorator:
 
     def test_bench_param_basic(self, capsys: pytest.CaptureFixture) -> None:
         """Test basic usage of BenchParams with bench decorator."""
-        from easybench.decorator import BenchParams
-
         params = BenchParams(
             params={"value": 10},
         )
@@ -884,8 +882,6 @@ class TestBenchParamsDecorator:
 
     def test_bench_param_with_config(self, capsys: pytest.CaptureFixture) -> None:
         """Test BenchParams with configuration options."""
-        from easybench.decorator import BenchParams
-
         params = BenchParams(
             params={"value": 10},
         )
@@ -905,7 +901,6 @@ class TestBenchParamsDecorator:
 
     def test_bench_param_with_fn_params(self, capsys: pytest.CaptureFixture) -> None:
         """Test BenchParams with function parameters."""
-        from easybench.decorator import BenchParams
 
         def multiply(x: int) -> int:
             return x * 2
@@ -929,7 +924,6 @@ class TestBenchParamsDecorator:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test BenchParams with lambda functions."""
-        from easybench.decorator import BenchParams
 
         # Create a function that returns a transformer function
         def get_transformer() -> Callable[[int], int]:
@@ -948,8 +942,6 @@ class TestBenchParamsDecorator:
 
     def test_bench_param_reuse(self, capsys: pytest.CaptureFixture) -> None:
         """Test reusing the same BenchParams for multiple functions."""
-        from easybench.decorator import BenchParams
-
         params = BenchParams(params={"value": 10})
 
         @bench(params)
@@ -970,8 +962,6 @@ class TestBenchParamsDecorator:
 
     def test_bench_param_with_list(self, capsys: pytest.CaptureFixture) -> None:
         """Test using a list of BenchParams for parameter comparison."""
-        from easybench.decorator import BenchParams
-
         # Create multiple parameter sets for comparison
         params1 = BenchParams(
             name="Small",
@@ -1012,8 +1002,6 @@ class TestBenchParamsDecorator:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test using a list with a single BenchParams for parameter testing."""
-        from easybench.decorator import BenchParams
-
         # Create a single parameter set
         params = BenchParams(
             name="Standard",
@@ -1038,8 +1026,6 @@ class TestBenchParamsDecorator:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test that multiple BenchParams instances produce a single combined output."""
-        from easybench.decorator import BenchParams
-
         # Create multiple parameter sets
         params1 = BenchParams(
             name="Small",
