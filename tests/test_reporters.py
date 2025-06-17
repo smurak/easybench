@@ -20,10 +20,13 @@ import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TypeVar, get_args
+from unittest import mock
+from unittest.mock import MagicMock
 
+import pandas as pd
 import pytest
 
-from easybench.core import BenchConfig, ResultType, StatType
+from easybench.core import BenchConfig, ResultType, StatType, get_reporter
 from easybench.reporters import (
     CallbackReporter,
     ConsoleReporter,
@@ -37,10 +40,13 @@ from easybench.reporters import (
     MetricType,
     Reporter,
     SimpleConsoleReporter,
+    SimpleFormatter,
+    SimpleStreamReporter,
     StreamReporter,
     TableFormatter,
 )
 from easybench.utils import visual_width
+from easybench.visualization import PlotReporter
 
 # Constants for test values to avoid magic numbers
 TEST_TIME_VALUE = 0.1
@@ -376,8 +382,6 @@ class TestTableFormatter:
 
     def test_format_visual_width_calculation(self) -> None:
         """Test that visual_width is used correctly for width calculation."""
-        from easybench.utils import visual_width
-
         # Create function names with different visual widths
         names = {
             "ascii": "test_function",  # 13 chars, visual width 13
@@ -831,8 +835,6 @@ class TestSimpleFormatter:
 
     def test_init_with_valid_metric(self) -> None:
         """Test initialization with valid metrics."""
-        from easybench.reporters import SimpleFormatter
-
         for metric in get_args(MetricType):
             if metric == "def":
                 continue
@@ -841,8 +843,6 @@ class TestSimpleFormatter:
 
     def test_init_with_invalid_metric(self) -> None:
         """Test that 'def' is not a valid metric for SimpleFormatter."""
-        from easybench.reporters import SimpleFormatter
-
         with pytest.raises(
             ValueError,
             match="'def' is not a valid metric for Simple formatter",
@@ -851,8 +851,6 @@ class TestSimpleFormatter:
 
     def test_format_single_trial(self) -> None:
         """Test formatting with single trial results."""
-        from easybench.reporters import SimpleFormatter
-
         metric: MetricType = "avg"
         formatter = SimpleFormatter(metric=metric)
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
@@ -866,8 +864,6 @@ class TestSimpleFormatter:
 
     def test_format_multiple_trials_avg(self) -> None:
         """Test formatting multiple trial results with 'avg' metric."""
-        from easybench.reporters import SimpleFormatter
-
         formatter = SimpleFormatter(metric="avg")
         results: dict[str, ResultType] = {
             "test_func": {"times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME]},
@@ -888,8 +884,6 @@ class TestSimpleFormatter:
 
     def test_format_multiple_trials_min(self) -> None:
         """Test formatting multiple trial results with 'min' metric."""
-        from easybench.reporters import SimpleFormatter
-
         formatter = SimpleFormatter(metric="min")
         results: dict[str, ResultType] = {
             "test_func": {"times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME]},
@@ -910,8 +904,6 @@ class TestSimpleFormatter:
 
     def test_format_with_memory_metrics(self) -> None:
         """Test formatting results with memory metrics."""
-        from easybench.reporters import SimpleFormatter
-
         formatter = SimpleFormatter(metric="avg_memory")
         results: dict[str, ResultType] = {
             "test_func": {
@@ -935,8 +927,6 @@ class TestSimpleFormatter:
 
     def test_format_multiple_functions(self) -> None:
         """Test formatting results with multiple functions."""
-        from easybench.reporters import SimpleFormatter
-
         formatter = SimpleFormatter(metric="avg")
         results: dict[str, ResultType] = {
             "test_func1": {"times": [TEST_TIME_VALUE]},
@@ -957,8 +947,6 @@ class TestSimpleFormatter:
 
     def test_format_metric_fallback_for_single_trial(self) -> None:
         """Test fallback to 'time' when 'avg' requested for single trial."""
-        from easybench.reporters import SimpleFormatter
-
         formatter = SimpleFormatter(metric="avg")
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
         stats: dict[str, StatType] = {
@@ -971,14 +959,11 @@ class TestSimpleFormatter:
 
     def test_format_missing_metric(self) -> None:
         """Test handling of missing metrics."""
-        from easybench.reporters import SimpleFormatter
-
         with pytest.raises(ValueError, match="'non_existent' is not a valid metric"):
             SimpleFormatter(metric="non_existent")  # type: ignore [assignment, arg-type]
 
     def test_format_with_custom_formatter(self) -> None:
         """Test SimpleFormatter with custom format function."""
-        from easybench.reporters import SimpleFormatter
 
         # Define a custom formatter that rounds to 3 decimal places and adds a unit
         def custom_format(method_name: str, value: float) -> str:
@@ -999,7 +984,6 @@ class TestSimpleFormatter:
 
     def test_format_with_custom_joiner(self) -> None:
         """Test SimpleFormatter with custom join function."""
-        from easybench.reporters import SimpleFormatter
 
         # Define a custom joiner that uses commas
         def custom_join(values: list[str]) -> str:
@@ -1022,7 +1006,6 @@ class TestSimpleFormatter:
 
     def test_format_with_combined_custom_functions(self) -> None:
         """Test SimpleFormatter with both custom format and join functions."""
-        from easybench.reporters import SimpleFormatter
 
         # Define custom formatter and joiner
         def custom_format(method_name: str, value: float) -> str:
@@ -1053,7 +1036,6 @@ class TestSimpleFormatter:
 
     def test_format_with_method_name(self) -> None:
         """Test SimpleFormatter with custom format function using method name."""
-        from easybench.reporters import SimpleFormatter
 
         # Define a custom formatter that includes method name in output
         def custom_format(method_name: str, value: float) -> str:
@@ -1085,8 +1067,6 @@ class TestDataFrameFormatter:
     )
     def test_format_basic(self) -> None:
         """Test basic DataFrame formatting."""
-        import pandas as pd  # Import inside the test to avoid dependency issues
-
         formatter = DataFrameFormatter()
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
         stats: dict[str, StatType] = {
@@ -1165,9 +1145,6 @@ class TestDataFrameFormatter:
         }
         config = BenchConfig(trials=1)
 
-        # Mock pandas import failure
-        from unittest import mock
-
         # Mock the import statement to raise ImportError
         with mock.patch("builtins.__import__") as mock_import:
             mock_import.side_effect = ImportError("No module named 'pandas'")
@@ -1213,8 +1190,6 @@ class TestReporters:
 
     def test_reporter_base_class(self) -> None:
         """Test the base Reporter class."""
-        from unittest.mock import MagicMock
-
         formatter = TableFormatter()
 
         # Create a concrete subclass that implements report_formatted
@@ -1344,8 +1319,6 @@ class TestReporters:
     def test_reporter_report(self) -> None:
         """Test the report method of Reporter."""
         # Import MagicMock
-        from unittest.mock import MagicMock
-
         # Create a mock formatter
         formatter = MagicMock(spec=Formatter)
         formatter.format.return_value = "Formatted output"
@@ -1447,10 +1420,6 @@ class TestSimpleConsoleReporter:
 
     def test_simple_console_reporter_with_custom_file(self) -> None:
         """Test SimpleConsoleReporter with custom file."""
-        import io
-
-        from easybench.reporters import SimpleStreamReporter
-
         output_file = io.StringIO()
         reporter = SimpleStreamReporter(metric="avg", file=output_file)
         results: dict[str, ResultType] = {"test_func": {"times": [TEST_TIME_VALUE]}}
@@ -1470,32 +1439,21 @@ class TestGetReporter:
 
     def test_get_console_reporter(self) -> None:
         """Test getting a console reporter."""
-        from easybench.core import get_reporter
-        from easybench.reporters import ConsoleReporter
-
         reporter = get_reporter("console")
         assert isinstance(reporter, ConsoleReporter)
 
     def test_get_simple_reporter(self) -> None:
         """Test getting a simple reporter."""
-        from easybench.core import get_reporter
-
         reporter = get_reporter("simple")
         assert isinstance(reporter, SimpleConsoleReporter)
 
     def test_get_plot_reporter(self) -> None:
         """Test getting a plot reporter."""
-        from easybench.core import get_reporter
-        from easybench.visualization import PlotReporter
-
         reporter = get_reporter("plot")
         assert isinstance(reporter, PlotReporter)
 
     def test_get_reporter_with_kwargs(self) -> None:
         """Test getting a reporter with custom kwargs."""
-        from easybench.core import get_reporter
-        from easybench.reporters import ConsoleReporter, TableFormatter
-
         precision = 3
         reporter = get_reporter("console", {"precision": precision})
 
@@ -1505,16 +1463,11 @@ class TestGetReporter:
 
     def test_get_reporter_with_invalid_name(self) -> None:
         """Test getting a reporter with an invalid name."""
-        from easybench.core import get_reporter
-
         with pytest.raises(ValueError, match="Unknown reporter type:"):
             get_reporter("invalid_name")
 
     def test_get_file_reporter(self, tmp_path: Path) -> None:
         """Test getting a file reporter with 'file' name."""
-        from easybench.core import get_reporter
-        from easybench.reporters import FileReporter
-
         output_path = tmp_path / "results.txt"
         reporter = get_reporter("file", {"path": str(output_path)})
 
@@ -1523,9 +1476,6 @@ class TestGetReporter:
 
     def test_get_reporter_from_file_extension(self, tmp_path: Path) -> None:
         """Test getting a file reporter from file extension."""
-        from easybench.core import get_reporter
-        from easybench.reporters import CSVFormatter, FileReporter, JSONFormatter
-
         # Test CSV file extension
         csv_path = str(tmp_path / "results.csv")
         csv_reporter = get_reporter(csv_path)

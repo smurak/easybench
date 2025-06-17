@@ -127,7 +127,7 @@ def _get_basic_reporter(name: str, kwargs: dict) -> Reporter:
 
 def _get_visualization_reporter(name: str, kwargs: dict) -> Reporter:
     """Create visualization reporters."""
-    from .visualization import (
+    from .visualization import (  # noqa: PLC0415
         BoxPlotFormatter,
         LinePlotFormatter,
         PlotReporter,

@@ -23,9 +23,13 @@ from pydantic import ValidationError
 from easybench import BenchConfig, EasyBench, fixture
 from easybench.core import (
     BenchParams,
+    ConsoleReporter,
     FixtureRegistry,
+    FunctionBench,
     PartialBenchConfig,
     ScopeType,
+    SimpleConsoleReporter,
+    TableFormatter,
     customize,
     parametrize,
 )
@@ -1231,8 +1235,6 @@ class TestFunctionBench:
         def my_function(a: int, b: int) -> int:
             return a + b
 
-        from easybench.core import FunctionBench
-
         fb = FunctionBench(my_function)
         assert fb._original_func == my_function
         assert fb._func_name == "my_function"
@@ -1243,8 +1245,6 @@ class TestFunctionBench:
 
         def add(a: int, b: int) -> int:
             return a + b
-
-        from easybench.core import FunctionBench
 
         fb = FunctionBench(add)
         result = fb(2, EXPECTED_SUM_RESULT - 2)
@@ -1260,8 +1260,6 @@ class TestFunctionBench:
             time.sleep(0.001)
             return EXPECTED_RETURN_VAL
 
-        from easybench.core import FunctionBench
-
         fb = FunctionBench(slow_function)
         fb.bench(trials=DEFAULT_TRIALS)
 
@@ -1274,8 +1272,6 @@ class TestFunctionBench:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test benchmarking a named lambda function."""
-        from easybench.core import FunctionBench
-
         # Lambda functions need an explicit name
         fb = FunctionBench(
             lambda x=LAMBDA_DEFAULT_PARAM: x * LAMBDA_MULTIPLY_FACTOR,
@@ -1288,21 +1284,16 @@ class TestFunctionBench:
 
     def test_lambda_function_without_name(self) -> None:
         """Test that lambda functions without name raise ValueError."""
-        from easybench.core import FunctionBench
-
         with pytest.raises(ValueError, match="func_name must be specified"):
             FunctionBench(lambda x: x * 2)
 
     def test_non_callable_function(self) -> None:
         """Test that non-callable objects raise TypeError."""
-        from easybench.core import FunctionBench
-
         with pytest.raises(TypeError, match="func must be callable"):
             FunctionBench(cast("Callable[..., object]", "not_callable"))
 
     def test_function_bench_void_return(self) -> None:
         """Test FunctionBench with a function that returns None."""
-        from easybench.core import FunctionBench
 
         def void_function() -> None:
             pass
@@ -1313,7 +1304,6 @@ class TestFunctionBench:
 
     def test_function_bench_with_args_kwargs(self) -> None:
         """Test FunctionBench with positional and keyword arguments."""
-        from easybench.core import FunctionBench
 
         def add_multiply(a: int, b: int, c: int = 1) -> int:
             return (a + b) * c
@@ -1337,7 +1327,6 @@ class TestFunctionBench:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test FunctionBench with include pattern."""
-        from easybench.core import FunctionBench
 
         def test_func() -> int:
             return 42
@@ -1362,7 +1351,6 @@ class TestFunctionBench:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test FunctionBench with exclude pattern."""
-        from easybench.core import FunctionBench
 
         def test_func() -> int:
             return 42
@@ -1385,8 +1373,6 @@ class TestEasyBenchConfiguration:
 
     def test_merge_partial_config_empty(self) -> None:
         """Test merging an empty partial config."""
-        from easybench.core import BenchConfig, PartialBenchConfig
-
         base_config = BenchConfig(trials=CONFIG_TRIALS_5, memory=True)
         partial_config = PartialBenchConfig()
 
@@ -1397,9 +1383,6 @@ class TestEasyBenchConfiguration:
 
     def test_merge_partial_config_reporters(self) -> None:
         """Test merging partial config with reporters."""
-        from easybench.core import BenchConfig, PartialBenchConfig
-        from easybench.reporters import ConsoleReporter, TableFormatter
-
         base_config = BenchConfig(trials=5)
 
         # Default reporter should exist
@@ -1417,8 +1400,6 @@ class TestEasyBenchConfiguration:
 
     def test_merge_partial_config_empty_reporters(self) -> None:
         """Test merging partial config with empty reporters list."""
-        from easybench.core import BenchConfig, PartialBenchConfig
-
         base_config = BenchConfig(trials=5)
         # Create partial config with empty reporters list
         partial_config = PartialBenchConfig(reporters=[])
@@ -1429,9 +1410,6 @@ class TestEasyBenchConfiguration:
 
     def test_merge_partial_config_with_reporters_none(self) -> None:
         """Test merging partial config with None reporters."""
-        from easybench.core import BenchConfig, PartialBenchConfig
-        from easybench.reporters import ConsoleReporter, TableFormatter
-
         # Create a base config with a custom reporter
         custom_reporter = ConsoleReporter(TableFormatter())
         base_config = BenchConfig(trials=5, reporters=[custom_reporter])
@@ -1449,16 +1427,11 @@ class TestEasyBenchConfiguration:
 
     def test_validate_and_convert_reporters_none(self) -> None:
         """Test that None input returns None."""
-        from easybench.core import PartialBenchConfig
-
         result = PartialBenchConfig.validate_and_convert_reporters(None)
         assert result is None
 
     def test_validate_and_convert_reporters_strings(self) -> None:
         """Test converting a list of reporter strings."""
-        from easybench.core import PartialBenchConfig
-        from easybench.reporters import ConsoleReporter, SimpleConsoleReporter
-
         reporters = ["console", "simple"]
         result = PartialBenchConfig.validate_and_convert_reporters(reporters)
 
@@ -1469,9 +1442,6 @@ class TestEasyBenchConfiguration:
 
     def test_validate_and_convert_reporters_with_kwargs(self) -> None:
         """Test converting a reporter specification with kwargs."""
-        from easybench.core import PartialBenchConfig
-        from easybench.reporters import SimpleConsoleReporter
-
         # Create a tuple of (name, kwargs)
         reporter_spec = [("simple", {"item_format": lambda n, v: f"{n}: {v}"})]
         result = PartialBenchConfig.validate_and_convert_reporters(reporter_spec)
@@ -1482,9 +1452,6 @@ class TestEasyBenchConfiguration:
 
     def test_validate_and_convert_reporters_with_instances(self) -> None:
         """Test that Reporter instances are kept as-is."""
-        from easybench.core import PartialBenchConfig
-        from easybench.reporters import ConsoleReporter, TableFormatter
-
         # Create a reporter instance
         reporter = ConsoleReporter(TableFormatter())
         reporters = [reporter]
@@ -1497,13 +1464,6 @@ class TestEasyBenchConfiguration:
 
     def test_validate_and_convert_reporters_mixed(self) -> None:
         """Test converting a mixed list of reporter specifications."""
-        from easybench.core import PartialBenchConfig
-        from easybench.reporters import (
-            ConsoleReporter,
-            SimpleConsoleReporter,
-            TableFormatter,
-        )
-
         # Create a reporter instance
         reporter = ConsoleReporter(TableFormatter())
 
@@ -1520,15 +1480,11 @@ class TestEasyBenchConfiguration:
 
     def test_validate_and_convert_reporters_not_list(self) -> None:
         """Test that non-list input raises TypeError."""
-        from easybench.core import PartialBenchConfig
-
         with pytest.raises(TypeError, match="reporters must be a list"):
             PartialBenchConfig.validate_and_convert_reporters("console")  # type: ignore [arg-type]
 
     def test_validate_and_convert_reporters_invalid_item(self) -> None:
         """Test that invalid item in list raises TypeError."""
-        from easybench.core import PartialBenchConfig
-
         with pytest.raises(TypeError, match="Invalid reporter type:"):
             PartialBenchConfig.validate_and_convert_reporters([123])
 
@@ -1538,8 +1494,6 @@ class TestEasyBenchScopeManager:
 
     def test_scope_manager_invalid_scope(self) -> None:
         """Test ScopeManager with an invalid scope."""
-        from easybench.core import EasyBench
-
         bench = EasyBench()
         values: dict[str, object] = {}
         fixture_registry: FixtureRegistry = {"trial": {}, "function": {}, "class": {}}
@@ -1558,8 +1512,6 @@ class TestEasyBenchScopeManager:
 
     def test_scope_manager_setup_fixture_error(self) -> None:
         """Test ScopeManager when a fixture setup fails."""
-        from easybench.core import EasyBench
-
         bench = EasyBench()
         values: dict[str, object] = {}
 
@@ -1583,8 +1535,6 @@ class TestEasyBenchScopeManager:
 
     def test_scope_manager_teardown_fixture_error(self) -> None:
         """Test ScopeManager when a fixture teardown fails."""
-        from easybench.core import EasyBench
-
         bench = EasyBench()
         values: dict[str, object] = {}
 
@@ -1705,7 +1655,6 @@ class TestParametrizedDecorator:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test parametrize decorator with function parameters."""
-        from collections.abc import Callable
 
         def multiply_by_two(x: int) -> int:
             return x * 2
@@ -1794,7 +1743,6 @@ class TestParametrizedDecorator:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test parametrize decorator with generator fixtures."""
-        from collections.abc import Generator
 
         # Define parameter set with generator
         def value_generator() -> Generator[int, None, None]:

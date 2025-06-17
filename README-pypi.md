@@ -330,27 +330,27 @@ In class-based benchmarks, you can use the following lifecycle methods:
 class BenchExample(EasyBench):
     def setup_class(self):
         # Run once before all benchmarks in the class
-        pass
+        ...
         
     def teardown_class(self):
         # Run once after all benchmarks in the class
-        pass
+        ...
         
     def setup_function(self):
         # Run before each benchmark function
-        pass
+        ...
         
     def teardown_function(self):
         # Run after each benchmark function
-        pass
+        ...
         
     def setup_trial(self):
         # Run before each trial
-        pass
+        ...
         
     def teardown_trial(self):
         # Run after each trial
-        pass
+        ...
 ```
 
 #### Parametrized Benchmarks (`parametrize` decorator)
