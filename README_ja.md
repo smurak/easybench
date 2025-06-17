@@ -333,27 +333,27 @@ if __name__ == "__main__":
 class BenchExample(EasyBench):
     def setup_class(self):
         # クラス内のすべてのベンチマークの前に一度実行
-        pass
+        ...
         
     def teardown_class(self):
         # クラス内のすべてのベンチマークの後に一度実行
-        pass
+        ...
         
     def setup_function(self):
         # 各ベンチマーク関数の前に実行
-        pass
+        ...
         
     def teardown_function(self):
         # 各ベンチマーク関数の後に実行
-        pass
+        ...
         
     def setup_trial(self):
         # 各試行の前に実行
-        pass
+        ...
         
     def teardown_trial(self):
         # 各試行の後に実行
-        pass
+        ...
 ```
 
 #### パラメータ化されたベンチマーク（`parametrize`デコレータ）
