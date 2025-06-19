@@ -2301,3 +2301,315 @@ class TestEasyBenchMethodFiltering:
         captured = capsys.readouterr()
         assert "bench_dynamic" in captured.out
         assert "bench_normal" in captured.out
+
+    def test_bench_params_multiplication(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test BenchParams multiplication for combined parameter sets."""
+        # Define base parameter sets
+        small_size = 10
+        large_size = 100
+        sizes = [
+            BenchParams(name="Small", params={"size": small_size}),
+            BenchParams(name="Large", params={"size": large_size}),
+        ]
+
+        operations = [
+            BenchParams(name="Add", fn_params={"operation": lambda x: x + 1}),
+            BenchParams(name="Multiply", fn_params={"operation": lambda x: x * 2}),
+        ]
+
+        # Create combined parameter sets through multiplication
+        combined_params = [size * op for size in sizes for op in operations]
+
+        class MultiplicationBench(EasyBench):
+            @parametrize(combined_params)
+            def bench_operation(
+                self,
+                size: int,
+                operation: Callable[[int], int],
+            ) -> int:
+                return operation(size)
+
+        bench = MultiplicationBench()
+        bench.bench()
+
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # Verify all combinations are present
+        assert "bench_operation (Small x Add)" in parsed_out["functions"]
+        assert "bench_operation (Small x Multiply)" in parsed_out["functions"]
+        assert "bench_operation (Large x Add)" in parsed_out["functions"]
+        assert "bench_operation (Large x Multiply)" in parsed_out["functions"]
+
+        # Verify correct results based on operations
+        for func_name, func_data in parsed_out["functions"].items():
+            if "Small x Add" in func_name and "output" in func_data:
+                assert func_data["output"][0] == small_size + 1  # 10 + 1
+            elif "Small x Multiply" in func_name and "output" in func_data:
+                assert func_data["output"][0] == small_size * 2  # 10 * 2
+            elif "Large x Add" in func_name and "output" in func_data:
+                assert func_data["output"][0] == large_size + 1  # 100 + 1
+            elif "Large x Multiply" in func_name and "output" in func_data:
+                assert func_data["output"][0] == large_size * 2  # 100 * 2
+
+    def test_bench_params_multiplication_params_only(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test BenchParams multiplication with params only."""
+        # Define parameter sets with params only
+        small_sizes = BenchParams(name="Small", params={"size": 10})
+        large_sizes = BenchParams(name="Large", params={"size": 100})
+
+        simple_data = BenchParams(name="Simple", params={"data_type": "list"})
+        complex_data = BenchParams(name="Complex", params={"data_type": "dict"})
+
+        # Create combined parameter sets through multiplication
+        combined_params = [
+            size * data
+            for size in [small_sizes, large_sizes]
+            for data in [simple_data, complex_data]
+        ]
+
+        class MultiplicationBench(EasyBench):
+            @parametrize(combined_params)
+            def bench_data_structure(
+                self,
+                size: int,
+                data_type: str,
+            ) -> int:
+                if data_type == "list":
+                    return len([0] * size)
+                # dict
+                return len({i: i for i in range(size)})
+
+        bench = MultiplicationBench()
+        bench.bench(config=PartialBenchConfig(show_output=True))
+
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # Verify all combinations are present
+        assert "bench_data_structure (Small x Simple)" in parsed_out["functions"]
+        assert "bench_data_structure (Small x Complex)" in parsed_out["functions"]
+        assert "bench_data_structure (Large x Simple)" in parsed_out["functions"]
+        assert "bench_data_structure (Large x Complex)" in parsed_out["functions"]
+
+        # Verify correct results for each combination
+        assert "return_values" in parsed_out
+        return_values = parsed_out["return_values"]
+
+        assert return_values["bench_data_structure (Small x Simple)"] == "10"
+        assert return_values["bench_data_structure (Small x Complex)"] == "10"
+        assert return_values["bench_data_structure (Large x Simple)"] == "100"
+        assert return_values["bench_data_structure (Large x Complex)"] == "100"
+
+    def test_bench_params_multiplication_fn_params_only(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test BenchParams multiplication with fn_params only."""
+        # Define parameter sets with fn_params only
+        add_op = BenchParams(name="Add", fn_params={"operation": lambda x, y: x + y})
+        mult_op = BenchParams(
+            name="Multiply",
+            fn_params={"operation": lambda x, y: x * y},
+        )
+
+        small_value = BenchParams(name="Small", fn_params={"value": lambda: 5})
+        large_value = BenchParams(name="Large", fn_params={"value": lambda: 10})
+
+        # Create combined parameter sets through multiplication
+        combined_params = [
+            op * val for op in [add_op, mult_op] for val in [small_value, large_value]
+        ]
+
+        class MultiplicationBench(EasyBench):
+            @parametrize(combined_params)
+            def bench_calculate(
+                self,
+                operation: Callable[[int, int], int],
+                value: Callable[..., int],
+            ) -> int:
+                return operation(
+                    value(),
+                    2,
+                )  # Apply operation with value and constant 2
+
+        bench = MultiplicationBench()
+        bench.bench(config=PartialBenchConfig(show_output=True))
+
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # Verify all combinations are present
+        assert "bench_calculate (Add x Small)" in parsed_out["functions"]
+        assert "bench_calculate (Add x Large)" in parsed_out["functions"]
+        assert "bench_calculate (Multiply x Small)" in parsed_out["functions"]
+        assert "bench_calculate (Multiply x Large)" in parsed_out["functions"]
+
+        # Verify correct results for each combination
+        assert "return_values" in parsed_out
+        return_values = parsed_out["return_values"]
+
+        assert return_values["bench_calculate (Add x Small)"] == "7"  # 5 + 2
+        assert return_values["bench_calculate (Add x Large)"] == "12"  # 10 + 2
+        assert return_values["bench_calculate (Multiply x Small)"] == "10"  # 5 * 2
+        assert return_values["bench_calculate (Multiply x Large)"] == "20"  # 10 * 2
+
+    def test_bench_params_multiplication_mixed(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test BenchParams multiplication with both params and fn_params."""
+        # Define parameter sets with both params and fn_params
+        list_type = BenchParams(
+            name="List",
+            params={"collection_type": "list"},
+            fn_params={"create": lambda size: list(range(size))},
+        )
+        dict_type = BenchParams(
+            name="Dict",
+            params={"collection_type": "dict"},
+            fn_params={"create": lambda size: {i: i for i in range(size)}},
+        )
+
+        length = 100
+        small_size = BenchParams(
+            name="Small",
+            params={"size": 10},
+            fn_params={"check": lambda x: len(x) < length},
+        )
+        large_size = BenchParams(
+            name="Large",
+            params={"size": 100},
+            fn_params={"check": lambda x: len(x) >= length},
+        )
+
+        # Create combined parameter sets through multiplication
+        combined_params = [
+            ctype * size
+            for ctype in [list_type, dict_type]
+            for size in [small_size, large_size]
+        ]
+
+        class MultiplicationBench(EasyBench):
+            @parametrize(combined_params)
+            def bench_collection(
+                self,
+                collection_type: str,
+                size: int,
+                create: Callable[[int], object],
+                check: Callable[[object], bool],
+            ) -> tuple[str, int, bool]:
+                collection = create(size)
+                is_valid = check(collection)
+                return (collection_type, size, is_valid)
+
+        bench = MultiplicationBench()
+        bench.bench(config=PartialBenchConfig(show_output=True))
+
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # Verify all combinations are present
+        assert "bench_collection (List x Small)" in parsed_out["functions"]
+        assert "bench_collection (List x Large)" in parsed_out["functions"]
+        assert "bench_collection (Dict x Small)" in parsed_out["functions"]
+        assert "bench_collection (Dict x Large)" in parsed_out["functions"]
+
+        # Verify return values contain expected data
+        # Small collections should pass the "small" check and fail the "large" check
+        assert "('list', 10, True)" in captured.out
+        assert "('dict', 10, True)" in captured.out
+
+        # Large collections should fail the "small" check and pass the "large" check
+        assert "('list', 100, True)" in captured.out
+        assert "('dict', 100, True)" in captured.out
+
+    def test_multiple_parametrize_decorators_variants(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test multiple parametrize decorators with different parameter types."""
+        # Create separate parameter sets
+        # params only
+        sizes = [
+            BenchParams(name="Small", params={"size": 10}),
+            BenchParams(name="Large", params={"size": 100}),
+        ]
+
+        # fn_params only
+        operations = [
+            BenchParams(name="Add", fn_params={"operation": lambda x: x + 1}),
+            BenchParams(name="Multiply", fn_params={"operation": lambda x: x * 2}),
+        ]
+
+        # mixed params and fn_params
+        formats = [
+            BenchParams(
+                name="String",
+                params={"format_type": "str"},
+                fn_params={"formatter": lambda x: str(x)},
+            ),
+            BenchParams(
+                name="Hex",
+                params={"format_type": "hex"},
+                fn_params={"formatter": lambda x: hex(x)},
+            ),
+        ]
+
+        class CartesianBench(EasyBench):
+            # Apply multiple parametrize decorators - should create a Cartesian product
+            # This creates 8 combinations (2 sizes * 2 operations * 2 formats)
+            @parametrize(formats)
+            @parametrize(operations)
+            @parametrize(sizes)
+            def bench_operation(
+                self,
+                size: int,
+                operation: Callable[[int], int],
+                format_type: str,
+                formatter: Callable[[int], str],
+            ) -> str:
+                result = operation(size)
+                return f"{format_type}:{formatter(result)}"
+
+        bench = CartesianBench()
+        bench.bench(config=PartialBenchConfig(show_output=True))
+
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # Should have 8 results
+        assert len(parsed_out["functions"]) == (
+            len(sizes) * len(operations) * len(formats)
+        )
+
+        # Verify some specific combinations
+        combinations = [
+            "bench_operation (Small x Add x String)",
+            "bench_operation (Small x Multiply x Hex)",
+            "bench_operation (Large x Add x String)",
+            "bench_operation (Large x Multiply x Hex)",
+        ]
+
+        for combination in combinations:
+            assert combination in parsed_out["functions"]
+
+        # Verify return values match expected calculations
+        assert "return_values" in parsed_out
+        return_values = parsed_out["return_values"]
+
+        assert return_values["bench_operation (Small x Add x String)"] == "str:11"
+        assert "hex:0x14" in return_values["bench_operation (Small x Multiply x Hex)"]
+        assert return_values["bench_operation (Large x Add x String)"] == "str:101"
+        assert "hex:0xc8" in return_values["bench_operation (Large x Multiply x Hex)"]

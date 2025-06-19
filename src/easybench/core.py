@@ -372,6 +372,54 @@ class BenchParams(BaseModel):
         "arbitrary_types_allowed": True,
     }
 
+    def __mul__(self, other: BenchParams) -> BenchParams:
+        """
+        Multiply (combine) two BenchParams objects.
+
+        This creates a new BenchParams with combined properties from both objects.
+        When two BenchParams are multiplied, their names are joined with "x",
+        and their params and fn_params dictionaries are merged.
+
+        Args:
+            other: Another BenchParams object to combine with
+
+        Returns:
+            A new BenchParams with combined properties
+
+        Example:
+            ```python
+            small = BenchParams(name="Small", params={"size": 100})
+            fast = BenchParams(name="Fast", params={"algorithm": "quicksort"})
+
+            # Creates BenchParams with name="Small x Fast" and
+            # params={"size": 100, "algorithm": "quicksort"}
+            small_fast = small * fast
+            ```
+
+        """
+        if not isinstance(other, BenchParams):
+            return NotImplemented
+
+        # Combine names
+        if self.name and other.name:
+            name = f"{self.name} x {other.name}"
+        else:
+            return NotImplemented
+
+        # Combine params
+        params = self.params.copy()
+        params.update(other.params)
+
+        # Combine fn_params
+        fn_params = self.fn_params.copy()
+        fn_params.update(other.fn_params)
+
+        return BenchParams(
+            name=name,
+            params=params,
+            fn_params=fn_params,
+        )
+
 
 # Store fixture objects by scope
 _fixture_registry: FixtureRegistry = {
@@ -415,6 +463,9 @@ def parametrize(params_list: Iterable[BenchParams]) -> Callable:
     """
     Create a decorator for parametrized benchmarks in EasyBench classes.
 
+    When multiple @parametrize decorators are applied to the same function,
+    they behave as a Cartesian product of all parameter sets.
+
     Example:
         ```python
         params1 = BenchParams(name="small", params={"big_list": 1_000})
@@ -426,6 +477,23 @@ def parametrize(params_list: Iterable[BenchParams]) -> Callable:
                 big_list.append(0)
         ```
 
+        # Using multiple parametrize decorators (Cartesian product)
+        ```python
+        small = BenchParams(name="Small", params={"size": 1_000})
+        large = BenchParams(name="Large", params={"size": 100_000})
+        append = BenchParams(name="Append", params={"op": lambda x: x.append(0)})
+        pop = BenchParams(name="Pop", params={"op": lambda x: x.pop()})
+
+        class BenchListOps(EasyBench):
+            # This creates 4 combinations: Small x Append, Small x Pop,
+            # Large x Append, Large x Pop
+            @parametrize([append, pop])
+            @parametrize([small, large])
+            def bench_operation(self, size, op):
+                lst = list(range(size))
+                op(lst)
+        ```
+
     Args:
         params_list: List of BenchParams instances with benchmark configurations
 
@@ -433,10 +501,24 @@ def parametrize(params_list: Iterable[BenchParams]) -> Callable:
         A decorator function that marks the method for parametrized benchmarking
 
     """
+    params_list = list(params_list)  # Ensure we have a list
 
     def decorator(func: Callable) -> Callable:
         func = cast("ParametrizedFunction", func)
-        func._bench_params = params_list  # noqa: SLF001
+
+        # If the function already has params, calculate the Cartesian product
+        if hasattr(func, "_bench_params"):
+            existing_params = func._bench_params  # noqa: SLF001
+            # Create cartesian product of existing params and new params
+            new_params = [
+                existing * new_param
+                for existing in existing_params
+                for new_param in params_list
+            ]
+            func._bench_params = new_params  # noqa: SLF001
+        else:
+            func._bench_params = params_list  # noqa: SLF001
+
         return func
 
     return decorator
