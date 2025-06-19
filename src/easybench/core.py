@@ -498,8 +498,8 @@ class Parametrize:
             ```python
             small = BenchParams(name="Small", params={"size": 1_000})
             large = BenchParams(name="Large", params={"size": 100_000})
-            append = BenchParams(name="Append", params={"op": lambda x: x.append(0)})
-            pop = BenchParams(name="Pop", params={"op": lambda x: x.pop()})
+            append = BenchParams(name="Append", fn_params={"op": lambda x: x.append(0)})
+            pop = BenchParams(name="Pop", fn_params={"op": lambda x: x.pop()})
 
             class BenchListOps(EasyBench):
                 # This creates 4 combinations: Small x Append, Small x Pop,
@@ -583,8 +583,8 @@ class Parametrize:
                 BenchParams(name="Large", params={"size": 10000}),
             ]
             ops = [
-                BenchParams(name="Append", params={"op": lambda x: x.append(0)}),
-                BenchParams(name="Pop", params={"op": lambda x: x.pop()}),
+                BenchParams(name="Append", fn_params={"op": lambda x: x.append(0)}),
+                BenchParams(name="Pop", fn_params={"op": lambda x: x.pop()}),
             ]
 
             @parametrize.grid(sizes, ops)
