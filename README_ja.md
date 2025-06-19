@@ -545,8 +545,8 @@ class MyBenchmark(EasyBench):
 - `"m"`: 分単位で表示
 
 進捗表示オプション（`progress`）：
-- `False`: 進捗表示を無効化
-- `True`: tqdmを使用した進捗表示を有効化 (デフォルト)
+- `False`: 進捗表示を無効化 (デフォルト)
+- `True`: tqdmを使用した進捗表示を有効化
 - カスタム関数: 独自の進捗表示関数を使用（tqdmインターフェースに準拠する関数）
 
 ベンチマーク選択オプション：
@@ -641,7 +641,7 @@ easybench [オプション] [パス]
 #### コマンドオプション
 
 ```bash
-easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [--include PATTERN] [--exclude PATTERN] [--include-files PATTERN] [--exclude-files PATTERN] [パス]
+easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [--progress] [--include PATTERN] [--exclude PATTERN] [--include-files PATTERN] [--exclude-files PATTERN] [パス]
 ```
 
 - `--trials N`: 試行回数 (デフォルト: 5)
@@ -655,6 +655,7 @@ easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-
 - `--show-output`: 関数の戻り値を表示
 - `--time-unit UNIT`: 結果表示の時間単位 (s/ms/us/ns/m)
 - `--no-progress`: ベンチマーク中の進捗バーを無効化
+- `--progress`: ベンチマーク中の進捗バーを有効化
 - `--include PATTERN`: 指定した正規表現パターンに一致するベンチマーク関数のみを実行
 - `--exclude PATTERN`: 指定した正規表現パターンに一致するベンチマーク関数を実行から除外
 - `--include-files PATTERN`: 指定した正規表現パターンに一致するベンチマークファイルのみを実行
