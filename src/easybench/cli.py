@@ -276,6 +276,11 @@ def cli_main() -> None:
         help="Disable progress bars during benchmarking",
     )
     parser.add_argument(
+        "--progress",
+        action="store_true",
+        help="Enable progress bars during benchmarking",
+    )
+    parser.add_argument(
         "--include",
         type=str,
         default=None,
@@ -317,7 +322,7 @@ def cli_main() -> None:
             reverse=args.reverse or None,
             color=False if args.no_color else None,
             show_output=args.show_output or None,
-            progress=False if args.no_progress else None,
+            progress=False if args.no_progress else True if args.progress else None,
             include=args.include,
             exclude=args.exclude,
         )

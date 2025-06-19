@@ -305,7 +305,7 @@ class BenchConfig(PartialBenchConfig):
     show_output: bool = False
     return_output: bool = False
     reporters: list[Reporter] = [ConsoleReporter()]
-    progress: bool | Callable = True
+    progress: bool | Callable = False
     include: str | None = None
     exclude: str | None = None
 
