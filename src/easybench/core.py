@@ -14,7 +14,7 @@ import sys
 import time
 import tracemalloc
 import types
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -372,6 +372,54 @@ class BenchParams(BaseModel):
         "arbitrary_types_allowed": True,
     }
 
+    def __mul__(self, other: BenchParams) -> BenchParams:
+        """
+        Multiply (combine) two BenchParams objects.
+
+        This creates a new BenchParams with combined properties from both objects.
+        When two BenchParams are multiplied, their names are joined with "x",
+        and their params and fn_params dictionaries are merged.
+
+        Args:
+            other: Another BenchParams object to combine with
+
+        Returns:
+            A new BenchParams with combined properties
+
+        Example:
+            ```python
+            small = BenchParams(name="Small", params={"size": 100})
+            fast = BenchParams(name="Fast", params={"algorithm": "quicksort"})
+
+            # Creates BenchParams with name="Small x Fast" and
+            # params={"size": 100, "algorithm": "quicksort"}
+            small_fast = small * fast
+            ```
+
+        """
+        if not isinstance(other, BenchParams):
+            return NotImplemented
+
+        # Combine names
+        if self.name and other.name:
+            name = f"{self.name} x {other.name}"
+        else:
+            return NotImplemented
+
+        # Combine params
+        params = self.params.copy()
+        params.update(other.params)
+
+        # Combine fn_params
+        fn_params = self.fn_params.copy()
+        fn_params.update(other.fn_params)
+
+        return BenchParams(
+            name=name,
+            params=params,
+            fn_params=fn_params,
+        )
+
 
 # Store fixture objects by scope
 _fixture_registry: FixtureRegistry = {
@@ -411,35 +459,121 @@ def fixture(
     return decorator
 
 
-def parametrize(params_list: Iterable[BenchParams]) -> Callable:
+class Parametrize:
     """
-    Create a decorator for parametrized benchmarks in EasyBench classes.
+    Class for creating parametrized benchmarks in EasyBench classes.
 
-    Example:
-        ```python
-        params1 = BenchParams(name="small", params={"big_list": 1_000})
-        params2 = BenchParams(name="big", params={"big_list": 100_000})
-
-        class BenchList(EasyBench):
-            @parametrize([params1, params2])
-            def bench_append(self, big_list):
-                big_list.append(0)
-        ```
-
-    Args:
-        params_list: List of BenchParams instances with benchmark configurations
-
-    Returns:
-        A decorator function that marks the method for parametrized benchmarking
-
+    This class provides functionality to parametrize benchmark functions with
+    different sets of parameters for more comprehensive benchmarking.
     """
 
-    def decorator(func: Callable) -> Callable:
-        func = cast("ParametrizedFunction", func)
-        func._bench_params = params_list  # noqa: SLF001
-        return func
+    def __call__(
+        self,
+        params_list: Iterable[BenchParams],
+    ) -> Callable:
+        """
+        Create a decorator for parametrized benchmarks in EasyBench classes.
 
-    return decorator
+        When multiple @parametrize decorators are applied to the same function,
+        they behave as a Cartesian product of all parameter sets.
+
+        Example:
+            ```python
+            params1 = BenchParams(name="small", params={"big_list": 1_000})
+            params2 = BenchParams(name="big", params={"big_list": 100_000})
+
+            class BenchList(EasyBench):
+                # Pass a list of params:
+                @parametrize([params1, params2])
+                def bench_append(self, big_list):
+                    big_list.append(0)
+            ```
+
+        Args:
+            params_list: An iterable of BenchParams instances
+
+        Returns:
+            A decorator function that marks the method for parametrized benchmarking
+
+        """
+        # Convert all to a single list of BenchParams
+        params = list(params_list)
+
+        # Validate that all elements are BenchParams
+        for param in params:
+            if not isinstance(param, BenchParams):
+                err = f"Expected BenchParams, got {type(param).__name__}"
+                raise TypeError(err)
+
+        def decorator(func: Callable) -> Callable:
+            func = cast("ParametrizedFunction", func)
+
+            # If the function already has params, calculate the Cartesian product
+            if hasattr(func, "_bench_params"):
+                existing_params = func._bench_params  # noqa: SLF001
+                # Create cartesian product of existing params and new params
+                new_params = [
+                    existing * new_param
+                    for existing in existing_params
+                    for new_param in params
+                ]
+                func._bench_params = new_params  # noqa: SLF001
+            else:
+                func._bench_params = params  # noqa: SLF001
+
+            return func
+
+        return decorator
+
+    def grid(
+        self,
+        params_lists: Iterable[Iterable[BenchParams]],
+    ) -> Callable:
+        """
+        Create a decorator that applies a Cartesian product of multiple parameter lists.
+
+        This is equivalent to stacking multiple @parametrize decorators,
+        but with a cleaner syntax.
+
+        Example:
+            ```python
+            sizes = [
+                BenchParams(name="Small", params={"size": 100}),
+                BenchParams(name="Large", params={"size": 10000}),
+            ]
+            ops = [
+                BenchParams(name="Append", fn_params={"op": lambda x: x.append(0)}),
+                BenchParams(name="Pop", fn_params={"op": lambda x: x.pop()}),
+            ]
+
+            @parametrize.grid([sizes, ops])
+            def bench_operation(self, size, op):
+                # Will run with all combinations:
+                # (Small, Append), (Small, Pop), (Large, Append), (Large, Pop)
+                lst = list(range(size))
+                op(lst)
+            ```
+
+        Args:
+            params_lists: An iterable of iterables of BenchParams to combine
+
+        Returns:
+            A decorator function that applies all parameter sets as a Cartesian product
+
+        """
+
+        def decorator(func: Callable) -> Callable:
+            result = func
+
+            for params in params_lists:
+                result = self(params)(result)
+            return result
+
+        return decorator
+
+
+# Create an instance of Parametrize as the module-level parametrize
+parametrize = Parametrize()
 
 
 def customize(*, loops_per_trial: int | None = None) -> Callable:

@@ -6,7 +6,7 @@ parameters and settings. It allows for easy setup and running of benchmarks.
 """
 
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Any, ParamSpec, Protocol, TypeVar, cast, overload
 
 from .core import (
@@ -449,6 +449,78 @@ class BenchDecorator:
             # Check if all required parameters are available
             self._maybe_run_benchmark(func)
             return func
+
+        return decorator
+
+    def grid(
+        self,
+        params_lists: Iterable[Iterable[BenchParams]],
+    ) -> Callable:
+        """
+        Create a decorator that applies a Cartesian product of parameter lists.
+
+        This creates all combinations of the parameter sets for benchmarking.
+
+        Example:
+            ```python
+            sizes = [
+                BenchParams(name="Small", params={"size": 100}),
+                BenchParams(name="Large", params={"size": 10000}),
+            ]
+            ops = [
+                BenchParams(name="Append", fn_params={"op": lambda x: x.append(0)}),
+                BenchParams(name="Pop", fn_params={"op": lambda x: x.pop()}),
+            ]
+
+            @bench.grid([sizes, ops])
+            def operation(size, op):
+                # Will run with all combinations:
+                # (Small, Append), (Small, Pop), (Large, Append), (Large, Pop)
+                lst = list(range(size))
+                op(lst)
+            ```
+
+        Args:
+            params_lists: An iterable of iterables of BenchParams to combine
+
+        Returns:
+            A decorator function that applies all parameter combinations
+
+        """
+
+        def decorator(func: Callable) -> Callable:
+            # Convert all parameter lists to actual lists
+            converted_lists = []
+            for params in params_lists:
+                if isinstance(params, (list, tuple)):
+                    converted_lists.append(list(params))
+                else:
+                    # Handle iterables by converting to list
+                    converted_lists.append(list(params))
+
+            # Handle the case with no parameter lists
+            if not converted_lists:
+                return func
+
+            # Handle the case with just one parameter list
+            if len(converted_lists) == 1:
+                return self._decorate_with_bench_param_list(converted_lists[0])(func)
+
+            # Start with the first list
+            result_params = converted_lists[0]
+
+            # Multiply with each subsequent list to get Cartesian product
+            for params_list in converted_lists[1:]:
+                new_result = []
+                for param1 in result_params:
+                    for param2 in params_list:
+                        # Use the multiplication operator defined in BenchParams
+                        combined_param = param1 * param2
+                        new_result.append(combined_param)
+                result_params = new_result
+
+            # Apply the combined parameters using _decorate_with_bench_param_list
+            return self._decorate_with_bench_param_list(result_params)(func)
 
         return decorator
 

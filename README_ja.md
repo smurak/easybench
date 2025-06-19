@@ -258,6 +258,35 @@ def pop_first(lst):
     return lst.pop(0)
 ```
 
+#### **パラメータセットの組み合わせ** (`bench.grid`)
+
+異なるパラメータセットのすべての組み合わせで関数をベンチマークするには、`bench.grid` を使用します：
+
+```python
+from easybench import bench, BenchParams
+
+# サイズのパラメータセットを定義
+small = BenchParams(name="Small", params={"size": 10})
+large = BenchParams(name="Large", params={"size": 100})
+
+# 操作のパラメータセットを定義
+append = BenchParams(name="Append", fn_params={"op": lambda x: x.append(0)})
+pop = BenchParams(name="Pop", fn_params={"op": lambda x: x.pop()})
+
+# すべてのパラメータの組み合わせの直積を作成
+@bench.grid([[small, large], [append, pop]])
+def operation(size, op):
+    lst = list(range(size))
+    op(lst)
+```
+
+これにより、以下のすべてのパラメータの組み合わせがベンチマークされます：
+
+- Small × Append
+- Small × Pop
+- Large × Append
+- Large × Pop
+
 #### **実行時ベンチマーク**
 
 関数を実行時に一緒にベンチマーク計測も行いたい場合は、`.bench()`メソッドを使用します：
@@ -394,6 +423,42 @@ Function                     Avg Time (s) Min Time (s) Max Time (s)
 bench_create_list (小さいリスト)   0.000541     0.000256     0.001111    
 bench_create_list (大きいリスト)   0.052366     0.035805     0.090981    
 ```
+
+#### パラメータセットの組み合わせ (`parametrize.grid`)
+
+より複雑なパラメータ化テストのために、`parametrize.grid` は複数のパラメータリストのすべての組み合わせでベンチマークを計測します：
+
+```python
+from easybench import BenchParams, EasyBench, parametrize
+
+class BenchContainerOperations(EasyBench):
+    # 2セットのパラメータを定義
+    sizes = [
+        BenchParams(name="Small", params={"size": 100}),
+        BenchParams(name="Large", params={"size": 10000}),
+    ]
+    
+    operations = [
+        BenchParams(name="Append", fn_params={"op": lambda x: x.append(0)}),
+        BenchParams(name="Pop", fn_params={"op": lambda x: x.pop()}),
+    ]
+    
+    # すべてのパラメータの組み合わせでベンチマークを計測
+    @parametrize.grid([sizes, operations])
+    def bench_operation(self, size, op):
+        lst = list(range(size))
+        op(lst)
+
+if __name__ == "__main__":
+    BenchContainerOperations().bench()
+```
+
+これにより、4つのパラメータの組み合わせが作成されます：
+
+- Small × Append
+- Small × Pop
+- Large × Append
+- Large × Pop
 
 #### フィクスチャ（`fixture`デコレータ）
 

@@ -1104,3 +1104,97 @@ class TestBenchParamsDecorator:
         # (Each trial runs the function 3 times)
         assert test_value == DEFAULT_TRIALS * loops_count
         assert "count_loops" in parsed_out["functions"]
+
+    def test_bench_grid(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test bench.grid for creating Cartesian products of parameter sets."""
+        # Define size parameter sets
+        small = BenchParams(name="Small", params={"size": 10})
+        large = BenchParams(name="Large", params={"size": 100})
+
+        # Define operation parameter sets
+        append = BenchParams(name="Append", fn_params={"op": lambda x: x.append(0)})
+        pop = BenchParams(name="Pop", fn_params={"op": lambda x: x.pop()})
+
+        # Use bench.grid to create a Cartesian product of parameters
+        @bench.grid([[small, large], [append, pop]])
+        @bench.config(trials=1)
+        def operation(
+            size: int,
+            op: Callable[[list[int]], Any],
+        ) -> None:
+            lst = list(range(size))
+            op(lst)
+
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # Verify all combinations were created
+        assert "operation (Small x Append)" in parsed_out["functions"]
+        assert "operation (Small x Pop)" in parsed_out["functions"]
+        assert "operation (Large x Append)" in parsed_out["functions"]
+        assert "operation (Large x Pop)" in parsed_out["functions"]
+
+        # Ensure we have exactly 4 combinations (2 * 2)
+        assert len(parsed_out["functions"]) == 2 * 2
+
+    def test_bench_grid_with_three_parameter_sets(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test bench.grid with three parameter sets for more complex combinations."""
+        # Define three different parameter sets to combine
+        sizes = [
+            BenchParams(name="Small", params={"size": 5}),
+            BenchParams(name="Large", params={"size": 20}),
+        ]
+
+        operations = [
+            BenchParams(name="Add", fn_params={"operation": lambda x: x + 1}),
+            BenchParams(name="Multiply", fn_params={"operation": lambda x: x * 2}),
+        ]
+
+        formats = [
+            BenchParams(name="String", fn_params={"formatter": lambda x: str(x)}),
+            BenchParams(name="Hex", fn_params={"formatter": lambda x: hex(x)}),
+        ]
+
+        @bench.grid([sizes, operations, formats])
+        @bench.config(trials=1, show_output=True)
+        def process_number(
+            size: int,
+            operation: Callable[[int], int],
+            formatter: Callable[[int], str],
+        ) -> str:
+            result = operation(size)
+            return formatter(result)
+
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # Should create 2*2*2=8 combinations
+        assert len(parsed_out["functions"]) == 2 * 2 * 2
+
+        # Check specific combinations
+        assert "process_number (Small x Add x String)" in parsed_out["functions"]
+        assert "process_number (Small x Add x Hex)" in parsed_out["functions"]
+        assert "process_number (Small x Multiply x String)" in parsed_out["functions"]
+        assert "process_number (Large x Add x String)" in parsed_out["functions"]
+
+        # Check that return values are correct
+        assert "return_values" in parsed_out
+        return_values = parsed_out["return_values"]
+
+        # Check specific values
+        # 5 + 1 as string
+        assert return_values["process_number (Small x Add x String)"] == "6"
+        # 5 + 1 as hex
+        assert "0x6" in return_values["process_number (Small x Add x Hex)"]
+        # 5 * 2 as string
+        assert return_values["process_number (Small x Multiply x String)"] == "10"
+        # 20 + 1 as string
+        assert return_values["process_number (Large x Add x String)"] == "21"

@@ -260,6 +260,35 @@ def pop_first(lst):
     return lst.pop(0)
 ```
 
+#### **Combination of parameter sets** (`bench.grid`)
+
+To benchmark a function with all combinations of different parameter sets, you can use `bench.grid`:
+
+```python
+from easybench import bench, BenchParams
+
+# Define size parameter sets
+small = BenchParams(name="Small", params={"size": 10})
+large = BenchParams(name="Large", params={"size": 100})
+
+# Define operation parameter sets
+append = BenchParams(name="Append", fn_params={"op": lambda x: x.append(0)})
+pop = BenchParams(name="Pop", fn_params={"op": lambda x: x.pop()})
+
+# Create a Cartesian product of all parameter combinations
+@bench.grid([[small, large], [append, pop]])
+def operation(size, op):
+    lst = list(range(size))
+    op(lst)
+```
+
+This creates and benchmarks all combinations of parameters:
+
+- Small × Append
+- Small × Pop
+- Large × Append
+- Large × Pop
+
 #### **On-demand benchmarking**
 
 If you want to execute a function while simultaneously measuring its performance, use the `.bench()` method:
@@ -396,6 +425,43 @@ Function                         Avg Time (s) Min Time (s) Max Time (s)
 bench_create_list (Small List)   0.000442     0.000309     0.000855    
 bench_create_list (Large List)   0.092680     0.062617     0.129535    
 ```
+
+#### Combination of parameter sets (`parametrize.grid`)
+
+For more complex parametrized testing, `parametrize.grid` creates all combinations of multiple parameter lists:
+
+```python
+from easybench import BenchParams, EasyBench, parametrize
+
+class BenchContainerOperations(EasyBench):
+    # Define two sets of parameters
+    sizes = [
+        BenchParams(name="Small", params={"size": 100}),
+        BenchParams(name="Large", params={"size": 10000}),
+    ]
+    
+    operations = [
+        BenchParams(name="Append", fn_params={"op": lambda x: x.append(0)}),
+        BenchParams(name="Pop", fn_params={"op": lambda x: x.pop()}),
+    ]
+    
+    # Create all combinations of all parameter combinations
+    @parametrize.grid([sizes, operations])
+    def bench_operation(self, size, op):
+        lst = list(range(size))
+        op(lst)
+
+if __name__ == "__main__":
+    BenchContainerOperations().bench()
+```
+
+This creates four parameter combinations:
+
+- Small × Append
+- Small × Pop
+- Large × Append
+- Large × Pop
+
 
 #### Fixtures (`fixture` decorator)
 
