@@ -1120,7 +1120,7 @@ class TestBenchParamsDecorator:
         pop = BenchParams(name="Pop", fn_params={"op": lambda x: x.pop()})
 
         # Use bench.grid to create a Cartesian product of parameters
-        @bench.grid([small, large], [append, pop])
+        @bench.grid([[small, large], [append, pop]])
         @bench.config(trials=1)
         def operation(
             size: int,
@@ -1163,7 +1163,7 @@ class TestBenchParamsDecorator:
             BenchParams(name="Hex", fn_params={"formatter": lambda x: hex(x)}),
         ]
 
-        @bench.grid(sizes, operations, formats)
+        @bench.grid([sizes, operations, formats])
         @bench.config(trials=1, show_output=True)
         def process_number(
             size: int,

@@ -454,7 +454,7 @@ class BenchDecorator:
 
     def grid(
         self,
-        *params_lists: list[BenchParams] | Iterable[BenchParams],
+        params_lists: Iterable[Iterable[BenchParams]],
     ) -> Callable:
         """
         Create a decorator that applies a Cartesian product of parameter lists.
@@ -472,7 +472,7 @@ class BenchDecorator:
                 BenchParams(name="Pop", fn_params={"op": lambda x: x.pop()}),
             ]
 
-            @bench.grid(sizes, ops)
+            @bench.grid([sizes, ops])
             def operation(size, op):
                 # Will run with all combinations:
                 # (Small, Append), (Small, Pop), (Large, Append), (Large, Pop)
@@ -481,7 +481,7 @@ class BenchDecorator:
             ```
 
         Args:
-            *params_lists: Lists of BenchParams to combine
+            params_lists: An iterable of iterables of BenchParams to combine
 
         Returns:
             A decorator function that applies all parameter combinations
