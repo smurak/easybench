@@ -648,7 +648,7 @@ class TestEasyBenchFixtures:
             bench_config = BenchConfig(trials=1)
 
             # Use parametrize.grid to create a Cartesian product of parameters
-            @parametrize.grid([small, large], [append, pop])
+            @parametrize.grid([[small, large], [append, pop]])
             def bench_operation(
                 self,
                 size: int,
@@ -719,7 +719,7 @@ class TestEasyBenchFixtures:
         params_list2 = [add, multiply]
 
         class GridBench(EasyBench):
-            @parametrize.grid(params_list1, params_list2)
+            @parametrize.grid([params_list1, params_list2])
             def bench_operation(self, size: int, op_name: str, value: int) -> int:
                 result = 0
                 if op_name == "add":
