@@ -630,6 +630,133 @@ class TestEasyBenchFixtures:
         bench.bench(fixture_registry=custom_registry)
         assert bench.result == "custom value"
 
+    def test_parametrize_grid(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test parametrize.grid for creating Cartesian products of parameter sets."""
+        # Define size parameter sets
+        small = BenchParams(name="Small", params={"size": 10})
+        large = BenchParams(name="Large", params={"size": 100})
+
+        # Define operation parameter sets
+        append = BenchParams(name="Append", fn_params={"op": lambda x: x.append(0)})
+        pop = BenchParams(name="Pop", fn_params={"op": lambda x: x.pop()})
+
+        class GridBench(EasyBench):
+            bench_config = BenchConfig(trials=1)
+
+            # Use parametrize.grid to create a Cartesian product of parameters
+            @parametrize.grid([small, large], [append, pop])
+            def bench_operation(
+                self,
+                size: int,
+                op: Callable[[list[int]], Any],
+            ) -> None:
+                lst = list(range(size))
+                op(lst)
+
+        bench = GridBench()
+        bench.bench()
+
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # Verify all combinations were created
+        assert "bench_operation (Small x Append)" in parsed_out["functions"]
+        assert "bench_operation (Small x Pop)" in parsed_out["functions"]
+        assert "bench_operation (Large x Append)" in parsed_out["functions"]
+        assert "bench_operation (Large x Pop)" in parsed_out["functions"]
+
+        # Ensure we have exactly 4 combinations (2 * 2)
+        assert len(parsed_out["functions"]) == 2 * 2
+
+        # Test comparison with stacked parametrize decorators
+        class StackedBench(EasyBench):
+            bench_config = BenchConfig(trials=1)
+
+            # Same result using stacked parametrize decorators
+            @parametrize([append, pop])
+            @parametrize([small, large])
+            def bench_operation(
+                self,
+                size: int,
+                op: Callable[[list[int]], Any],
+            ) -> None:
+                lst = list(range(size))
+                op(lst)
+
+        bench2 = StackedBench()
+        bench2.bench()
+
+        captured2 = capsys.readouterr()
+        parsed_out2 = parse_benchmark_output(captured2.out)
+
+        # Verify both approaches produce the same combinations
+        assert set(parsed_out["functions"].keys()) == set(
+            parsed_out2["functions"].keys(),
+        )
+
+    def test_parametrize_grid_with_simple_values(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test that parametrize.grid works correctly with simple values."""
+        # Define parameter sets with simple values instead of functions
+        small = BenchParams(name="Small", params={"size": 100})
+        medium = BenchParams(name="Medium", params={"size": 1000})
+        large = BenchParams(name="Large", params={"size": 10000})
+
+        add = BenchParams(name="Add", params={"op_name": "add", "value": 5})
+        multiply = BenchParams(
+            name="Multiply",
+            params={"op_name": "multiply", "value": 2},
+        )
+
+        params_list1 = [small, medium, large]
+        params_list2 = [add, multiply]
+
+        class GridBench(EasyBench):
+            @parametrize.grid(params_list1, params_list2)
+            def bench_operation(self, size: int, op_name: str, value: int) -> int:
+                result = 0
+                if op_name == "add":
+                    # Simple operation that adds 'value' to each item in a range
+                    for i in range(size):
+                        result += i + value
+                else:
+                    # Simple operation that multiplies each item by 'value' in a range
+                    for i in range(size):
+                        result += i * value
+                return result
+
+        bench = GridBench()
+        bench.bench(trials=1)  # Just one trial for testing
+
+        # Capture and parse output
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # Check that all 6 combinations were executed
+        expected_combinations = [
+            "bench_operation (Small x Add)",
+            "bench_operation (Small x Multiply)",
+            "bench_operation (Medium x Add)",
+            "bench_operation (Medium x Multiply)",
+            "bench_operation (Large x Add)",
+            "bench_operation (Large x Multiply)",
+        ]
+
+        for combination in expected_combinations:
+            assert (
+                combination in parsed_out["functions"]
+            ), f"Missing combination: {combination}"
+
+        # Total should be 6 functions
+        assert len(parsed_out["functions"]) == len(params_list1) * len(params_list2)
+
 
 class TestEasyBenchLifecycle:
     """Tests for lifecycle methods in EasyBench."""

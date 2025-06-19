@@ -35,7 +35,7 @@ else:
 from pydantic import BaseModel, field_validator
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Callable
     from contextlib import AbstractContextManager
 
 from .reporters import (
@@ -459,69 +459,162 @@ def fixture(
     return decorator
 
 
-def parametrize(params_list: Iterable[BenchParams]) -> Callable:
+class Parametrize:
     """
-    Create a decorator for parametrized benchmarks in EasyBench classes.
+    Class for creating parametrized benchmarks in EasyBench classes.
 
-    When multiple @parametrize decorators are applied to the same function,
-    they behave as a Cartesian product of all parameter sets.
+    This class provides functionality to parametrize benchmark functions with
+    different sets of parameters for more comprehensive benchmarking.
+    """
 
-    Example:
-        ```python
-        params1 = BenchParams(name="small", params={"big_list": 1_000})
-        params2 = BenchParams(name="big", params={"big_list": 100_000})
+    def __call__(
+        self,
+        *args: BenchParams | list[BenchParams] | Iterable[BenchParams],
+    ) -> Callable:
+        """
+        Create a decorator for parametrized benchmarks in EasyBench classes.
 
-        class BenchList(EasyBench):
-            @parametrize([params1, params2])
-            def bench_append(self, big_list):
-                big_list.append(0)
-        ```
+        When multiple @parametrize decorators are applied to the same function,
+        they behave as a Cartesian product of all parameter sets.
 
-        # Using multiple parametrize decorators (Cartesian product)
-        ```python
-        small = BenchParams(name="Small", params={"size": 1_000})
-        large = BenchParams(name="Large", params={"size": 100_000})
-        append = BenchParams(name="Append", params={"op": lambda x: x.append(0)})
-        pop = BenchParams(name="Pop", params={"op": lambda x: x.pop()})
+        Example:
+            ```python
+            params1 = BenchParams(name="small", params={"big_list": 1_000})
+            params2 = BenchParams(name="big", params={"big_list": 100_000})
 
-        class BenchListOps(EasyBench):
-            # This creates 4 combinations: Small x Append, Small x Pop,
-            # Large x Append, Large x Pop
-            @parametrize([append, pop])
-            @parametrize([small, large])
+            class BenchList(EasyBench):
+                # Pass individual params:
+                @parametrize(params1, params2)
+                def bench_append(self, big_list):
+                    big_list.append(0)
+
+                # Or pass a list (legacy style):
+                @parametrize([params1, params2])
+                def bench_append_legacy(self, big_list):
+                    big_list.append(0)
+            ```
+
+            # Using multiple parametrize decorators (Cartesian product)
+            ```python
+            small = BenchParams(name="Small", params={"size": 1_000})
+            large = BenchParams(name="Large", params={"size": 100_000})
+            append = BenchParams(name="Append", params={"op": lambda x: x.append(0)})
+            pop = BenchParams(name="Pop", params={"op": lambda x: x.pop()})
+
+            class BenchListOps(EasyBench):
+                # This creates 4 combinations: Small x Append, Small x Pop,
+                # Large x Append, Large x Pop
+                @parametrize([append, pop])
+                @parametrize([small, large])
+                def bench_operation(self, size, op):
+                    lst = list(range(size))
+                    op(lst)
+
+                # Or use parametrize.grid for the same result:
+                @parametrize.grid([small, large], [append, pop])
+                def bench_operation_grid(self, size, op):
+                    lst = list(range(size))
+                    op(lst)
+            ```
+
+        Args:
+            *args: Individual BenchParams instances or lists/iterables of
+                BenchParams instances
+
+        Returns:
+            A decorator function that marks the method for parametrized benchmarking
+
+        """
+        # Convert all arguments to a single list of BenchParams
+        params_list: list[BenchParams] = []
+
+        for arg in args:
+            # Handle individual BenchParams
+            if isinstance(arg, BenchParams):
+                params_list.append(arg)
+            # Handle list/iterable of BenchParams
+            elif isinstance(arg, (list, tuple, Iterable)):
+                for param in arg:
+                    if not isinstance(param, BenchParams):
+                        err = f"Expected BenchParams, got {type(param).__name__}"
+                        raise TypeError(err)
+                    params_list.append(param)
+            else:
+                err = (
+                    "Expected BenchParams or list of BenchParams, "
+                    f"got {type(arg).__name__}"
+                )
+                raise TypeError(err)
+
+        def decorator(func: Callable) -> Callable:
+            func = cast("ParametrizedFunction", func)
+
+            # If the function already has params, calculate the Cartesian product
+            if hasattr(func, "_bench_params"):
+                existing_params = func._bench_params  # noqa: SLF001
+                # Create cartesian product of existing params and new params
+                new_params = [
+                    existing * new_param
+                    for existing in existing_params
+                    for new_param in params_list
+                ]
+                func._bench_params = new_params  # noqa: SLF001
+            else:
+                func._bench_params = params_list  # noqa: SLF001
+
+            return func
+
+        return decorator
+
+    def grid(
+        self,
+        *params_lists: list[BenchParams] | Iterable[BenchParams],
+    ) -> Callable:
+        """
+        Create a decorator that applies a Cartesian product of multiple parameter lists.
+
+        This is equivalent to stacking multiple @parametrize decorators,
+        but with a cleaner syntax.
+
+        Example:
+            ```python
+            sizes = [
+                BenchParams(name="Small", params={"size": 100}),
+                BenchParams(name="Large", params={"size": 10000}),
+            ]
+            ops = [
+                BenchParams(name="Append", params={"op": lambda x: x.append(0)}),
+                BenchParams(name="Pop", params={"op": lambda x: x.pop()}),
+            ]
+
+            @parametrize.grid(sizes, ops)
             def bench_operation(self, size, op):
+                # Will run with all combinations:
+                # (Small, Append), (Small, Pop), (Large, Append), (Large, Pop)
                 lst = list(range(size))
                 op(lst)
-        ```
+            ```
 
-    Args:
-        params_list: List of BenchParams instances with benchmark configurations
+        Args:
+            *params_lists: Lists of BenchParams to combine
 
-    Returns:
-        A decorator function that marks the method for parametrized benchmarking
+        Returns:
+            A decorator function that applies all parameter sets as a Cartesian product
 
-    """
-    params_list = list(params_list)  # Ensure we have a list
+        """
 
-    def decorator(func: Callable) -> Callable:
-        func = cast("ParametrizedFunction", func)
+        def decorator(func: Callable) -> Callable:
+            result = func
 
-        # If the function already has params, calculate the Cartesian product
-        if hasattr(func, "_bench_params"):
-            existing_params = func._bench_params  # noqa: SLF001
-            # Create cartesian product of existing params and new params
-            new_params = [
-                existing * new_param
-                for existing in existing_params
-                for new_param in params_list
-            ]
-            func._bench_params = new_params  # noqa: SLF001
-        else:
-            func._bench_params = params_list  # noqa: SLF001
+            for params in params_lists:
+                result = self(params)(result)
+            return result
 
-        return func
+        return decorator
 
-    return decorator
+
+# Create an instance of Parametrize as the module-level parametrize
+parametrize = Parametrize()
 
 
 def customize(*, loops_per_trial: int | None = None) -> Callable:
