@@ -540,6 +540,8 @@ Memory measurement options (`memory`):
 - `"GB"`: Display memory usage in gigabytes
 
 Time measurement options (`time`):
+- `False`: Disable time measurement reporting
+- `True`: Enable time measurement reporting in seconds
 - `"s"`: Display time in seconds (default)
 - `"ms"`: Display time in milliseconds
 - `"μs"` or `"us"`: Display time in microseconds
@@ -643,7 +645,7 @@ easybench [options] [path]
 #### Command Options
 
 ```bash
-easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [--progress] [--include PATTERN] [--exclude PATTERN] [--include-files PATTERN] [--exclude-files PATTERN] [path]
+easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [--progress] [--include PATTERN] [--exclude PATTERN] [--include-files PATTERN] [--exclude-files PATTERN] [--no-time] [path]
 ```
 
 - `--trials N`: Number of trials (default: 5)
@@ -662,6 +664,7 @@ easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-
 - `--exclude PATTERN`: Regular expression pattern to exclude matching benchmark functions
 - `--include-files PATTERN`: Regular expression pattern to include only matching benchmark files
 - `--exclude-files PATTERN`: Regular expression pattern to exclude matching benchmark files
+- `--no-time`: Disable time measurement reporting
 - `path`: Directory containing benchmark files or a specific benchmark file (default: "benchmarks")
 
 #### Function-based Benchmark Example
