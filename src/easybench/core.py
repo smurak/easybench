@@ -32,7 +32,7 @@ else:
     from typing_extensions import NotRequired, TypedDict
 
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -154,7 +154,7 @@ def _get_visualization_reporter(name: str, kwargs: dict) -> Reporter:
 class ResultType(TypedDict):
     """Type of benchmark result."""
 
-    times: list[float]
+    times: NotRequired[list[float]]
     memory: NotRequired[list[float]]
     output: NotRequired[list[object]]
 
@@ -162,9 +162,9 @@ class ResultType(TypedDict):
 class StatType(TypedDict):
     """Type of benchmark statistics."""
 
-    avg: float
-    min: float
-    max: float
+    avg: NotRequired[float]
+    min: NotRequired[float]
+    max: NotRequired[float]
     avg_memory: NotRequired[float]
     max_memory: NotRequired[float]
 
@@ -211,7 +211,7 @@ class PartialBenchConfig(BaseModel):
     sort_by: SortType | None = None
     reverse: bool | None = None
     memory: bool | MemoryUnit | str | None = None
-    time: TimeUnit | str | None = None
+    time: bool | TimeUnit | str | None = None
     color: bool | None = None
     show_output: bool | None = None
     return_output: bool | None = None
@@ -219,6 +219,15 @@ class PartialBenchConfig(BaseModel):
     progress: bool | Callable | None = None
     include: str | None = None
     exclude: str | None = None
+
+    @model_validator(mode="after")
+    def validate_time_and_memory(self) -> PartialBenchConfig:
+        """Validate that at least one of time or memory is enabled."""
+        # Check if both time and memory are explicitly set to False
+        if self.time is False and self.memory is False:
+            msg = "At least one of 'time' or 'memory' must be enabled"
+            raise ValueError(msg)
+        return self
 
     def merge_with(self, config: BenchConfig) -> BenchConfig:
         """
@@ -300,7 +309,7 @@ class BenchConfig(PartialBenchConfig):
     sort_by: SortType = "def"
     reverse: bool = False
     memory: bool | MemoryUnit | str = False
-    time: TimeUnit | str = TimeUnit.SECONDS
+    time: bool | TimeUnit | str = TimeUnit.SECONDS
     color: bool = True
     show_output: bool = False
     return_output: bool = False
@@ -703,6 +712,16 @@ class EasyBench:
                 complete_config.sort_by,
             )
 
+        if (
+            complete_config.sort_by in ("avg", "max", "min")
+            and not complete_config.time
+        ):
+            complete_config.time = True
+            logger.info(
+                "Note: Enabled time measurement because sort_by='%s' was specified",
+                complete_config.sort_by,
+            )
+
         return complete_config, fixture_registry
 
     def _get_loops_per_trial(
@@ -780,7 +799,10 @@ class EasyBench:
 
         """
         capture_output = config.show_output or config.return_output
-        result_dict: ResultType = {"times": []}
+        result_dict: ResultType = {}
+
+        if config.time:
+            result_dict["times"] = []
         if config.memory:
             result_dict["memory"] = []
         if capture_output:
@@ -811,7 +833,8 @@ class EasyBench:
                     )
 
                     if not warmup:
-                        result_dict["times"].append(execution_time)
+                        if config.time:
+                            result_dict["times"].append(execution_time)
 
                         if config.memory and memory_usage is not None:
                             result_dict["memory"].append(memory_usage)
@@ -1422,13 +1445,15 @@ class EasyBench:
         """
         stats: StatsType = {}
         for method_name, data in results.items():
-            times = data["times"]
-
-            stats[method_name] = {
-                "avg": sum(times) / len(times),
-                "min": min(times),
-                "max": max(times),
-            }
+            if "times" in data:
+                times = data["times"]
+                stats[method_name] = {
+                    "avg": sum(times) / len(times),
+                    "min": min(times),
+                    "max": max(times),
+                }
+            else:
+                stats[method_name] = {}
 
             if "memory" in data:
                 memory_values = data["memory"]

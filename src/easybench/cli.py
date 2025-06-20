@@ -195,7 +195,7 @@ def cli_main() -> None:
     easybench [`--trials N`] [`--loops-per-trial N`] [`--memory`] [`--memory-unit UNIT`]
     [`--sort-by METRIC`] [`--reverse`] [`--show-output`] [`--time-unit UNIT`]
     [`--warmups N`] [`--no-progress`] [`--include PATTERN`] [`--exclude PATTERN`]
-    [`--include-files PATTERN`] [`--exclude-files PATTERN`] [`path`]
+    [`--include-files PATTERN`] [`--exclude-files PATTERN`] [`--no-time`] [`path`]
     """
     default_config = BenchConfig()
     parser = argparse.ArgumentParser(
@@ -249,9 +249,14 @@ def cli_main() -> None:
         help="Memory unit for displaying results (default: KB when --memory is used)",
     )
     parser.add_argument(
+        "--no-time",
+        action="store_true",
+        help="Disable execution time measurement during benchmarks",
+    )
+    parser.add_argument(
         "--time-unit",
         choices=["ns", "μs", "ms", "s", "m", "us"],
-        default="s",
+        default=None,
         help="Time unit for displaying results (default: s)",
     )
     parser.add_argument(
@@ -310,6 +315,7 @@ def cli_main() -> None:
     try:
         # Set memory value based on arguments
         memory = args.memory_unit if args.memory_unit else True if args.memory else None
+        time = args.time_unit if args.time_unit else False if args.no_time else None
 
         # Create config from CLI arguments
         config = PartialBenchConfig(
@@ -317,7 +323,7 @@ def cli_main() -> None:
             loops_per_trial=args.loops_per_trial,
             warmups=args.warmups,
             memory=memory,
-            time=args.time_unit,
+            time=time,
             sort_by=args.sort_by,
             reverse=args.reverse or None,
             color=False if args.no_color else None,

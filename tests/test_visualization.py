@@ -13,7 +13,10 @@ from importlib.util import find_spec
 from unittest import mock
 from unittest.mock import MagicMock, patch
 
+import matplotlib as mpl
 import matplotlib.figure
+
+mpl.use("Agg")  # Use non-interactive backend for testing
 import matplotlib.pyplot as plt
 import pytest
 
@@ -1597,6 +1600,180 @@ class TestViolinPlotFormatter:
             # Verify seaborn functions were called (indicating seaborn engine was used)
             mock_set_theme.assert_called_once_with(**custom_theme)
             mock_violinplot.assert_called()
+        plt.close()
+
+    def test_sns_theme_with_default_theme(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that seaborn engine uses default theme when no sns_theme provided."""
+        # Skip if seaborn is not available
+        if not find_spec("seaborn"):
+            pytest.skip("seaborn not installed")
+
+        formatter = ViolinPlotFormatter(engine="seaborn")
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+            mock.patch("seaborn.violinplot") as mock_violinplot,
+        ):
+            # Mock seaborn.violinplot to return a mock axes
+            mock_violinplot.return_value = mock.MagicMock()
+
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+
+            mock_set_theme.assert_called_once_with(**DEFAULT_SNS_THEME)
+        plt.close()
+
+    def test_sns_theme_none_with_matplotlib_engine(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that matplotlib engine doesn't call seaborn.set_theme."""
+        formatter = ViolinPlotFormatter(engine="matplotlib", sns_theme=None)
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+            warnings.catch_warnings(),
+        ):
+            # Ignore seaborn's PendingDeprecationWarning
+            warnings.filterwarnings(
+                "ignore",
+                category=PendingDeprecationWarning,
+                module="seaborn",
+            )
+
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+            # Verify seaborn.set_theme was not called
+            mock_set_theme.assert_not_called()
+        plt.close()
+
+
+class TestBoxPlotFormatterTimeDisabled:
+    """Tests for BoxPlotFormatter with time measurement disabled."""
+
+    def test_format_time_disabled_memory_enabled(
+        self,
+        sample_stats: dict[str, StatType],
+    ) -> None:
+        """Test that formatter works correctly with time=False and memory=True."""
+        # Modify sample results and config for this test
+        results: ResultsType = {
+            "test_func1": {"memory": [1024, 2048, 3072]},
+            "test_func2": {"memory": [2048, 3072, 4096]},
+        }
+        config = BenchConfig(trials=3, time=False, memory=True)
+
+        formatter = BoxPlotFormatter()
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(results, sample_stats, config)
+
+            # Figure should be created
+            assert isinstance(fig, plt.Figure)
+
+            # Check that the figure has memory plot but not time plot
+            for ax in fig.axes:
+                if ax.get_ylabel():
+                    assert "Memory" in ax.get_ylabel()
+                    assert "Time" not in ax.get_ylabel()
+                if ax.get_xlabel():
+                    assert "Time" not in ax.get_xlabel()
+
+        plt.close()
+
+
+class TestLinePlotFormatterTimeDisabled:
+    """Tests for LinePlotFormatter with time measurement disabled."""
+
+    def test_format_time_disabled_memory_enabled(
+        self,
+        sample_stats: dict[str, StatType],
+    ) -> None:
+        """Test that formatter works correctly with time=False and memory=True."""
+        # Modify sample results for this test
+        results: ResultsType = {
+            "test_func1": {"memory": [1024, 2048, 3072]},
+            "test_func2": {"memory": [2048, 3072, 4096]},
+        }
+        config = BenchConfig(trials=3, time=False, memory=True)
+
+        formatter = LinePlotFormatter()
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(results, sample_stats, config)
+
+            # Figure should be created
+            assert isinstance(fig, plt.Figure)
+
+            # Check that the figure has memory plot but not time plot
+            for ax in fig.axes:
+                if ax.get_ylabel():
+                    assert "Memory" in ax.get_ylabel()
+                    assert "Time" not in ax.get_ylabel()
+                if ax.get_xlabel():
+                    assert "Time" not in ax.get_xlabel()
+
+        plt.close()
+
+
+class TestViolinPlotFormatterTimeDisabled:
+    """Tests for ViolinPlotFormatter with time measurement disabled."""
+
+    def test_format_time_disabled_memory_enabled(
+        self,
+        sample_stats: dict[str, StatType],
+    ) -> None:
+        """Test that formatter works correctly with time=False and memory=True."""
+        # Modify sample results for this test
+        results: ResultsType = {
+            "test_func1": {"memory": [1024, 2048, 3072]},
+            "test_func2": {"memory": [2048, 3072, 4096]},
+        }
+        config = BenchConfig(trials=3, time=False, memory=True)
+
+        formatter = ViolinPlotFormatter()
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(results, sample_stats, config)
+
+            # Figure should be created
+            assert isinstance(fig, plt.Figure)
+
+            # Check that the figure has memory plot but not time plot
+            for ax in fig.axes:
+                if ax.get_ylabel():
+                    assert "Memory" in ax.get_ylabel()
+                    assert "Time" not in ax.get_ylabel()
+                if ax.get_xlabel():
+                    assert "Time" not in ax.get_xlabel()
+
         plt.close()
 
 

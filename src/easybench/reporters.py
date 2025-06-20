@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     import pandas as pd
     from matplotlib.figure import Figure
 
-    from .core import BenchConfig, ResultsType, StatsType
+    from .core import BenchConfig, ResultsType, StatsType, StatType
 
 T = TypeVar("T")
 
@@ -189,6 +189,91 @@ class Formatter(ABC):
 
         return list(stats.keys())
 
+    def shrink_data(
+        self,
+        results: ResultsType,
+        stats: StatsType,
+        config: BenchConfig,
+    ) -> None:
+        """
+        Modify the given results and stats in place by removing any unnecessary entries.
+
+        This operation mutates the input data structures directly.
+
+        Args:
+            results (ResultsType): The benchmark results to be pruned.
+            stats (StatsType): The corresponding statistical data to be pruned.
+            config (BenchConfig): Configuration specifying which data to keep or remove.
+
+        Returns:
+            None
+
+        """
+        self._shrink_time_data(results, stats, config)
+        self._shrink_memory_data(results, stats, config)
+
+    def _shrink_time_data(
+        self,
+        results: ResultsType,
+        stats: StatsType,
+        config: BenchConfig,
+    ) -> None:
+        """
+        Modify the given results and stats by removing any unnecessary time entries.
+
+        This operation mutates the input data structures directly.
+
+        Args:
+            results (ResultsType): The benchmark results to be pruned.
+            stats (StatsType): The corresponding statistical data to be pruned.
+            config (BenchConfig): Configuration specifying which data to keep or remove.
+
+        Returns:
+            None
+
+        """
+        if not config.time:
+            for result in results.values():
+                if "times" in result:
+                    del result["times"]
+            for stat in stats.values():
+                if "avg" in stat:
+                    del stat["avg"]
+                if "max" in stat:
+                    del stat["max"]
+                if "min" in stat:
+                    del stat["min"]
+
+    def _shrink_memory_data(
+        self,
+        results: ResultsType,
+        stats: StatsType,
+        config: BenchConfig,
+    ) -> None:
+        """
+        Modify the given results and stats by removing any unnecessary memory entries.
+
+        This operation mutates the input data structures directly.
+
+        Args:
+            results (ResultsType): The benchmark results to be pruned.
+            stats (StatsType): The corresponding statistical data to be pruned.
+            config (BenchConfig): Configuration specifying which data to keep or remove.
+
+        Returns:
+            None
+
+        """
+        if not config.memory:
+            for result in results.values():
+                if "memory" in result:
+                    del result["memory"]
+            for stat in stats.values():
+                if "avg_memory" in stat:
+                    del stat["avg_memory"]
+                if "max_memory" in stat:
+                    del stat["max_memory"]
+
 
 class TableFormatter(Formatter):
     """Format results as text tables (current default format)."""
@@ -267,11 +352,14 @@ class TableFormatter(Formatter):
         # Convert all values once and store them
         for method_name in stats:
             stat = stats[method_name]
-            converted = {
-                "avg_time": time_unit.convert_seconds(stat["avg"]),
-                "min_time": time_unit.convert_seconds(stat["min"]),
-                "max_time": time_unit.convert_seconds(stat["max"]),
-            }
+            if config.time:
+                converted = {
+                    "avg_time": time_unit.convert_seconds(stat["avg"]),
+                    "min_time": time_unit.convert_seconds(stat["min"]),
+                    "max_time": time_unit.convert_seconds(stat["max"]),
+                }
+            else:
+                converted = {}
 
             if config.memory:
                 avg_memory = stat.get("avg_memory", 0.0)
@@ -300,27 +388,38 @@ class TableFormatter(Formatter):
         memory_unit = data["memory_unit"]
         time_unit = data["time_unit"]
 
-        # Collect all time values for width calculation
-        time_values = []
-        for converted in converted_stats.values():
-            time_values.extend(
-                [converted["avg_time"], converted["min_time"], converted["max_time"]],
+        # Calculate time column widths
+        if config.time:
+            # Collect all time values for width calculation
+            time_values = []
+            for converted in converted_stats.values():
+                time_values.extend(
+                    [
+                        converted["avg_time"],
+                        converted["min_time"],
+                        converted["max_time"],
+                    ],
+                )
+
+            max_time_str_len = max(
+                len(f"{val:.{self.precision}f}") for val in time_values
             )
 
-        max_time_str_len = max(len(f"{val:.{self.precision}f}") for val in time_values)
-
-        # Calculate time column widths
-        if config.trials == 1:
-            time_header_len = len(f"Time ({time_unit})")
-            data["column_widths"]["time"] = max(max_time_str_len, time_header_len) + 2
-        else:
-            headers = [
-                f"Avg Time ({time_unit})",
-                f"Min Time ({time_unit})",
-                f"Max Time ({time_unit})",
-            ]
-            for i, key in enumerate(["avg_time", "min_time", "max_time"]):
-                data["column_widths"][key] = max(max_time_str_len, len(headers[i])) + 2
+            if config.trials == 1:
+                time_header_len = len(f"Time ({time_unit})")
+                data["column_widths"]["time"] = (
+                    max(max_time_str_len, time_header_len) + 2
+                )
+            else:
+                headers = [
+                    f"Avg Time ({time_unit})",
+                    f"Min Time ({time_unit})",
+                    f"Max Time ({time_unit})",
+                ]
+                for i, key in enumerate(["avg_time", "min_time", "max_time"]):
+                    data["column_widths"][key] = (
+                        max(max_time_str_len, len(headers[i])) + 2
+                    )
 
         # Calculate memory column widths if needed
         if config.memory:
@@ -349,11 +448,12 @@ class TableFormatter(Formatter):
         converted_stats = data["converted_stats"]
 
         # Time extremes
-        time_metrics = ["avg_time", "min_time", "max_time"]
-        for metric in time_metrics:
-            values = [converted[metric] for converted in converted_stats.values()]
-            data["extremes"][f"min_{metric}"] = min(values)
-            data["extremes"][f"max_{metric}"] = max(values)
+        if config.time:
+            time_metrics = ["avg_time", "min_time", "max_time"]
+            for metric in time_metrics:
+                values = [converted[metric] for converted in converted_stats.values()]
+                data["extremes"][f"min_{metric}"] = min(values)
+                data["extremes"][f"max_{metric}"] = max(values)
 
         # Memory extremes
         if config.memory:
@@ -378,14 +478,16 @@ class TableFormatter(Formatter):
 
         if config.trials == 1:
             header = "Function".ljust(self.max_name_len + 2)
-            header += f"Time ({time_unit})".rjust(column_widths["time"])
+            if config.time:
+                header += f"Time ({time_unit})".rjust(column_widths["time"])
             if config.memory:
                 header += f"Memory ({memory_unit})".rjust(column_widths["memory"])
         else:
             header = "Function".ljust(self.max_name_len + 2)
-            header += f"Avg Time ({time_unit})".rjust(column_widths["avg_time"])
-            header += f"Min Time ({time_unit})".rjust(column_widths["min_time"])
-            header += f"Max Time ({time_unit})".rjust(column_widths["max_time"])
+            if config.time:
+                header += f"Avg Time ({time_unit})".rjust(column_widths["avg_time"])
+                header += f"Min Time ({time_unit})".rjust(column_widths["min_time"])
+                header += f"Max Time ({time_unit})".rjust(column_widths["max_time"])
             if config.memory:
                 header += f"Avg Mem ({memory_unit})".rjust(column_widths["avg_memory"])
                 header += f"Max Mem ({memory_unit})".rjust(column_widths["max_memory"])
@@ -398,15 +500,17 @@ class TableFormatter(Formatter):
         total_width = self.max_name_len + 2
 
         if config.trials == 1:
-            total_width += column_widths["time"]
+            if config.time:
+                total_width += column_widths["time"]
             if config.memory:
                 total_width += column_widths["memory"]
         else:
-            total_width += (
-                column_widths["avg_time"]
-                + column_widths["min_time"]
-                + column_widths["max_time"]
-            )
+            if config.time:
+                total_width += (
+                    column_widths["avg_time"]
+                    + column_widths["min_time"]
+                    + column_widths["max_time"]
+                )
             if config.memory:
                 total_width += column_widths["avg_memory"] + column_widths["max_memory"]
 
@@ -423,11 +527,13 @@ class TableFormatter(Formatter):
 
         for method_name in self.sorted_methods:
             converted = converted_stats[method_name]
+            line = visual_ljust(method_name, self.max_name_len + 2)
 
-            time_val = f"{converted['avg_time']:.{self.precision}f}".rjust(
-                column_widths["time"],
-            )
-            line = visual_ljust(method_name, self.max_name_len + 2) + time_val
+            if config.time:
+                time_val = f"{converted['avg_time']:.{self.precision}f}".rjust(
+                    column_widths["time"],
+                )
+                line += time_val
 
             if config.memory:
                 mem_val = f"{converted['avg_memory']:.{self.precision}f}".rjust(
@@ -451,38 +557,37 @@ class TableFormatter(Formatter):
 
         for method_name in self.sorted_methods:
             converted = converted_stats[method_name]
+            line = visual_ljust(method_name, self.max_name_len + 2)
 
-            # Format time values with coloring
-            avg_val = self._format_metric(
-                converted["avg_time"],
-                extremes["min_avg_time"],
-                extremes["max_avg_time"],
-                width=column_widths["avg_time"],
-                color=color,
-            )
-            min_val = self._format_metric(
-                converted["min_time"],
-                extremes["min_min_time"],
-                extremes["max_min_time"],
-                width=column_widths["min_time"],
-                color=color,
-            )
-            max_val = self._format_metric(
-                converted["max_time"],
-                extremes["min_max_time"],
-                extremes["max_max_time"],
-                width=column_widths["max_time"],
-                color=color,
-            )
+            if config.time:
+                # Format time values with coloring
+                avg_val = self._format_metric(
+                    converted["avg_time"],
+                    extremes["min_avg_time"],
+                    extremes["max_avg_time"],
+                    width=column_widths["avg_time"],
+                    color=color,
+                )
+                min_val = self._format_metric(
+                    converted["min_time"],
+                    extremes["min_min_time"],
+                    extremes["max_min_time"],
+                    width=column_widths["min_time"],
+                    color=color,
+                )
+                max_val = self._format_metric(
+                    converted["max_time"],
+                    extremes["min_max_time"],
+                    extremes["max_max_time"],
+                    width=column_widths["max_time"],
+                    color=color,
+                )
 
-            # Format the function name with proper alignment
-            method_col = visual_ljust(method_name, self.max_name_len + 2)
-            line = (
-                method_col
-                + avg_val.rjust(column_widths["avg_time"])
-                + min_val.rjust(column_widths["min_time"])
-                + max_val.rjust(column_widths["max_time"])
-            )
+                line += (
+                    avg_val.rjust(column_widths["avg_time"])
+                    + min_val.rjust(column_widths["min_time"])
+                    + max_val.rjust(column_widths["max_time"])
+                )
 
             if config.memory:
                 # Format memory values with coloring
@@ -576,24 +681,42 @@ class CSVFormatter(Formatter):
         config: BenchConfig,
     ) -> str:
         """Format results as CSV."""
-        memory_unit = MemoryUnit.from_config(config)
-        time_unit = TimeUnit.from_config(config)
         _ = results  # unused but avoids ARG002
         output = StringIO()
         writer = csv.writer(output)
 
         # Write header row
+        header = self._create_header_row(config)
+        writer.writerow(header)
+
+        # Write data rows
+        for method_name in self.sort_keys(stats, config):
+            row = self._create_data_row(method_name, stats[method_name], config)
+            writer.writerow(row)
+
+        return output.getvalue()
+
+    def _create_header_row(self, config: BenchConfig) -> list[str]:
+        """Create the CSV header row based on configuration."""
+        memory_unit = MemoryUnit.from_config(config)
+        time_unit = TimeUnit.from_config(config)
+
+        header = ["Function"]
+
         if config.trials == 1:
-            header = ["Function", f"Time ({time_unit})"]
+            if config.time:
+                header.append(f"Time ({time_unit})")
             if config.memory:
                 header.append(f"Memory ({memory_unit})")
         else:
-            header = [
-                "Function",
-                f"Avg Time ({time_unit})",
-                f"Min Time ({time_unit})",
-                f"Max Time ({time_unit})",
-            ]
+            if config.time:
+                header.extend(
+                    [
+                        f"Avg Time ({time_unit})",
+                        f"Min Time ({time_unit})",
+                        f"Max Time ({time_unit})",
+                    ],
+                )
             if config.memory:
                 header.extend(
                     [
@@ -602,36 +725,43 @@ class CSVFormatter(Formatter):
                     ],
                 )
 
-        writer.writerow(header)
+        return header
 
-        # Write data rows
-        for method_name in self.sort_keys(stats, config):
-            stat = stats[method_name]
-            if config.trials == 1:
-                row = [
-                    method_name,
-                    time_unit.convert_seconds(stat["avg"]),
-                ]
-                if config.memory:
-                    row.append(memory_unit.convert_bytes(stat["avg_memory"]))
-            else:
-                row = [
-                    method_name,
-                    time_unit.convert_seconds(stat["avg"]),
-                    time_unit.convert_seconds(stat["min"]),
-                    time_unit.convert_seconds(stat["max"]),
-                ]
-                if config.memory:
-                    row.extend(
-                        [
-                            memory_unit.convert_bytes(stat["avg_memory"]),
-                            memory_unit.convert_bytes(stat["max_memory"]),
-                        ],
-                    )
+    def _create_data_row(
+        self,
+        method_name: str,
+        stat: StatType,
+        config: BenchConfig,
+    ) -> list[str | float]:
+        """Create a data row for the given method."""
+        memory_unit = MemoryUnit.from_config(config)
+        time_unit = TimeUnit.from_config(config)
 
-            writer.writerow(row)
+        if config.trials == 1:
+            row: list[str | float] = [method_name]
+            if config.time:
+                row.append(time_unit.convert_seconds(stat["avg"]))
+            if config.memory:
+                row.append(memory_unit.convert_bytes(stat["avg_memory"]))
+        else:
+            row = [method_name]
+            if config.time:
+                row.extend(
+                    [
+                        time_unit.convert_seconds(stat["avg"]),
+                        time_unit.convert_seconds(stat["min"]),
+                        time_unit.convert_seconds(stat["max"]),
+                    ],
+                )
+            if config.memory:
+                row.extend(
+                    [
+                        memory_unit.convert_bytes(stat["avg_memory"]),
+                        memory_unit.convert_bytes(stat["max_memory"]),
+                    ],
+                )
 
-        return output.getvalue()
+        return row
 
 
 class JSONFormatter(Formatter):
@@ -646,14 +776,16 @@ class JSONFormatter(Formatter):
         """Format results as JSON."""
         memory_unit = MemoryUnit.from_config(config)
         time_unit = TimeUnit.from_config(config)
+        self.shrink_data(results, stats, config)
         output_data: dict[str, Any] = {
             "config": {
                 "trials": config.trials,
+                "time": config.time,
                 "memory": config.memory,
                 "time_unit": str(time_unit),
+                "memory_unit": str(memory_unit),
                 "sort_by": config.sort_by,
                 "reverse": config.reverse,
-                "memory_unit": str(memory_unit),
             },
             "stats": {},
             "results": results,
@@ -663,9 +795,10 @@ class JSONFormatter(Formatter):
             stat = stats[method_name].copy()
 
             # Convert time values to the specified unit
-            for key in ["avg", "min", "max"]:
-                if key in stat:
-                    stat[key] = time_unit.convert_seconds(stat[key])  # type: ignore [literal-required]
+            if config.time:
+                for key in ["avg", "min", "max"]:
+                    if key in stat:
+                        stat[key] = time_unit.convert_seconds(stat[key])  # type: ignore [literal-required]
 
             # Convert memory values to the specified unit
             if config.memory:
@@ -711,25 +844,27 @@ class DataFrameFormatter(Formatter):
 
             # Add stats based on number of trials
             if config.trials == 1:
-                row[f"Time ({time_unit})"] = time_unit.convert_seconds(stat["avg"])
+                if config.time:
+                    row[f"Time ({time_unit})"] = time_unit.convert_seconds(stat["avg"])
                 if config.memory:
                     row[f"Memory ({memory_unit})"] = memory_unit.convert_bytes(
                         stat["avg_memory"],
                     )
             else:
-                row.update(
-                    {
-                        f"Avg Time ({time_unit})": time_unit.convert_seconds(
-                            stat["avg"],
-                        ),
-                        f"Min Time ({time_unit})": time_unit.convert_seconds(
-                            stat["min"],
-                        ),
-                        f"Max Time ({time_unit})": time_unit.convert_seconds(
-                            stat["max"],
-                        ),
-                    },
-                )
+                if config.time:
+                    row.update(
+                        {
+                            f"Avg Time ({time_unit})": time_unit.convert_seconds(
+                                stat["avg"],
+                            ),
+                            f"Min Time ({time_unit})": time_unit.convert_seconds(
+                                stat["min"],
+                            ),
+                            f"Max Time ({time_unit})": time_unit.convert_seconds(
+                                stat["max"],
+                            ),
+                        },
+                    )
                 if config.memory:
                     row.update(
                         {

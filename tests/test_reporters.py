@@ -1660,3 +1660,228 @@ class TestFormatterTimeUnits:
         assert (
             abs(json_data["stats"]["test_func"]["max"] - expected_max) < FLOAT_TOLERANCE
         )
+
+
+class TestFormattersWithTimeDisabled:
+    """Test how formatters behave when time=False is set."""
+
+    def test_table_formatter_with_time_disabled(self) -> None:
+        """Test that TableFormatter correctly handles time=False."""
+        formatter = TableFormatter()
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "memory": [1024, 2048, 3072],
+                # no times key due to time=False
+            },
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg_memory": TEST_AVG_MEMORY * 1024,
+                    "max_memory": TEST_MAX_MEMORY * 1024,
+                },
+                memory=True,
+            ),
+        }
+        config = BenchConfig(trials=3, memory=True, time=False)
+
+        output = formatter.format(results, stats, config)
+
+        # Time columns should not be present
+        assert "Time" not in output
+        assert "Avg Time" not in output
+        assert "Min Time" not in output
+        assert "Max Time" not in output
+
+        # But memory columns should be present
+        assert "Avg Mem (KB)" in output
+        assert "Max Mem (KB)" in output
+        assert "test_func" in output
+
+    def test_csv_formatter_with_time_disabled(self) -> None:
+        """Test that CSVFormatter correctly handles time=False."""
+        formatter = CSVFormatter()
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "memory": [1024, 2048, 3072],
+                # no times key due to time=False
+            },
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg_memory": TEST_AVG_MEMORY * 1024,
+                    "max_memory": TEST_MAX_MEMORY * 1024,
+                },
+                memory=True,
+            ),
+        }
+        config = BenchConfig(trials=3, memory=True, time=False)
+
+        output = formatter.format(results, stats, config)
+
+        # Parse the CSV output
+        reader = csv.reader(io.StringIO(output))
+        headers = next(reader)
+
+        # Check that time-related columns are not present
+        assert "Time (s)" not in headers
+        assert "Avg Time (s)" not in headers
+        assert "Min Time (s)" not in headers
+        assert "Max Time (s)" not in headers
+
+        # But memory columns are present
+        assert "Avg Memory (KB)" in headers
+        assert "Max Memory (KB)" in headers
+
+        # Check that data row exists and contains function name
+        data_row = next(reader)
+        assert data_row[0] == "test_func"
+
+        # Verify memory values exist in the data row
+        assert float(data_row[1]) == TEST_AVG_MEMORY
+        assert float(data_row[2]) == TEST_MAX_MEMORY
+
+    def test_json_formatter_with_time_disabled(self) -> None:
+        """Test that JSONFormatter correctly handles time=False."""
+        formatter = JSONFormatter()
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "memory": [1024, 2048, 3072],
+                # no times key due to time=False
+            },
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg_memory": TEST_AVG_MEMORY * 1024,
+                    "max_memory": TEST_MAX_MEMORY * 1024,
+                },
+                memory=True,
+            ),
+        }
+        config = BenchConfig(trials=3, memory=True, time=False)
+
+        output = formatter.format(results, stats, config)
+        data = json.loads(output)
+
+        # Check that config, stats and results exist
+        assert "config" in data
+        assert "stats" in data
+        assert "results" in data
+
+        # Verify config has time=False
+        assert data["config"]["time"] is False
+
+        # Check that time-related stats are not present for test_func
+        assert "avg" not in data["stats"]["test_func"]
+        assert "min" not in data["stats"]["test_func"]
+        assert "max" not in data["stats"]["test_func"]
+
+        # But memory stats are present
+        assert "avg_memory" in data["stats"]["test_func"]
+        assert "max_memory" in data["stats"]["test_func"]
+        assert data["stats"]["test_func"]["avg_memory"] == TEST_AVG_MEMORY
+        assert data["stats"]["test_func"]["max_memory"] == TEST_MAX_MEMORY
+
+        # Check that results contain memory but not times
+        assert "times" not in data["results"]["test_func"]
+        assert "memory" in data["results"]["test_func"]
+
+    @pytest.mark.skipif(
+        "pandas" not in pytest.importorskip("pandas").__name__,
+        reason="pandas is not installed",
+    )
+    def test_dataframe_formatter_with_time_disabled(self) -> None:
+        """Test that DataFrameFormatter correctly handles time=False."""
+        formatter = DataFrameFormatter()
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "memory": [1024, 2048, 3072],
+                # no times key due to time=False
+            },
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg_memory": TEST_AVG_MEMORY * 1024,
+                    "max_memory": TEST_MAX_MEMORY * 1024,
+                },
+                memory=True,
+            ),
+        }
+        config = BenchConfig(trials=3, memory=True, time=False)
+
+        output = formatter.format(results, stats, config)
+
+        # Check that the result is a DataFrame
+        assert isinstance(output, pd.DataFrame)
+
+        # Verify columns - should not include time columns
+        assert "Time (s)" not in output.columns
+        assert "Avg Time (s)" not in output.columns
+        assert "Min Time (s)" not in output.columns
+        assert "Max Time (s)" not in output.columns
+
+        # But should include memory columns
+        assert "Avg Memory (KB)" in output.columns
+        assert "Max Memory (KB)" in output.columns
+
+        # Check data values
+        assert len(output) == 1
+        assert output["Function"].iloc[0] == "test_func"
+        assert output["Avg Memory (KB)"].iloc[0] == TEST_AVG_MEMORY
+        assert output["Max Memory (KB)"].iloc[0] == TEST_MAX_MEMORY
+
+    def test_simple_formatter_with_time_disabled(self) -> None:
+        """Test that SimpleFormatter correctly handles time=False."""
+        formatter = SimpleFormatter(
+            metric="avg_memory",
+        )  # Use memory metric since time is disabled
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "memory": [1024, 2048, 3072],
+                # no times key due to time=False
+            },
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg_memory": TEST_AVG_MEMORY * 1024,
+                    "max_memory": TEST_MAX_MEMORY * 1024,
+                },
+                memory=True,
+            ),
+        }
+        config = BenchConfig(trials=3, memory=True, time=False)
+
+        output = formatter.format(results, stats, config)
+
+        # Should output the avg_memory value
+        assert output.strip() == str(TEST_AVG_MEMORY)
+
+    def test_simple_formatter_with_custom_format_time_disabled(self) -> None:
+        """Test SimpleFormatter with custom format function when time is disabled."""
+
+        def custom_format(method_name: str, value: float) -> str:
+            return f"{method_name}: {value/1024:.2f} MB"
+
+        formatter = SimpleFormatter(metric="avg_memory", item_format=custom_format)
+        results: dict[str, ResultType] = {
+            "test_func": {
+                "memory": [1024 * 1024, 2048 * 1024],
+                # no times key due to time=False
+            },
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat(
+                {
+                    "avg_memory": 1024 * 1024,  # 1 MB in bytes
+                },
+                memory=True,
+            ),
+        }
+        config = BenchConfig(trials=2, memory=True, time=False)
+
+        output = formatter.format(results, stats, config)
+        assert output.strip() == "test_func: 1.00 MB"

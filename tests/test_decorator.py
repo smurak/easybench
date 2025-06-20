@@ -1198,3 +1198,71 @@ class TestBenchParamsDecorator:
         assert return_values["process_number (Small x Multiply x String)"] == "10"
         # 20 + 1 as string
         assert return_values["process_number (Large x Add x String)"] == "21"
+
+
+class TestBenchDecoratorTimeDisabled:
+    """Tests for the bench decorator with time measurement disabled."""
+
+    def test_bench_decorator_time_disabled(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test that time=False disables time measurement in the output."""
+
+        @bench
+        @bench.config(trials=SINGLE_TRIAL, time=False)
+        def simple_function() -> int:
+            return EXPECTED_VALUE
+
+        simple_function()
+
+        captured = capsys.readouterr()
+        # Time columns should not be present
+        assert "Time" not in captured.out
+        assert "Avg Time" not in captured.out
+        assert "Min Time" not in captured.out
+        assert "Max Time" not in captured.out
+
+    def test_bench_decorator_time_disabled_with_memory(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test that with time=False and memory=True, only memory is measured."""
+
+        @bench
+        @bench.config(trials=SINGLE_TRIAL, time=False, memory=True)
+        def allocate_memory() -> list:
+            # Allocate some memory
+            return [0] * 10000
+
+        allocate_memory()
+
+        captured = capsys.readouterr()
+        # Time columns should not be present
+        assert "Time" not in captured.out
+        # Memory columns should be present
+        assert "Mem" in captured.out or "Memory" in captured.out
+
+    def test_bench_decorator_time_disabled_runtime(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test that runtime benchmarking with time=False works properly."""
+
+        @bench
+        @bench.config(time=False)
+        def runtime_function(size: int) -> list:
+            return [0] * size
+
+        # Use .bench() method with time=False
+        value = 1000
+        runtime_function = cast("BenchmarkableFunction", runtime_function)
+        result = runtime_function.bench(value)
+
+        captured = capsys.readouterr()
+        # Time columns should not be present
+        assert "Time" not in captured.out
+        assert "Avg Time" not in captured.out
+        # But function should still return correctly
+        assert isinstance(result, list)
+        assert len(result) == value

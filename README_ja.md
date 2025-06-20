@@ -538,6 +538,8 @@ class MyBenchmark(EasyBench):
 - `"GB"`: ギガバイト単位でメモリ使用量を表示
 
 時間測定オプション（`time`）：
+- `False`: 実行時間の結果を表示しない
+- `True`: 実行時間の結果を秒単位で表示
 - `"s"`: 秒単位で表示 (デフォルト)
 - `"ms"`: ミリ秒単位で表示
 - `"μs"` or `"us"`: マイクロ秒単位で表示
@@ -641,7 +643,7 @@ easybench [オプション] [パス]
 #### コマンドオプション
 
 ```bash
-easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [--progress] [--include PATTERN] [--exclude PATTERN] [--include-files PATTERN] [--exclude-files PATTERN] [パス]
+easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [--progress] [--include PATTERN] [--exclude PATTERN] [--include-files PATTERN] [--exclude-files PATTERN] [--no-time] [パス]
 ```
 
 - `--trials N`: 試行回数 (デフォルト: 5)
@@ -660,6 +662,7 @@ easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-
 - `--exclude PATTERN`: 指定した正規表現パターンに一致するベンチマーク関数を実行から除外
 - `--include-files PATTERN`: 指定した正規表現パターンに一致するベンチマークファイルのみを実行
 - `--exclude-files PATTERN`: 指定した正規表現パターンに一致するベンチマークファイルを実行から除外
+- `--no-time` 実行時間の結果を表示しない
 - `パス`: ベンチマークファイルを含むディレクトリまたは特定のベンチマークファイル (デフォルト: "benchmarks")
 
 #### 関数ベースのベンチマーク例
