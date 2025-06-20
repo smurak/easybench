@@ -640,9 +640,9 @@ easybench [options] [path]
 
 * By default, it runs files named `bench_*.py` in the `benchmarks` directory
 * You can specify either a directory containing benchmark files or a specific benchmark file
-* Benchmark scripts must follow these rules:
-  * For class-based benchmarks, class names should start with `Bench`
-  * For function-based benchmarks, function names should start with `bench_`
+* Your benchmark scripts need to follow these conventions:
+  * Class-based benchmarks: Any class that inherits from the `EasyBench` base class will be automatically detected and included
+  * Function-based benchmarks: Functions whose names begin with `bench_` will be recognized as benchmark functions
 
 #### Command Options
 
