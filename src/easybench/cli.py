@@ -115,9 +115,9 @@ def discover_benchmarks(
     }
 
     # Find all benchmark classes
-    # (ones that inherit from EasyBench and start with 'Bench')
+    # (ones that inherit from EasyBench)
     for name, obj in inspect.getmembers(module, inspect.isclass):
-        if name.startswith("Bench") and issubclass(obj, EasyBench) and obj != EasyBench:
+        if issubclass(obj, EasyBench) and obj != EasyBench:
             try:
                 # Create an instance of the benchmark class
                 benchmarks[name] = obj()
