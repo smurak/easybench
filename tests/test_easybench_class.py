@@ -1179,6 +1179,182 @@ class TestEasyBenchConfig:
         captured3 = capsys.readouterr()
         assert "Time (s)" in captured3.out or "Avg Time (s)" in captured3.out
 
+    def test_disable_time_measurement(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that time=False disables time measurement in the output."""
+
+        class NoTimeBench(EasyBench):
+            def bench_test(self) -> None:
+                time.sleep(0.001)  # Sleep for 1ms
+
+        # Test with time=False
+        bench = NoTimeBench()
+        bench.bench(config=PartialBenchConfig(time=False, memory=True))
+
+        captured = capsys.readouterr()
+        # Time columns should not be present
+        assert "Time (s)" not in captured.out
+        assert "Avg Time (s)" not in captured.out
+        assert "Min Time (s)" not in captured.out
+        assert "Max Time (s)" not in captured.out
+        # But memory columns should be present since memory=True
+        assert "Mem (KB)" in captured.out or "Avg Mem (KB)" in captured.out
+
+    def test_time_auto_enable_with_sort(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that time measurement is auto-enabled when sorting by time metrics."""
+
+        class SortTimeBench(EasyBench):
+            def bench_test1(self) -> None:
+                time.sleep(0.001)  # Sleep for 1ms
+
+            def bench_test2(self) -> None:
+                time.sleep(0.002)  # Sleep for 2ms
+
+        # Sort by avg time but with time=False
+        # System should auto-enable time measurement
+        # since the sort criterion requires it
+        bench = SortTimeBench()
+        bench.bench(config=PartialBenchConfig(time=False, sort_by="avg"))
+
+        captured = capsys.readouterr()
+        # Time columns should be present despite time=False because of sort_by="avg"
+        assert "Time (s)" in captured.out or "Avg Time (s)" in captured.out
+
+    def test_combined_time_memory_settings(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test various combinations of time and memory measurement settings."""
+
+        class ComboBench(EasyBench):
+            def bench_test(self) -> None:
+                time.sleep(0.001)  # Sleep for 1ms
+                # Also allocate some memory
+                _ = [0] * 10000
+
+        # Test 1: time=False, memory=True
+        bench1 = ComboBench()
+        bench1.bench(config=PartialBenchConfig(time=False, memory=True))
+
+        captured1 = capsys.readouterr()
+        assert "Time" not in captured1.out
+        assert "Mem" in captured1.out
+
+        # Test 2: time=True, memory=False
+        bench2 = ComboBench()
+        bench2.bench(config=PartialBenchConfig(time=True, memory=False))
+
+        captured2 = capsys.readouterr()
+        assert "Time" in captured2.out
+        assert "Mem" not in captured2.out
+
+    def test_time_disabled_with_different_reporters(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that time=False works with different reporters."""
+
+        class MultiReporterBench(EasyBench):
+            def bench_test(self) -> None:
+                pass
+
+        # Test with both console and simple reporters
+        bench = MultiReporterBench()
+        bench.bench(
+            config=PartialBenchConfig(
+                time=False,
+                memory=True,
+                reporters=["console", "simple"],  # type: ignore [list-item]
+            ),
+        )
+
+        captured = capsys.readouterr()
+        # Time columns should not be present in either report
+        assert "Time" not in captured.out
+        assert "Avg Time" not in captured.out
+        # But memory columns should be present
+        assert "Mem" in captured.out or "Memory" in captured.out
+
+    def test_time_disabled_with_warmups(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that warmups work correctly when time=False."""
+        warmup_count = 0
+
+        class WarmupBench(EasyBench):
+            def bench_test(self) -> None:
+                nonlocal warmup_count
+                warmup_count += 1
+
+        # Use a high number of warmups but time=False
+        bench = WarmupBench()
+        bench.bench(config=PartialBenchConfig(warmups=5, trials=3, time=False))
+
+        captured = capsys.readouterr()
+        # Time columns should not be present
+        assert "Time" not in captured.out
+        # But warmups should still have executed (plus actual trials)
+        assert warmup_count == 5 + 3  # 5 warmups + 3 trials
+
+    def test_time_disabled_with_parametrize(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that parametrized benchmarks work when time=False."""
+
+        class ParamBench(EasyBench):
+            small = BenchParams(name="Small", params={"size": 10})
+            large = BenchParams(name="Large", params={"size": 100})
+
+            @parametrize([small, large])
+            def bench_create_list(self, size: int) -> list:
+                return list(range(size))
+
+        # Run with time=False
+        bench = ParamBench()
+        bench.bench(config=PartialBenchConfig(time=False, memory=True))
+
+        captured = capsys.readouterr()
+        # Time columns should not be present
+        assert "Time" not in captured.out
+        # But both parameter sets should be present
+        assert "Small" in captured.out
+        assert "Large" in captured.out
+        # And memory columns should be present
+        assert "Mem" in captured.out or "Memory" in captured.out
+
+    def test_time_disabled_with_loops_per_trial(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that loops_per_trial works correctly when time=False."""
+        loop_count = 0
+
+        class LoopBench(EasyBench):
+            def bench_test(self) -> None:
+                nonlocal loop_count
+                loop_count += 1
+
+        # Use loops_per_trial but with time=False
+        bench = LoopBench()
+        bench.bench(
+            config=PartialBenchConfig(
+                loops_per_trial=5,
+                trials=2,
+                time=False,
+                memory=True,
+            ),
+        )
+
+        captured = capsys.readouterr()
+        # Time columns should not be present
+        assert "Time" not in captured.out
+        # But loops should still have executed
+        assert loop_count == 5 * 2  # 5 loops * 2 trials
+
     def test_us_alternative_for_microseconds(
         self,
         capsys: pytest.CaptureFixture[str],
@@ -2740,3 +2916,159 @@ class TestEasyBenchMethodFiltering:
         assert "hex:0x14" in return_values["bench_operation (Small x Multiply x Hex)"]
         assert return_values["bench_operation (Large x Add x String)"] == "str:101"
         assert "hex:0xc8" in return_values["bench_operation (Large x Multiply x Hex)"]
+
+
+class TestTimeOverrideScenarios:
+    """Tests for scenarios where time measurement might be overridden."""
+
+    def test_time_false_with_time_sort(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test behavior when time=False but sort_by requires time measurement."""
+
+        class SortTimeBench(EasyBench):
+            def bench_fast(self) -> None:
+                pass
+
+            def bench_slow(self) -> None:
+                time.sleep(0.001)
+
+        # Sort by avg time but with time=False
+        # System should auto-enable time measurement to allow sorting
+        bench = SortTimeBench()
+        bench.bench(config=PartialBenchConfig(time=False, sort_by="avg"))
+
+        captured = capsys.readouterr()
+        # Time columns should be present despite time=False because of sort_by="avg"
+        assert "Time" in captured.out or "Avg Time" in captured.out
+
+
+class TestTimeDisabledAdvanced:
+    """Advanced tests for time=False functionality in EasyBench."""
+
+    def test_time_disabled_with_different_memory_units(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that time=False works with different memory units."""
+
+        class MemoryUnitsBench(EasyBench):
+            def bench_allocate(self) -> list:
+                # Allocate some memory
+                return [0] * 1_000_000
+
+        memory_units = ["B", "KB", "MB", "GB"]
+        for unit in memory_units:
+            bench = MemoryUnitsBench()
+            bench.bench(config=PartialBenchConfig(time=False, memory=unit))
+
+            captured = capsys.readouterr()
+            # Time columns should not be present
+            assert "Time" not in captured.out
+            assert "Avg Time" not in captured.out
+            # Memory should be present with the correct unit
+            assert (
+                f"Mem ({unit})" in captured.out or f"Avg Mem ({unit})" in captured.out
+            )
+
+    def test_time_disabled_with_show_output(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that time=False works with show_output=True."""
+
+        class OutputBench(EasyBench):
+            def bench_return_value(self) -> str:
+                return "Hello, World!"
+
+        bench = OutputBench()
+        bench.bench(config=PartialBenchConfig(time=False, show_output=True))
+
+        captured = capsys.readouterr()
+        # Time columns should not be present
+        assert "Time" not in captured.out
+        assert "Avg Time" not in captured.out
+        # But output should be shown
+        assert "Hello, World!" in captured.out
+
+    def test_time_disabled_with_multiple_configurations(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test time=False with multiple other configuration options."""
+
+        class ComplexBench(EasyBench):
+            def bench_test1(self) -> list:
+                time.sleep(0.001)  # Small sleep
+                return [0] * 100_000
+
+            def bench_test2(self) -> list:
+                time.sleep(0.002)  # Longer sleep
+                return [0] * 200_000
+
+        bench = ComplexBench()
+        bench.bench(
+            config=PartialBenchConfig(
+                time=False,  # Disable time
+                memory="MB",  # Memory in MB
+                loops_per_trial=10,  # Multiple loops
+                warmups=2,  # With warmups
+                show_output=True,  # Show return value
+                sort_by="avg_memory",  # Sort by memory since time is disabled
+                reverse=True,  # Reverse sort
+            ),
+        )
+
+        captured = capsys.readouterr()
+        # Time columns should not be present
+        assert "Time" not in captured.out
+        assert "Avg Time" not in captured.out
+        # But all other features should work
+        assert "MB" in captured.out  # Memory unit
+        assert "[0" in captured.out  # Output showing
+
+        # Check sorting by memory (test2 uses more memory so should be first)
+        bench_test2_index = -1
+        bench_test1_index = -1
+        lines = captured.out.strip().split("\n")
+
+        for i, line in enumerate(lines):
+            if "bench_test2" in line:
+                bench_test2_index = i
+            elif "bench_test1" in line:
+                bench_test1_index = i
+
+        assert bench_test2_index >= 0, "Benchmark functions not found in output"
+        assert bench_test1_index >= 0, "Benchmark functions not found in output"
+        assert (
+            bench_test2_index < bench_test1_index
+        ), "Results not sorted correctly by memory usage"
+
+    def test_both_time_and_memory_disabled(self) -> None:
+        """Test that an error is raised when both time and memory are disabled."""
+        # Test PartialBenchConfig
+        with pytest.raises(
+            ValueError,
+            match="At least one of 'time' or 'memory' must be enabled",
+        ):
+            PartialBenchConfig(time=False, memory=False)
+        
+        # Test BenchConfig
+        with pytest.raises(
+            ValueError,
+            match="At least one of 'time' or 'memory' must be enabled",
+        ):
+            BenchConfig(time=False, memory=False)
+
+        # Test with EasyBench class
+        class InvalidBench(EasyBench):
+            def bench_test(self) -> None:
+                pass
+
+        bench = InvalidBench()
+        with pytest.raises(
+            ValueError,
+            match="At least one of 'time' or 'memory' must be enabled",
+        ):
+            bench.bench(config=PartialBenchConfig(time=False, memory=False))

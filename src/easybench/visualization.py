@@ -192,7 +192,7 @@ class DistributionPlotFormatter(PlotFormatter):
             time_unit = TimeUnit.from_config(config)
 
             # Create figure and axes based on memory tracking
-            if config.memory:
+            if config.time and config.memory:
                 # Create a figure with two subplots when memory tracking is enabled
                 fig, (ax_time, ax_mem) = plt.subplots(
                     2,
@@ -221,19 +221,24 @@ class DistributionPlotFormatter(PlotFormatter):
             else:
                 # Original behavior for timing-only plots
                 fig, ax = plt.subplots(figsize=self.figsize)
-                box_data = [time_data[method] for method in labels]
-                if self.engine == "seaborn":
-                    self._create_seaborn_plot(ax, box_data, labels)
-                else:
-                    self._create_matplotlib_plot(ax, box_data, labels)
 
-                # Apply styling with time unit
-                self._apply_styling(
-                    ax,
-                    config,
-                    labels,
-                    unit=str(time_unit),
-                )
+                if config.time:
+                    box_data = [time_data[method] for method in labels]
+                    if self.engine == "seaborn":
+                        self._create_seaborn_plot(ax, box_data, labels)
+                    else:
+                        self._create_matplotlib_plot(ax, box_data, labels)
+
+                    # Apply styling with time unit
+                    self._apply_styling(
+                        ax,
+                        config,
+                        labels,
+                        unit=str(time_unit),
+                    )
+
+                if config.memory:
+                    self._process_memory_subplot(ax, results, config, labels)
 
             plt.tight_layout()
             return fig
@@ -288,6 +293,10 @@ class DistributionPlotFormatter(PlotFormatter):
 
         # Sort method names according to configuration
         sorted_methods = self.sort_keys(stats, config)
+
+        if not config.time:
+            labels = [name for name in sorted_methods if "memory" in results[name]]
+            return data, labels
 
         # Extract time data without processing if no outlier handling is needed
         if self.trim_outliers is None and self.winsorize_outliers is None:
@@ -854,7 +863,7 @@ class LinePlotFormatter(PlotFormatter):
             time_unit = TimeUnit.from_config(config)
 
             # Create figure and axes based on memory tracking
-            if config.memory:
+            if config.time and config.memory:
                 fig, (ax_time, ax_mem) = plt.subplots(
                     2,
                     1,
@@ -878,18 +887,21 @@ class LinePlotFormatter(PlotFormatter):
                 self._process_memory_subplot(ax_mem, results, config, sorted_methods)
             else:
                 # Single plot for time data only
-                fig, ax_time = plt.subplots(figsize=self.figsize)
+                fig, ax = plt.subplots(figsize=self.figsize)
 
-                # Create time plot using appropriate engine
-                self._create_time_plot(ax_time, time_data, sorted_methods)
+                if config.time:
+                    # Create time plot using appropriate engine
+                    self._create_time_plot(ax, time_data, sorted_methods)
+                    # Apply styling to time plot
+                    self._apply_styling(
+                        ax,
+                        config,
+                        unit=str(time_unit),
+                        show_legend=True,
+                    )
 
-                # Apply styling to time plot
-                self._apply_styling(
-                    ax_time,
-                    config,
-                    unit=str(time_unit),
-                    show_legend=True,
-                )
+                if config.memory:
+                    self._process_memory_subplot(ax, results, config, sorted_methods)
 
             plt.tight_layout()
             return fig

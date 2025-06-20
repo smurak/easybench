@@ -409,7 +409,7 @@ class BenchDecorator:
         sort_by: SortType | None = None,
         reverse: bool | None = None,
         memory: bool | MemoryUnit | str | None = None,
-        time: TimeUnit | str | None = None,
+        time: bool | TimeUnit | str | None = None,
         color: bool | None = None,
         show_output: bool | None = None,
         reporters: list[Reporter] | None = None,
