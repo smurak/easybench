@@ -3053,7 +3053,7 @@ class TestTimeDisabledAdvanced:
             match="At least one of 'time' or 'memory' must be enabled",
         ):
             PartialBenchConfig(time=False, memory=False)
-        
+
         # Test BenchConfig
         with pytest.raises(
             ValueError,
