@@ -1,7 +1,7 @@
 # EasyBench
 
 [![Tests](https://github.com/smurak/easybench/actions/workflows/test.yml/badge.svg)](https://github.com/smurak/easybench/actions)
-[![Docs](https://readthedocs.org/projects/easybench/badge/?version=latest)](https://easybench.readthedocs.io/)
+[![Docs](https://readthedocs.org/projects/easybench-ja/badge/?version=latest)](https://easybench.readthedocs.io/ja/)
 [![PyPI version](https://badge.fury.io/py/easybench.svg)](https://pypi.org/project/easybench/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
