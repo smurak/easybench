@@ -8,7 +8,7 @@ from .core import BenchConfig, BenchParams, EasyBench, customize, fixture, param
 from .decorator import bench
 from .utils import get_bench_env
 
-__version__ = "0.1.27"
+__version__ = "0.1.28"
 
 __all__ = [
     "BenchConfig",
