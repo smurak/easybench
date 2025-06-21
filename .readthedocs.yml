@@ -14,3 +14,15 @@ python:
       path: .
       extra_requirements:
         - docs
+
+languages:
+  en:
+    path: /en/
+    build:
+      mkdocs:
+        configuration: mkdocs.yml
+  ja:
+    path: /ja/
+    build:
+      mkdocs:
+        configuration: mkdocs.ja.yml

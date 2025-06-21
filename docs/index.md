@@ -5,7 +5,7 @@ A simple and easy-to-use Python benchmarking library.
 ## Features
 
 - Three flexible benchmarking styles (decorator, class-based, and command-line)
-- Measure both execution time and estimated memory usage ([see limitations](usage.md#memory-measurement-limitations))
+- Measure both execution time and estimated memory usage ([see limitations](usage/class-based.md#memory-measurement-limitations))
 - Visualization of benchmark results as boxplots for analyzing distribution and outliers
 - Parametrized benchmarks to compare the same function with different input sizes
 - A pytest-like fixture system for easy test data setup
