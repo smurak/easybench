@@ -158,3 +158,17 @@ There are 3 ways to benchmark with `easybench`:
 ## Usage
 
 For detailed usage instructions, please refer to the [**documentation**](https://easybench.readthedocs.io/).
+
+## Memory Measurement Limitations
+
+EasyBench uses Python's built-in `tracemalloc` module to measure memory usage.  
+This has some important limitations:
+
+- `tracemalloc` only tracks memory allocations made through Python's memory manager
+- Memory allocated by C extensions (like NumPy, Pandas, or other native libraries) often bypasses Python's memory manager and won't be accurately measured
+- The reported memory usage reflects Python objects only, not the total process memory consumption
+For applications heavily using C extensions, consider using external profilers like `memory_profiler` or system monitoring tools for more accurate measurements.
+
+## License
+
+[MIT](https://github.com/smurak/easybench/blob/main/LICENSE)
