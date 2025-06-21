@@ -4,23 +4,25 @@ site_url: https://easybench.readthedocs.io/
 repo_name: smurak/easybench
 repo_url: https://github.com/smurak/easybench
 
+docs_dir: docs/ja
+
 theme:
   name: material
-  language: en
+  language: ja
 
 plugins:
   - search
   - mkdocstrings
 
 nav:
-  - Home: index.md
-  - Quick Start: quickstart.md
-  - Usage:
-    - Decorator-based Benchmarks: usage/decorator-based.md
-    - Class-based Benchmarks: usage/class-based.md
-    - Command Line Interface: usage/command-line.md
-  - Advanced Usage: advanced.md
-  - Reference:
+  - ホーム: index.md
+  - クイックスタート: quickstart.md
+  - 使用方法:
+    - デコレータベースのベンチマーク: usage/decorator-based.md
+    - クラスベースのベンチマーク: usage/class-based.md
+    - コマンドライン インターフェース: usage/command-line.md
+  - 高度な使用方法: advanced.md
+  - リファレンス:
     - CLI: reference/cli.md
     - Core: reference/core.md
     - Decorator: reference/decorator.md
@@ -35,12 +37,9 @@ markdown_extensions:
 
 extra:
   alternate:
-    - name: English
-      link: /
-      lang: en
     - name: Japanese
       link: /ja/
       lang: ja
-
-exclude_docs: |
-  ja/
+    - name: English
+      link: /
+      lang: en

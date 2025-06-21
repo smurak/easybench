@@ -13,38 +13,39 @@ To use reporters, set them as a list in the `reporters` parameter of your benchm
 There are three ways to specify reporters:
 
 1. **As a string**: Specify the reporter name as a string
-   - `"console"`: Standard tabular console output
-   - `"simple"`: Simple console output
-   - `"boxplot"`: Visualization with boxplot
-   - `"violinplot"`: Visualization with violinplot
-   - `"boxplot-sns"`: Visualization with seaborn-styled boxplot
-   - `"violinplot-sns"`: Visualization with seaborn-styled violinplot
-   - `"lineplot"`: Visualization with lineplot
-   - `"lineplot-sns"`: Visualization with seaborn-styled lineplot
-   - `"*.csv"` or `"*.json"`: File output
+     - `"console"`: Standard tabular console output
+     - `"simple"`: Simple console output
+     - `"boxplot"`: Visualization with boxplot
+     - `"violinplot"`: Visualization with violinplot
+     - `"boxplot-sns"`: Visualization with seaborn-styled boxplot
+     - `"violinplot-sns"`: Visualization with seaborn-styled violinplot
+     - `"lineplot"`: Visualization with lineplot
+     - `"lineplot-sns"`: Visualization with seaborn-styled lineplot
+     - `"*.csv"` or `"*.json"`: File output
 
 2. **With arguments**: Specify in the format `(reporter_name, parameter_dict)`
 
 3. **As Reporter objects**: Directly specify an instance of a Reporter class
 
-* Usage example
 
-    ```python
-    from easybench import BenchConfig
-    from easybench.reporters import FileReporter
-    
-    # Multiple output formats with different specification methods
-    config = BenchConfig(
-        memory="MB",                            # Show memory usage in megabytes
-        reporters=[
-            "console",                          # Specified as string
-            ("simple", {"metric": "min"}),      # Specified with arguments
-            ("boxplot", {"log_scale": False}),  # Plot with arguments
-            "results.csv",                      # Specified as file path
-            FileReporter("results.json"),       # Specified as object
-        ]
-    )
-    ```
+Usage example:
+
+```python
+from easybench import BenchConfig
+from easybench.reporters import FileReporter
+
+# Multiple output formats with different specification methods
+config = BenchConfig(
+    ...
+    reporters=[
+        "console",                          # Specified as string
+        ("simple", {"metric": "min"}),      # Specified with arguments
+        ("boxplot", {"log_scale": False}),  # Plot with arguments
+        "results.csv",                      # Specified as file path
+        FileReporter("results.json"),       # Specified as object
+    ]
+)
+```
 
 ### Creating Custom Reporters
 
