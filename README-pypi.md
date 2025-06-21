@@ -171,4 +171,4 @@ For applications heavily using C extensions, consider using external profilers l
 
 ## License
 
-[MIT](./LICENSE)
+[MIT](https://github.com/smurak/easybench/blob/main/LICENSE)
