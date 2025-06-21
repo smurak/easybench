@@ -1,7 +1,7 @@
 # EasyBench
 
 [![Tests](https://github.com/smurak/easybench/actions/workflows/test.yml/badge.svg)](https://github.com/smurak/easybench/actions)
-[![Docs](https://readthedocs.org/projects/easybench/badge/?version=latest)](https://easybench.readthedocs.io/)
+[![Docs](https://readthedocs.org/projects/easybench-ja/badge/?version=latest)](https://easybench.readthedocs.io/ja/)
 [![PyPI version](https://badge.fury.io/py/easybench.svg)](https://pypi.org/project/easybench/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -9,7 +9,7 @@
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-[**ドキュメント**](https://easybench.readthedocs.io/)
+[**ドキュメント**](https://easybench.readthedocs.io/ja/)
 
 シンプルで使いやすいPythonベンチマークライブラリ。
 
