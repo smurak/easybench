@@ -22,6 +22,8 @@ Reporterを指定する3つの方法があります：
     - `"violinlot-sns"`: seabornスタイルのバイオリンプロットによる可視化
     - `"lineplot"`: ラインプロットによる可視化
     - `"lineplot-sns"`: seabornスタイルのラインプロットによる可視化
+    - `"histplot"`: ヒストプロット(ヒストグラム)による可視化
+    - `"histplot-sns"`: seabornスタイルのヒストプロットによる可視化
     - `"*.csv"` または `"*.json"`: ファイル出力
 
 2. **引数付きで指定**：`(reporter_name, parameter_dict)`の形式で指定

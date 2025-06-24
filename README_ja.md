@@ -158,6 +158,10 @@ pip install easybench[all]
 
   ![Lineplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_lineplot.png)
 
+* ヒストグラムによる可視化
+
+  ![Histplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_histplot.png)
+
 ## 使用方法
 
 詳細な使用方法については、[**ドキュメント**](https://easybench.readthedocs.io/ja/)を参照してください。

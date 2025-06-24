@@ -793,6 +793,312 @@ class ViolinPlotFormatter(DistributionPlotFormatter):
         )
 
 
+class HistPlotFormatter(PlotFormatter):
+    """
+    Format benchmark results as histograms showing time/memory distribution.
+
+    This formatter creates histograms visualizing the distribution of execution times
+    (and optionally memory usage), which is useful for analyzing performance variations.
+    """
+
+    def __init__(
+        self,
+        bins: int | str = "auto",
+        log_scale: bool = False,
+        data_limit: tuple[float, float] | None = None,
+        figsize: tuple[int, int] = (10, 6),
+        engine: Literal["matplotlib", "seaborn"] = "matplotlib",
+        sns_theme: dict[str, Any] | None = None,
+        **hist_kwargs: object,
+    ) -> None:
+        """
+        Initialize HistPlotFormatter.
+
+        Args:
+            bins: Number of bins or binning strategy (default: "auto")
+            log_scale: Whether to use logarithmic scale for x-axis (default: False)
+            data_limit: Optional tuple of (min, max) for data axis limits
+            figsize: Figure size (default: (10, 6))
+            engine: Plotting backend to use ('matplotlib' or 'seaborn')
+            sns_theme: Optional dictionary of seaborn theme parameters
+            **hist_kwargs: Additional keyword arguments for histogram function
+
+        """
+        self.bins = bins
+        self.log_scale = log_scale
+        self.data_limit = data_limit
+        self.figsize = figsize
+        self.hist_kwargs = hist_kwargs
+
+        # Handle seaborn engine and theme relationship
+        self.engine, self.sns_theme = _handle_seaborn_engine_and_theme(
+            engine,
+            sns_theme,
+        )
+
+    def format(
+        self,
+        results: ResultsType,
+        stats: StatsType,
+        config: BenchConfig,
+    ) -> Figure:
+        """
+        Format benchmark results as a histogram.
+
+        Args:
+            results: Dictionary mapping benchmark names to result data
+            stats: Dictionary of calculated statistics
+            config: Benchmark configuration
+
+        Returns:
+            Matplotlib Figure object containing the visualization
+
+        """
+        # Apply seaborn theme if needed
+        with (
+            set_seaborn_theme(self.sns_theme)
+            if self.engine == "seaborn"
+            else contextlib.nullcontext()
+        ):
+            # Sort method names according to configuration
+            sorted_methods = self.sort_keys(stats, config)
+
+            # Extract and preprocess time data
+            time_data = self._preprocess_data(results, sorted_methods, config)
+            time_unit = TimeUnit.from_config(config)
+
+            # Create figure and axes based on memory tracking
+            if config.time and config.memory:
+                fig, (ax_time, ax_mem) = plt.subplots(
+                    2,
+                    1,
+                    figsize=(self.figsize[0], self.figsize[1] * 1.8),
+                )
+
+                # Create time histogram
+                self._create_time_histogram(ax_time, time_data, sorted_methods)
+
+                # Apply styling to time plot
+                self._apply_styling(
+                    ax_time,
+                    config,
+                    title_suffix="",
+                    unit=str(time_unit),
+                    show_legend=True,
+                )
+
+                # Create memory histogram
+                self._process_memory_subplot(ax_mem, results, config, sorted_methods)
+            else:
+                # Single plot for time data or memory data only
+                fig, ax = plt.subplots(figsize=self.figsize)
+
+                if config.time:
+                    # Create time histogram
+                    self._create_time_histogram(ax, time_data, sorted_methods)
+                    # Apply styling to time plot
+                    self._apply_styling(
+                        ax,
+                        config,
+                        unit=str(time_unit),
+                        show_legend=True,
+                    )
+
+                if config.memory and not config.time:
+                    # Memory-only plot
+                    self._process_memory_subplot(ax, results, config, sorted_methods)
+
+            plt.tight_layout()
+            return fig
+
+    def _preprocess_data(
+        self,
+        results: ResultsType,
+        sorted_methods: list[str],
+        config: BenchConfig,
+    ) -> dict[str, list[float]]:
+        """Extract and preprocess benchmark time data."""
+        time_data: dict[str, list[float]] = {}
+        time_unit = TimeUnit.from_config(config)
+
+        for method_name in sorted_methods:
+            if "times" in results[method_name]:
+                times = [
+                    time_unit.convert_seconds(t) for t in results[method_name]["times"]
+                ]
+                time_data[method_name] = times
+
+        return time_data
+
+    def _preprocess_memory_data(
+        self,
+        results: ResultsType,
+        sorted_methods: list[str],
+        config: BenchConfig,
+    ) -> dict[str, list[float]]:
+        """Extract and preprocess benchmark memory data."""
+        memory_data: dict[str, list[float]] = {}
+        memory_unit = MemoryUnit.from_config(config)
+
+        for method_name in sorted_methods:
+            if "memory" in results[method_name]:
+                memory_values = [
+                    memory_unit.convert_bytes(m) for m in results[method_name]["memory"]
+                ]
+                memory_data[method_name] = memory_values
+
+        return memory_data
+
+    def _create_time_histogram(
+        self,
+        ax: plt.Axes,
+        time_data: dict[str, list[float]],
+        sorted_methods: list[str],
+    ) -> None:
+        """Create histogram of time data using the selected engine."""
+        for method_name in sorted_methods:
+            if method_name in time_data:
+                times = time_data[method_name]
+                if self.engine == "seaborn":
+                    self._create_seaborn_histogram(ax, times, method_name)
+                else:
+                    self._create_matplotlib_histogram(ax, times, method_name)
+
+    def _create_matplotlib_histogram(
+        self,
+        ax: plt.Axes,
+        values: list[float],
+        label: str,
+    ) -> None:
+        """Create a histogram using matplotlib."""
+        ax.hist(
+            values,
+            bins=self.bins,
+            label=label,
+            **{
+                "alpha": 0.7,
+                **self.hist_kwargs,
+            },  # type: ignore[arg-type]
+        )
+
+    def _create_seaborn_histogram(
+        self,
+        ax: plt.Axes,
+        values: list[float],
+        label: str,
+    ) -> None:
+        """Create a histogram using seaborn."""
+        try:
+            import seaborn as sns  # noqa: PLC0415
+        except ImportError as err:
+            error_msg = (
+                "seaborn is required for seaborn engine. "
+                "Install with pip install seaborn."
+            )
+            raise ImportError(error_msg) from err
+
+        # Use seaborn's histplot for better styling
+        sns.histplot(
+            values,
+            bins=self.bins,
+            label=label,
+            ax=ax,
+            alpha=0.7,  # Some transparency for overlapping histograms
+            **self.hist_kwargs,  # type: ignore[arg-type]
+        )
+
+    def _process_memory_subplot(
+        self,
+        ax: plt.Axes,
+        results: ResultsType,
+        config: BenchConfig,
+        sorted_methods: list[str],
+    ) -> None:
+        """
+        Process and create memory usage histogram.
+
+        Args:
+            ax: The matplotlib axes for the memory subplot
+            results: Dictionary mapping benchmark names to result data
+            config: Benchmark configuration
+            sorted_methods: List of method names to include
+
+        """
+        # Extract memory data
+        memory_data = self._preprocess_memory_data(results, sorted_methods, config)
+        memory_unit = MemoryUnit.from_config(config)
+
+        # Plot memory data for each method
+        for method_name in sorted_methods:
+            if method_name in memory_data:
+                memory_values = memory_data[method_name]
+                if self.engine == "seaborn":
+                    self._create_seaborn_histogram(
+                        ax,
+                        memory_values,
+                        method_name,
+                    )
+                else:
+                    self._create_matplotlib_histogram(
+                        ax,
+                        memory_values,
+                        method_name,
+                    )
+
+        # Apply styling to memory plot
+        self._apply_styling(
+            ax,
+            config,
+            title_suffix="Memory Usage",
+            unit=str(memory_unit),
+            show_legend=True,
+        )
+
+    def _apply_styling(
+        self,
+        ax: plt.Axes,
+        config: BenchConfig,
+        title_suffix: str = "",
+        unit: str = "s",
+        show_legend: bool = False,
+    ) -> None:
+        """Apply common styling to the plot."""
+        # Apply log scale if configured
+        if self.log_scale:
+            ax.set_xscale("log")
+
+        # Set the plot title
+        title = self._get_plot_title(config.trials, title_suffix)
+        ax.set_title(title)
+
+        # Set axis labels based on unit type
+        self._set_axis_labels(ax, unit)
+
+        # Set axis limits if provided
+        if self.data_limit is not None:
+            ax.set_xlim(self.data_limit)
+
+        # Show legend if requested
+        if show_legend:
+            ax.legend()
+
+    def _get_plot_title(self, trials: int, title_suffix: str = "") -> str:
+        """Generate the plot title."""
+        base_title = f"Benchmark Results ({trials} trials)"
+        if title_suffix:
+            return f"{title_suffix} {base_title}"
+        return base_title
+
+    def _set_axis_labels(self, ax: plt.Axes, unit: str) -> None:
+        """Set appropriate axis labels based on measurement type."""
+        if any(unit == item.value for item in TimeUnit):
+            ax.set_xlabel(f"Time ({unit})")
+        else:
+            ax.set_xlabel(f"Memory Usage ({unit})")
+
+        ax.set_ylabel("Frequency")
+
+
 class LinePlotFormatter(PlotFormatter):
     """
     Format benchmark results as a line plot showing time/memory across trials.

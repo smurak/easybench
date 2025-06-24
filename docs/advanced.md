@@ -13,15 +13,18 @@ To use reporters, set them as a list in the `reporters` parameter of your benchm
 There are three ways to specify reporters:
 
 1. **As a string**: Specify the reporter name as a string
-     - `"console"`: Standard tabular console output
-     - `"simple"`: Simple console output
-     - `"boxplot"`: Visualization with boxplot
-     - `"violinplot"`: Visualization with violinplot
-     - `"boxplot-sns"`: Visualization with seaborn-styled boxplot
-     - `"violinplot-sns"`: Visualization with seaborn-styled violinplot
-     - `"lineplot"`: Visualization with lineplot
-     - `"lineplot-sns"`: Visualization with seaborn-styled lineplot
-     - `"*.csv"` or `"*.json"`: File output
+
+    - `"console"`: Standard tabular console output
+    - `"simple"`: Simple console output
+    - `"boxplot"`: Visualization with boxplot
+    - `"violinplot"`: Visualization with violinplot
+    - `"boxplot-sns"`: Visualization with seaborn-styled boxplot
+    - `"violinplot-sns"`: Visualization with seaborn-styled violinplot
+    - `"lineplot"`: Visualization with lineplot
+    - `"lineplot-sns"`: Visualization with seaborn-styled lineplot
+    - `"histplot"`: Visualization with histplot (histogram)
+    - `"histplot-sns"`: Visualization with seaborn-styled histplot
+    - `"*.csv"` or `"*.json"`: File output
 
 2. **With arguments**: Specify in the format `(reporter_name, parameter_dict)`
 
