@@ -975,8 +975,7 @@ class HistPlotFormatter(PlotFormatter):
             values,
             bins=self.bins,
             label=label,
-            alpha=0.7,  # Some transparency for overlapping histograms
-            **self.hist_kwargs,  # type: ignore[arg-type]
+            **{"alpha": 0.7, **self.hist_kwargs},  # Merge default alpha with hist_kwargs
         )
 
     def _create_seaborn_histogram(
