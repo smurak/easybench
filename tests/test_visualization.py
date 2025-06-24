@@ -1982,21 +1982,21 @@ class TestHistPlotFormatter:
             "test_func2": [0.2, 0.3, 0.4],
         }
 
-        with mock.patch("matplotlib.pyplot.hist") as mock_hist:
-            methods = ["test_func1", "test_func2"]
-            formatter._create_time_histogram(
-                mock_ax,
-                time_data,
-                methods,
-            )
+        methods = ["test_func1", "test_func2"]
+        formatter._create_time_histogram(
+            mock_ax,
+            time_data,
+            methods,
+        )
 
-            # Verify hist was called for each function
-            assert mock_ax.hist.call_count == len(methods)
+        # Verify hist was called for each function
+        assert mock_ax.hist.call_count == len(methods)
 
-            # Check bins parameter was passed
-            for call_args in mock_hist.call_args_list:
-                _, kwargs = call_args
-                assert kwargs["bins"] == bins
+        # Check bins parameter was passed
+        assert len(mock_ax.hist.call_args_list) == len(methods)
+        for call_args in mock_ax.hist.call_args_list:
+            _, kwargs = call_args
+            assert kwargs["bins"] == bins
 
     def test_sns_theme_application(
         self,
@@ -2060,6 +2060,33 @@ class TestHistPlotFormatter:
             # Verify seaborn.set_theme was called
             mock_set_theme.assert_called_once_with(**custom_theme)
         plt.close()
+
+    def test_log_scale_application(self) -> None:
+        """Test that log_scale parameter is correctly applied to axes."""
+        formatter = HistPlotFormatter(log_scale=True)
+
+        # Create a mock axis
+        mock_ax = mock.MagicMock()
+
+        # Apply styling to the mock axis
+        formatter._apply_styling(mock_ax, BenchConfig(trials=10))
+
+        # Verify the x-axis scale was set to "log"
+        mock_ax.set_xscale.assert_called_once_with("log")
+
+    def test_data_limit_application(self) -> None:
+        """Test that data_limit parameter is correctly applied to axes."""
+        data_limit = (0.1, 1.0)
+        formatter = HistPlotFormatter(data_limit=data_limit)
+
+        # Create a mock axis
+        mock_ax = mock.MagicMock()
+
+        # Apply styling to the mock axis
+        formatter._apply_styling(mock_ax, BenchConfig(trials=10))
+
+        # Verify the x-axis limits were set to data_limit
+        mock_ax.set_xlim.assert_called_once_with(data_limit)
 
 
 class TestHistPlotFormatterTimeDisabled:

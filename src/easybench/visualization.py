@@ -975,7 +975,10 @@ class HistPlotFormatter(PlotFormatter):
             values,
             bins=self.bins,
             label=label,
-            **{"alpha": 0.7, **self.hist_kwargs},  # Merge default alpha with hist_kwargs
+            **{
+                "alpha": 0.7,
+                **self.hist_kwargs,
+            },  # type: ignore[arg-type]
         )
 
     def _create_seaborn_histogram(
