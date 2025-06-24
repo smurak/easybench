@@ -105,3 +105,7 @@
 * ラインプロットによる可視化
 
     ![Lineplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_lineplot.png)
+
+* ヒストグラムによる可視化
+
+    ![Histplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_histplot.png)

@@ -25,6 +25,7 @@ from easybench.core import ResultsType, ResultType, StatsType, StatType
 from easybench.visualization import (
     DEFAULT_SNS_THEME,
     BoxPlotFormatter,
+    HistPlotFormatter,
     LinePlotFormatter,
     PlotReporter,
     ViolinPlotFormatter,
@@ -1806,6 +1807,328 @@ class TestViolinPlotFormatterTimeUnits:
             time_label = f"Time ({display_unit})"
 
             # The label might be on x-axis or y-axis depending on orientation
+            assert (
+                time_label in axis.get_xlabel() or time_label in axis.get_ylabel()
+            ), f"Time unit {display_unit} not found in plot labels"
+
+
+class TestHistPlotFormatter:
+    """Tests for the HistPlotFormatter class."""
+
+    def test_init_with_defaults(self) -> None:
+        """Test initialization with default parameters."""
+        formatter = HistPlotFormatter()
+        assert formatter.log_scale is False
+        assert formatter.data_limit is None
+        assert formatter.figsize == (10, 6)
+        assert formatter.bins == "auto"
+        assert formatter.engine == "matplotlib"
+
+    def test_init_with_custom_params(self) -> None:
+        """Test initialization with custom parameters."""
+        alpha = 0.7
+        bins = 20
+        formatter = HistPlotFormatter(
+            bins=bins,
+            log_scale=True,
+            data_limit=(0.0, 1.0),
+            figsize=(8, 4),
+            engine="seaborn",
+            alpha=alpha,
+            color="blue",
+        )
+        assert formatter.bins == bins
+        assert formatter.log_scale is True
+        assert formatter.data_limit == (0.0, 1.0)
+        assert formatter.figsize == (8, 4)
+        assert formatter.engine == "seaborn"
+        assert formatter.hist_kwargs["alpha"] == alpha
+        assert formatter.hist_kwargs["color"] == "blue"
+
+    def test_preprocess_data(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test data preprocessing."""
+        formatter = HistPlotFormatter()
+        sorted_methods = formatter.sort_keys(sample_stats, sample_config)
+
+        time_data = formatter._preprocess_data(
+            sample_results,
+            sorted_methods,
+            sample_config,
+        )
+
+        assert len(time_data) == NUM_TEST_FUNCTIONS
+        assert "test_func1" in time_data
+        assert "test_func2" in time_data
+        assert time_data["test_func1"] == TEST_TIME_VALUES
+        assert time_data["test_func2"] == [
+            TEST_SLOWER_TIME,
+            TEST_TIME_VALUE,
+            TEST_SLOW_TIME,
+        ]
+
+    @pytest.mark.parametrize("engine", ["matplotlib", "seaborn"])
+    def test_format_with_different_engines(
+        self,
+        engine: str,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test formatting with different plotting engines."""
+        # Skip test if seaborn not installed when testing seaborn engine
+        if engine == "seaborn":
+            if not find_spec("seaborn"):
+                pytest.skip("seaborn not installed")
+
+            warnings.catch_warnings()
+            warnings.simplefilter("ignore", PendingDeprecationWarning)
+
+        formatter = HistPlotFormatter(engine=engine)  # type: ignore [arg-type]
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+            assert fig is not None
+            assert len(fig.axes) > 0
+        plt.close()
+
+    def test_format_with_memory_enabled(
+        self,
+    ) -> None:
+        """Test formatting with memory metrics enabled."""
+        # Modify sample results and stats to include memory data
+        memory_results: dict[str, ResultType] = {
+            "test_func1": {
+                "times": [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME],
+                "memory": [1024, 2048, 3072],
+            },
+            "test_func2": {
+                "times": [TEST_SLOWER_TIME, TEST_TIME_VALUE, TEST_SLOW_TIME],
+                "memory": [2048, 1024, 3072],
+            },
+        }
+
+        memory_stats = {
+            "test_func1": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                    "avg_memory": 2048,
+                    "max_memory": 3072,
+                },
+                memory=True,
+            ),
+            "test_func2": complete_stat(
+                {
+                    "avg": TEST_AVG_TIME,
+                    "min": TEST_TIME_VALUE,
+                    "max": TEST_SLOWER_TIME,
+                    "avg_memory": 2048,
+                    "max_memory": 3072,
+                },
+                memory=True,
+            ),
+        }
+
+        # Create a config with memory enabled
+        memory_config = BenchConfig(trials=3, memory=True)
+
+        formatter = HistPlotFormatter()
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("matplotlib.pyplot.subplots") as mock_subplots,
+            mock.patch.object(plt, "tight_layout"),
+        ):
+            # Create mock axes for time and memory subplots
+            mock_ax_time = mock.MagicMock()
+            mock_ax_mem = mock.MagicMock()
+            mock_fig = mock.MagicMock()
+            mock_subplots.return_value = (mock_fig, (mock_ax_time, mock_ax_mem))
+
+            # Call format with memory enabled
+            fig = formatter.format(memory_results, memory_stats, memory_config)
+
+            # Verify subplots were created (2 plots for time and memory)
+            mock_subplots.assert_called_once()
+            args, kwargs = mock_subplots.call_args
+            assert args == (2, 1)  # 2 rows, 1 column
+
+            assert fig is not None
+        plt.close()
+
+    def test_create_time_histogram(self) -> None:
+        """Test histogram creation."""
+        bins = 10
+        formatter = HistPlotFormatter(bins=bins)
+
+        # Mock a matplotlib Axes object
+        mock_ax = mock.MagicMock()
+
+        # Prepare test data
+        time_data = {
+            "test_func1": [0.1, 0.2, 0.3],
+            "test_func2": [0.2, 0.3, 0.4],
+        }
+
+        with mock.patch("matplotlib.pyplot.hist") as mock_hist:
+            methods = ["test_func1", "test_func2"]
+            formatter._create_time_histogram(
+                mock_ax,
+                time_data,
+                methods,
+            )
+
+            # Verify hist was called for each function
+            assert mock_ax.hist.call_count == len(methods)
+
+            # Check bins parameter was passed
+            for call_args in mock_hist.call_args_list:
+                _, kwargs = call_args
+                assert kwargs["bins"] == bins
+
+    def test_sns_theme_application(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that sns_theme parameters are correctly applied."""
+        # Skip if seaborn is not available
+        if not find_spec("seaborn"):
+            pytest.skip("seaborn not installed")
+
+        custom_theme = {"style": "darkgrid", "palette": "Set2"}
+        formatter = HistPlotFormatter(sns_theme=custom_theme)
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+            warnings.catch_warnings(),
+        ):
+            # Ignore seaborn's PendingDeprecationWarning
+            warnings.filterwarnings(
+                "ignore",
+                category=PendingDeprecationWarning,
+                module="seaborn",
+            )
+
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+            # Verify that seaborn.set_theme was called with the custom theme
+            mock_set_theme.assert_called_once_with(**custom_theme)
+        plt.close()
+
+    def test_sns_theme_forces_seaborn_engine(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that providing sns_theme automatically sets engine to seaborn."""
+        # Skip if seaborn is not available
+        if not find_spec("seaborn"):
+            pytest.skip("seaborn not installed")
+
+        # Create formatter with matplotlib engine but sns_theme provided
+        custom_theme = {"style": "whitegrid"}
+        formatter = HistPlotFormatter(engine="matplotlib", sns_theme=custom_theme)
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+        ):
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+            # Verify seaborn.set_theme was called
+            mock_set_theme.assert_called_once_with(**custom_theme)
+        plt.close()
+
+
+class TestHistPlotFormatterTimeDisabled:
+    """Tests for HistPlotFormatter with time measurement disabled."""
+
+    def test_format_time_disabled_memory_enabled(
+        self,
+        sample_stats: dict[str, StatType],
+    ) -> None:
+        """Test that formatter works correctly with time=False and memory=True."""
+        # Modify sample results for this test
+        results: ResultsType = {
+            "test_func1": {"memory": [1024, 2048, 3072]},
+            "test_func2": {"memory": [2048, 3072, 4096]},
+        }
+        config = BenchConfig(trials=3, time=False, memory=True)
+
+        formatter = HistPlotFormatter()
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(results, sample_stats, config)
+
+            # Figure should be created
+            assert isinstance(fig, plt.Figure)
+
+            # Check that the figure has memory plot but not time plot
+            for ax in fig.axes:
+                if ax.get_xlabel():
+                    assert "Memory" in ax.get_xlabel()
+                    assert "Time" not in ax.get_xlabel()
+                if ax.get_ylabel():
+                    assert "Time" not in ax.get_ylabel()
+
+        plt.close()
+
+
+class TestHistPlotFormatterTimeUnits:
+    """Test HistPlotFormatter handling of different time units from BenchConfig."""
+
+    def test_histplot_formatter_with_time_units(self) -> None:
+        """Test HistPlotFormatter with different time units."""
+        # Skip if matplotlib is not available
+        pytest.importorskip("matplotlib")
+
+        time_units = ["s", "ms", "μs", "us", "ns", "m"]
+        # Create sample results and stats
+        results: dict[str, ResultType] = {"test_func": {"times": [1.0, 2.0, 3.0]}}
+        stats = {"test_func": complete_stat({"avg": 2.0, "min": 1.0, "max": 3.0})}
+
+        for time_unit in time_units:
+            config = BenchConfig(time=time_unit)
+
+            # Test HistPlotFormatter
+            hist_formatter = HistPlotFormatter()
+            figure = hist_formatter.format(results, stats, config)
+
+            # Check the label on the axis
+            display_unit = "μs" if time_unit == "us" else time_unit
+            assert hasattr(figure, "axes"), "Figure has no axes attribute"
+            assert figure.axes, "Figure has no axes"
+
+            axis = figure.axes[0]
+            time_label = f"Time ({display_unit})"
+
+            # Time label should be on x-axis or y-axis
             assert (
                 time_label in axis.get_xlabel() or time_label in axis.get_ylabel()
             ), f"Time unit {display_unit} not found in plot labels"

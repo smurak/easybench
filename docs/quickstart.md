@@ -105,3 +105,7 @@ There are 3 ways to benchmark with `easybench`:
 * Lineplot Visualization
 
     ![Lineplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_lineplot.png)
+
+* Histogram Visualization
+
+    ![Histplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_histplot.png)
