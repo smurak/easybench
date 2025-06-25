@@ -24,6 +24,8 @@ There are three ways to specify reporters:
     - `"lineplot-sns"`: Visualization with seaborn-styled lineplot
     - `"histplot"`: Visualization with histplot (histogram)
     - `"histplot-sns"`: Visualization with seaborn-styled histplot
+    - `"barplot"`: Visualization with barplot
+    - `"barplot-sns"`: Visualization with seaborn-styled barplot
     - `"*.csv"` or `"*.json"`: File output
 
 2. **With arguments**: Specify in the format `(reporter_name, parameter_dict)`

@@ -109,3 +109,7 @@
 * ヒストグラムによる可視化
 
     ![Histplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_histplot.png)
+
+* バープロットによる可視化
+
+    ![Barplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_barplot.png)

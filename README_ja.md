@@ -162,6 +162,10 @@ pip install easybench[all]
 
   ![Histplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_histplot.png)
 
+* バープロットによる可視化
+
+  ![Barplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_barplot.png)
+
 ## 使用方法
 
 詳細な使用方法については、[**ドキュメント**](https://easybench.readthedocs.io/ja/)を参照してください。

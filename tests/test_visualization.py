@@ -17,6 +17,8 @@ import matplotlib as mpl
 import matplotlib.figure
 
 mpl.use("Agg")  # Use non-interactive backend for testing
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
 import pytest
 
@@ -24,12 +26,16 @@ from easybench import BenchConfig
 from easybench.core import ResultsType, ResultType, StatsType, StatType
 from easybench.visualization import (
     DEFAULT_SNS_THEME,
+    BarPlotFormatter,
     BoxPlotFormatter,
     HistPlotFormatter,
     LinePlotFormatter,
     PlotReporter,
     ViolinPlotFormatter,
 )
+
+if TYPE_CHECKING:
+    from easybench.reporters import MetricType
 
 # Constants for test values
 TEST_TIME_VALUE = 0.1
@@ -61,13 +67,20 @@ AVG_MEMORY = 3000
 def complete_stat(
     dic: dict[str, float],
     memory: bool = False,  # noqa: FBT002, FBT001
+    time: bool = True,  # noqa: FBT002, FBT001
 ) -> StatType:
     """Complete dictionaries for StatType."""
-    stat: StatType = {
-        "avg": 0.0,
-        "min": 0.0,
-        "max": 0.0,
-    }
+    stat: StatType = {}
+
+    if time:
+        stat.update(
+            {
+                "avg": 0.0,
+                "min": 0.0,
+                "max": 0.0,
+            },
+        )
+
     if memory:
         stat.update(
             {
@@ -2159,3 +2172,466 @@ class TestHistPlotFormatterTimeUnits:
             assert (
                 time_label in axis.get_xlabel() or time_label in axis.get_ylabel()
             ), f"Time unit {display_unit} not found in plot labels"
+
+
+class TestBarPlotFormatter:
+    """Tests for the BarPlotFormatter class."""
+
+    def test_init_with_defaults(self) -> None:
+        """Test initialization with default parameters."""
+        formatter = BarPlotFormatter()
+        assert formatter.metric is None
+        assert formatter.log_scale is False
+        assert formatter.data_limit is None
+        assert formatter.figsize == (10, 6)
+        assert formatter.engine == "matplotlib"
+        assert formatter.orientation == "horizontal"
+        plt.close()
+
+    def test_init_with_custom_params(self) -> None:
+        """Test initialization with custom parameters."""
+        thresh = 10
+        formatter = BarPlotFormatter(
+            metric="min",
+            log_scale=True,
+            data_limit=(0.0, 1.0),
+            figsize=(8, 4),
+            label_rotation_threshold=thresh,
+            engine="seaborn",
+            orientation="vertical",
+        )
+        assert formatter.metric == "min"
+        assert formatter.log_scale is True
+        assert formatter.data_limit == (0.0, 1.0)
+        assert formatter.figsize == (8, 4)
+        assert formatter.label_rotation_threshold == thresh
+        assert formatter.engine == "seaborn"
+        assert formatter.orientation == "vertical"
+        plt.close()
+
+    def test_format_with_single_metric(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test formatting with a single metric."""
+        formatter = BarPlotFormatter(metric="avg")
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+            assert fig is not None
+            assert len(fig.axes) == 1  # Only one subplot for one metric
+
+        plt.close()
+
+    def test_format_with_multiple_metrics(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test formatting with multiple metrics."""
+        metrics: list[MetricType] = ["min", "avg", "max"]
+        formatter = BarPlotFormatter(metric=metrics)
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+            assert fig is not None
+            assert len(fig.axes) == len(metrics)  # One subplot per metric
+
+        plt.close()
+
+    @pytest.mark.parametrize("orientation", ["horizontal", "vertical"])
+    def test_format_with_different_orientations(
+        self,
+        orientation: str,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test formatting with different orientations."""
+        formatter = BarPlotFormatter(orientation=orientation)  # type: ignore [arg-type]
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+            assert fig is not None
+            assert len(fig.axes) > 0
+
+        plt.close()
+
+    @pytest.mark.parametrize("engine", ["matplotlib", "seaborn"])
+    def test_format_with_different_engines(
+        self,
+        engine: str,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test formatting with different plotting engines."""
+        # Skip test if seaborn not installed when testing seaborn engine
+        if engine == "seaborn":
+            if not find_spec("seaborn"):
+                pytest.skip("seaborn not installed")
+
+            warnings.catch_warnings()
+            warnings.simplefilter("ignore", PendingDeprecationWarning)
+
+        formatter = BarPlotFormatter(engine=engine)  # type: ignore [arg-type]
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+            assert fig is not None
+            assert len(fig.axes) > 0
+
+        plt.close()
+
+    def test_log_scale_application(self) -> None:
+        """Test that log_scale parameter is correctly applied to axes."""
+        formatter = BarPlotFormatter(log_scale=True)
+
+        # Create a mock axis
+        mock_ax = mock.MagicMock()
+
+        # Mock labels and prepare for the styling function
+        labels = ["test1", "test2"]
+        config = BenchConfig(trials=3)
+        metric: MetricType = "avg"
+
+        # Apply styling to the mock axis
+        formatter._apply_styling(mock_ax, labels, metric, config)
+
+        # Check that appropriate scale setting was called based on orientation
+        if formatter.orientation == "horizontal":
+            mock_ax.set_xscale.assert_called_once_with("log")
+        else:
+            mock_ax.set_yscale.assert_called_once_with("log")
+
+        plt.close()
+
+    def test_data_limit_application(self) -> None:
+        """Test that data_limit parameter is correctly applied to axes."""
+        data_limit = (0.1, 1.0)
+        formatter = BarPlotFormatter(data_limit=data_limit)
+
+        # Create a mock axis
+        mock_ax = mock.MagicMock()
+
+        # Mock labels and prepare for the styling function
+        labels = ["test1", "test2"]
+        config = BenchConfig(trials=3)
+        metric: MetricType = "avg"
+
+        # Apply styling to the mock axis
+        formatter._apply_styling(mock_ax, labels, metric, config)
+
+        # Check that appropriate limit setting was called based on orientation
+        if formatter.orientation == "horizontal":
+            mock_ax.set_xlim.assert_called_once_with(data_limit)
+        else:
+            mock_ax.set_ylim.assert_called_once_with(data_limit)
+
+        plt.close()
+
+    def test_format_with_memory_enabled(
+        self,
+    ) -> None:
+        """Test formatting with memory metrics enabled."""
+        # Modify sample stats to include memory metrics
+        memory_stats = {
+            "test_func1": complete_stat(
+                {
+                    "avg": 0.001,
+                    "min": 0.0008,
+                    "max": 0.0012,
+                    "avg_memory": 2048,
+                    "max_memory": 3072,
+                },
+                memory=True,
+            ),
+            "test_func2": complete_stat(
+                {
+                    "avg": 0.002,
+                    "min": 0.0018,
+                    "max": 0.0022,
+                    "avg_memory": 1024,
+                    "max_memory": 2048,
+                },
+                memory=True,
+            ),
+        }
+
+        # Create empty results (not actually used by BarPlotFormatter)
+        results: ResultsType = {}
+
+        # Create a config with memory enabled
+        memory_config = BenchConfig(trials=3, memory=True)
+
+        # Test with memory metric
+        formatter = BarPlotFormatter(metric="avg_memory")
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(results, memory_stats, memory_config)
+            assert fig is not None
+
+            # Check that we have memory metrics in the plot
+            for ax in fig.axes:
+                if ax.get_xlabel():
+                    if formatter.orientation == "horizontal":
+                        assert "Memory" in ax.get_xlabel()
+                    else:
+                        assert "Memory" in ax.get_ylabel()
+
+        plt.close()
+
+    def test_format_time_disabled_memory_enabled(
+        self,
+    ) -> None:
+        """Test that formatter works correctly with time=False and memory=True."""
+        # Modify sample stats for this test
+        memory_stats = {
+            "test_func1": complete_stat(
+                {
+                    "avg_memory": 1024,
+                    "max_memory": 2048,
+                },
+                memory=True,
+                time=False,
+            ),
+            "test_func2": complete_stat(
+                {
+                    "avg_memory": 2048,
+                    "max_memory": 4096,
+                },
+                memory=True,
+                time=False,
+            ),
+        }
+
+        # Create empty results (not used by BarPlotFormatter)
+        results: ResultsType = {}
+
+        # Create config with time disabled and memory enabled
+        config = BenchConfig(trials=3, time=False, memory=True)
+
+        formatter = BarPlotFormatter()
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+        ):
+            fig = formatter.format(results, memory_stats, config)
+
+            # Figure should be created
+            assert isinstance(fig, plt.Figure)
+
+            # Check that the figure has memory metrics but not time metrics
+            for ax in fig.axes:
+                if formatter.orientation == "horizontal":
+                    if ax.get_xlabel():
+                        assert "Memory" in ax.get_xlabel()
+                        assert "Time" not in ax.get_xlabel()
+                elif ax.get_ylabel():
+                    assert "Memory" in ax.get_ylabel()
+                    assert "Time" not in ax.get_ylabel()
+
+        plt.close()
+
+    def test_sns_theme_application(
+        self,
+        sample_results: dict[str, ResultType],
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test that sns_theme parameters are correctly applied."""
+        # Skip if seaborn is not available
+        if not find_spec("seaborn"):
+            pytest.skip("seaborn not installed")
+
+        custom_theme = {"style": "darkgrid", "palette": "Set2"}
+        formatter = BarPlotFormatter(sns_theme=custom_theme)
+
+        with (
+            mock.patch("matplotlib.pyplot.show"),
+            mock.patch("matplotlib.pyplot.savefig"),
+            mock.patch("matplotlib.pyplot.close"),
+            mock.patch("seaborn.set_theme") as mock_set_theme,
+            warnings.catch_warnings(),
+        ):
+            # Ignore seaborn's PendingDeprecationWarning
+            warnings.filterwarnings(
+                "ignore",
+                category=PendingDeprecationWarning,
+                module="seaborn",
+            )
+
+            fig = formatter.format(sample_results, sample_stats, sample_config)
+
+            assert fig is not None
+            # Verify that seaborn.set_theme was called with the custom theme
+            mock_set_theme.assert_called_once_with(**custom_theme)
+
+        plt.close()
+
+    def test_create_matplotlib_bar_plot(self) -> None:
+        """Test creation of bar plot with matplotlib engine."""
+        formatter = BarPlotFormatter()
+
+        # Mock a matplotlib Axes object
+        mock_ax = mock.MagicMock()
+
+        # Call the method with test values
+        values = [10.0, 20.0]
+        formatter._create_matplotlib_bar_plot(mock_ax, values)
+
+        # Verify appropriate method was called based on orientation
+        if formatter.orientation == "horizontal":
+            assert mock_ax.barh.call_count == len(values)
+        else:
+            assert mock_ax.bar.call_count == len(values)
+
+        plt.close()
+
+    def test_create_seaborn_bar_plot(self) -> None:
+        """Test creation of bar plot with seaborn engine."""
+        if not find_spec("seaborn"):
+            pytest.skip("seaborn not installed")
+
+        formatter = BarPlotFormatter(engine="seaborn")
+
+        with mock.patch("seaborn.barplot") as mock_barplot:
+            # Mock a matplotlib Axes object
+            mock_ax = mock.MagicMock()
+
+            values = [10.0, 20.0]
+            formatter._create_seaborn_bar_plot(mock_ax, values)
+
+            # Verify seaborn.barplot was called the right number of times
+            assert mock_barplot.call_count == len(values)
+
+        plt.close()
+
+    def test_create_bar_plot_for_metric(
+        self,
+        sample_stats: dict[str, StatType],
+        sample_config: BenchConfig,
+    ) -> None:
+        """Test creation of bar plot for a specific metric."""
+        formatter = BarPlotFormatter()
+
+        # Mock matplotlib Axes
+        mock_ax = mock.MagicMock()
+
+        # Set up methods to be tested
+        with (
+            mock.patch.object(formatter, "_create_matplotlib_bar_plot") as mock_plot,
+            mock.patch.object(formatter, "_apply_styling") as mock_styling,
+        ):
+            formatter._create_bar_plot_for_metric(
+                mock_ax,
+                "avg",
+                ["test_func1", "test_func2"],
+                sample_stats,
+                sample_config,
+            )
+
+            # Verify plotting and styling methods were called
+            mock_plot.assert_called_once()
+            mock_styling.assert_called_once()
+
+        plt.close()
+
+    def test_set_title(self) -> None:
+        """Test setting plot title based on metric type."""
+        formatter = BarPlotFormatter()
+
+        # Mock a matplotlib Axes object
+        mock_ax = mock.MagicMock()
+
+        # Test with different metrics
+        metrics: list[MetricType] = ["avg", "min", "max", "avg_memory", "max_memory"]
+
+        for metric in metrics:
+            formatter._set_title(mock_ax, metric, BenchConfig(trials=5))
+
+            # Verify set_title was called with a string containing
+            # the appropriate metric name
+            mock_ax.set_title.assert_called()
+            title = mock_ax.set_title.call_args[0][0]
+
+            if metric == "avg":
+                assert "Average Time" in title
+            elif metric == "min":
+                assert "Minimum Time" in title
+            elif metric == "max":
+                assert "Maximum Time" in title
+            elif metric == "avg_memory":
+                assert "Average Memory Usage" in title
+            elif metric == "max_memory":
+                assert "Maximum Memory Usage" in title
+
+            assert "5 trials" in title  # Check trials count is included
+
+            # Reset mock for next iteration
+            mock_ax.reset_mock()
+
+        plt.close()
+
+    def test_set_axis_label_time(self) -> None:
+        """Test setting axis label for time metrics."""
+        formatter = BarPlotFormatter()
+
+        # Mock a matplotlib Axes object
+        mock_ax = mock.MagicMock()
+
+        # Test with time metric
+        formatter._set_axis_label(mock_ax, "avg", BenchConfig(time="s"), "x")
+
+        # Verify axis label contains time unit
+        if formatter.orientation == "horizontal":
+            mock_ax.set_xlabel.assert_called_once()
+            label = mock_ax.set_xlabel.call_args[0][0]
+            assert "Time" in label
+            assert "s" in label
+
+        plt.close()
+
+    def test_set_axis_label_memory(self) -> None:
+        """Test setting axis label for memory metrics."""
+        formatter = BarPlotFormatter()
+
+        # Mock a matplotlib Axes object
+        mock_ax = mock.MagicMock()
+
+        # Test with memory metric
+        formatter._set_axis_label(mock_ax, "avg_memory", BenchConfig(memory="KB"), "y")
+
+        # Verify axis label contains memory unit
+        if formatter.orientation == "vertical":
+            mock_ax.set_ylabel.assert_called_once()
+            label = mock_ax.set_ylabel.call_args[0][0]
+            assert "Memory" in label
+            assert "KB" in label
+
+        plt.close()
