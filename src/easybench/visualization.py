@@ -22,7 +22,7 @@ except ImportError as err:
     raise ImportError(error_msg) from err
 
 from .core import BenchConfig, ResultsType, StatsType
-from .reporters import Formatted, Formatter, MemoryUnit, Reporter, TimeUnit
+from .reporters import Formatted, Formatter, MemoryUnit, MetricType, Reporter, TimeUnit
 
 # Constants for magic values
 MAX_PERCENTILE_THRESHOLD = 0.5
@@ -1398,6 +1398,295 @@ class LinePlotFormatter(PlotFormatter):
             label_text = f"Memory Usage ({unit})"
 
         ax.set_ylabel(label_text)
+
+
+class BarPlotFormatter(PlotFormatter):
+    """Format benchmark results as a bar plot showing selected metrics."""
+
+    def __init__(
+        self,
+        metric: MetricType | list[MetricType] | None = None,
+        log_scale: bool = False,
+        data_limit: tuple[float, float] | None = None,
+        figsize: tuple[int, int] = (10, 6),
+        label_rotation_threshold: int = 4,
+        engine: Literal["matplotlib", "seaborn"] = "matplotlib",
+        orientation: Literal["vertical", "horizontal"] = "horizontal",
+        sns_theme: dict[str, Any] | None = None,
+        **plot_kwargs: object,
+    ) -> None:
+        """
+        Initialize BarPlotFormatter.
+
+        Args:
+            metric: The metric(s) to display. Can be a single metric
+                or a list of metrics: "avg", "min", "max", "avg_memory", "max_memory"
+            log_scale: Whether to use logarithmic scale for data axis (default: False)
+            data_limit: Optional tuple of (min, max) for data axis limits
+            figsize: Figure size (default: (10, 6))
+            label_rotation_threshold: Rotate labels if method count exceeds this
+            engine: Plotting backend to use ('matplotlib' or 'seaborn')
+            orientation: Direction of plot ('vertical' or 'horizontal')
+            sns_theme: Optional dictionary of seaborn theme parameters
+            **plot_kwargs: Additional keyword arguments for bar plot function
+
+        """
+        self.metric = metric
+        self.log_scale = log_scale
+        self.data_limit = data_limit
+        self.figsize = figsize
+        self.label_rotation_threshold = label_rotation_threshold
+        self.orientation = orientation
+        self.plot_kwargs = plot_kwargs
+
+        # Handle seaborn engine and theme relationship
+        self.engine, self.sns_theme = _handle_seaborn_engine_and_theme(
+            engine,
+            sns_theme,
+        )
+
+    def format(
+        self,
+        results: ResultsType,
+        stats: StatsType,
+        config: BenchConfig,
+    ) -> Figure:
+        """
+        Format benchmark results as a bar plot.
+
+        Args:
+            results: Dictionary mapping benchmark names to result data
+            stats: Dictionary of calculated statistics
+            config: Benchmark configuration
+
+        Returns:
+            Matplotlib Figure object containing the bar plot
+
+        """
+        _ = results
+
+        metrics: list = []
+        if self.metric is None:
+            metrics = ["avg", "avg_memory"] if config.memory else ["avg"]
+        else:
+            metrics = [self.metric] if isinstance(self.metric, str) else self.metric
+
+        # Apply seaborn theme if needed
+        with (
+            set_seaborn_theme(self.sns_theme)
+            if self.engine == "seaborn"
+            else contextlib.nullcontext()
+        ):
+            # Sort method names according to configuration
+            sorted_methods = self.sort_keys(stats, config)
+
+            # Check if metrics are valid and available
+            valid_metrics = []
+            for metric in metrics:
+                if metric in ("avg", "min", "max") and not config.time:
+                    continue
+                if metric in ("avg_memory", "max_memory") and not config.memory:
+                    continue
+                valid_metrics.append(metric)
+
+            if not valid_metrics:
+                error_msg = "No valid metrics to plot"
+                raise ValueError(error_msg)
+
+            # Create figure with appropriate number of subplots
+            n_plots = len(valid_metrics)
+            if n_plots > 1:
+                fig, _axes = plt.subplots(
+                    n_plots,
+                    1,
+                    figsize=(self.figsize[0], self.figsize[1] * n_plots * 0.7),
+                    squeeze=False,
+                )
+                axes = list(_axes.flatten())
+            else:
+                fig, ax = plt.subplots(figsize=self.figsize)
+                axes = [ax]
+
+            # Process each metric
+            for i, metric in enumerate(valid_metrics):
+                ax = axes[i]
+                self._create_bar_plot_for_metric(
+                    ax=ax,
+                    metric=metric,
+                    sorted_methods=sorted_methods,
+                    stats=stats,
+                    config=config,
+                )
+
+            plt.tight_layout()
+            return fig
+
+    def _create_bar_plot_for_metric(
+        self,
+        ax: plt.Axes,
+        metric: MetricType,
+        sorted_methods: list[str],
+        stats: StatsType,
+        config: BenchConfig,
+    ) -> None:
+        """Create a bar plot for a specific metric."""
+        # Extract data for the given metric
+        values = []
+        labels = []
+
+        for method_name in sorted_methods:
+            if metric not in stats[method_name]:
+                continue
+
+            labels.append(method_name)
+
+            # Convert values based on metric type
+            if metric in ("avg", "min", "max"):
+                time_unit = TimeUnit.from_config(config)
+                values.append(time_unit.convert_seconds(stats[method_name][metric]))
+            else:  # avg_memory or max_memory
+                memory_unit = MemoryUnit.from_config(config)
+                values.append(memory_unit.convert_bytes(stats[method_name][metric]))
+
+        # Create the plot using the appropriate engine
+        if self.engine == "seaborn":
+            self._create_seaborn_bar_plot(ax, values)
+        else:
+            self._create_matplotlib_bar_plot(ax, values)
+
+        # Apply styling
+        self._apply_styling(ax, labels, metric, config)
+
+    def _create_matplotlib_bar_plot(
+        self,
+        ax: plt.Axes,
+        values: list[float],
+    ) -> None:
+        """Create a bar plot using matplotlib."""
+        if self.orientation == "horizontal":
+            for i, value in enumerate(values):
+                ax.barh(
+                    i,
+                    value,
+                    **self.plot_kwargs,  # type: ignore [arg-type]
+                )
+        else:
+            for i, value in enumerate(values):
+                ax.bar(
+                    i,
+                    value,
+                    **self.plot_kwargs,  # type: ignore [arg-type]
+                )
+
+    def _create_seaborn_bar_plot(
+        self,
+        ax: plt.Axes,
+        values: list[float],
+    ) -> None:
+        """Create a bar plot using seaborn."""
+        try:
+            import seaborn as sns  # noqa: PLC0415
+        except ImportError as err:
+            error_msg = (
+                "seaborn is required for seaborn engine. "
+                "Install with pip install seaborn."
+            )
+            raise ImportError(error_msg) from err
+
+        if self.orientation == "horizontal":
+            for i, value in enumerate(values):
+                sns.barplot(
+                    x=[value],
+                    y=[i],
+                    ax=ax,
+                    orient="h",
+                    **self.plot_kwargs,  # type: ignore [arg-type]
+                )
+        else:
+            for i, value in enumerate(values):
+                sns.barplot(
+                    x=[i],
+                    y=[value],
+                    ax=ax,
+                    orient="v",
+                    **self.plot_kwargs,  # type: ignore [arg-type]
+                )
+
+    def _apply_styling(
+        self,
+        ax: plt.Axes,
+        labels: list[str],
+        metric: MetricType,
+        config: BenchConfig,
+    ) -> None:
+        """Apply styling to the plot."""
+        # Set scale (log or linear)
+        if self.log_scale:
+            if self.orientation == "horizontal":
+                ax.set_xscale("log")
+            else:
+                ax.set_yscale("log")
+
+        # Set axis limits if provided
+        if self.data_limit is not None:
+            if self.orientation == "horizontal":
+                ax.set_xlim(self.data_limit)
+            else:
+                ax.set_ylim(self.data_limit)
+
+        # Set title based on metric
+        self._set_title(ax, metric, config)
+
+        # Set labels and ticks
+        if self.orientation == "horizontal":
+            ax.set_yticks(range(len(labels)))
+            ax.set_yticklabels(labels)
+
+            # Set x-axis label based on metric type
+            self._set_axis_label(ax, metric, config, "x")
+        else:
+            ax.set_xticks(range(len(labels)))
+            ax.set_xticklabels(labels)
+
+            # Rotate labels if there are many methods
+            if len(labels) > self.label_rotation_threshold:
+                plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
+
+            # Set y-axis label based on metric type
+            self._set_axis_label(ax, metric, config, "y")
+
+    def _set_title(self, ax: plt.Axes, metric: MetricType, config: BenchConfig) -> None:
+        """Set plot title based on metric type."""
+        metric_titles = {
+            "avg": "Average Time",
+            "min": "Minimum Time",
+            "max": "Maximum Time",
+            "avg_memory": "Average Memory Usage",
+            "max_memory": "Maximum Memory Usage",
+        }
+
+        title = f"Benchmark Results [{metric_titles[metric]}] ({config.trials} trials)"
+        ax.set_title(title)
+
+    def _set_axis_label(
+        self,
+        ax: plt.Axes,
+        metric: MetricType,
+        config: BenchConfig,
+        axis: Literal["x", "y"],
+    ) -> None:
+        """Set appropriate axis label based on metric type and orientation."""
+        if metric in ("avg", "min", "max"):
+            time_unit = TimeUnit.from_config(config)
+            label_text = f"Time ({time_unit})"
+        else:
+            memory_unit = MemoryUnit.from_config(config)
+            label_text = f"Memory Usage ({memory_unit})"
+
+        if axis == "x" and self.orientation == "horizontal":
+            ax.set_xlabel(label_text)
+        elif axis == "y" and self.orientation == "vertical":
+            ax.set_ylabel(label_text)
 
 
 class PlotReporter(Reporter):

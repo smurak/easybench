@@ -159,6 +159,10 @@ There are 3 ways to benchmark with `easybench`:
 
   ![Histplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_histplot.png)
 
+* Barplot Visualization
+
+  ![Barplot Visualization](https://raw.githubusercontent.com/smurak/easybench/main/images/visualization_barplot.png)
+
 ## Usage
 
 For detailed usage instructions, please refer to the [**documentation**](https://easybench.readthedocs.io/).

@@ -88,6 +88,8 @@ _VISUALIZATION_REPORTERS = {
     "lineplot-sns",
     "histplot",
     "histplot-sns",
+    "barplot",
+    "barplot-sns",
 }
 
 
@@ -130,6 +132,7 @@ def _get_basic_reporter(name: str, kwargs: dict) -> Reporter:
 def _get_visualization_reporter(name: str, kwargs: dict) -> Reporter:
     """Create visualization reporters."""
     from .visualization import (  # noqa: PLC0415
+        BarPlotFormatter,
         BoxPlotFormatter,
         HistPlotFormatter,
         LinePlotFormatter,
@@ -150,6 +153,8 @@ def _get_visualization_reporter(name: str, kwargs: dict) -> Reporter:
         return PlotReporter(LinePlotFormatter(engine=engine, **kwargs))
     if base_name == "histplot":
         return PlotReporter(HistPlotFormatter(engine=engine, **kwargs))
+    if base_name == "barplot":
+        return PlotReporter(BarPlotFormatter(engine=engine, **kwargs))
 
     # This should never happen due to validation in get_reporter
     err = f"Unknown visualization reporter: {name}"
