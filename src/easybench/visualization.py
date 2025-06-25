@@ -1467,7 +1467,7 @@ class BarPlotFormatter(PlotFormatter):
 
         metrics: list = []
         if self.metric is None:
-            metrics = ["avg", "avg_memory"] if config.memory else ["avg"]
+            metrics = ["avg", "avg_memory"]
         else:
             metrics = [self.metric] if isinstance(self.metric, str) else self.metric
 
