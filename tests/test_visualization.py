@@ -46,7 +46,6 @@ TEST_TIME_VALUES = [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME]
 
 # Constants for test configurations
 DEFAULT_TRIM_OUTLIERS = 0.1
-DEFAULT_LABEL_ROTATION_THRESHOLD = 5
 NUM_TEST_FUNCTIONS = 2
 DEFAULT_DPI = 100
 CUSTOM_DPI = 200
@@ -151,7 +150,6 @@ class TestBoxPlotFormatter:
             trim_outliers=DEFAULT_TRIM_OUTLIERS,
             winsorize_outliers=None,
             figsize=(8, 4),
-            label_rotation_threshold=DEFAULT_LABEL_ROTATION_THRESHOLD,
             engine="seaborn",
             orientation="vertical",
         )
@@ -161,7 +159,6 @@ class TestBoxPlotFormatter:
         assert formatter.trim_outliers == DEFAULT_TRIM_OUTLIERS
         assert formatter.winsorize_outliers is None
         assert formatter.figsize == (8, 4)
-        assert formatter.label_rotation_threshold == DEFAULT_LABEL_ROTATION_THRESHOLD
         assert formatter.engine == "seaborn"
         assert formatter.orientation == "vertical"
 
@@ -1233,7 +1230,6 @@ class TestViolinPlotFormatter:
             trim_outliers=DEFAULT_TRIM_OUTLIERS,
             winsorize_outliers=None,
             figsize=(8, 4),
-            label_rotation_threshold=DEFAULT_LABEL_ROTATION_THRESHOLD,
             engine="seaborn",
             orientation="vertical",
         )
@@ -1242,7 +1238,6 @@ class TestViolinPlotFormatter:
         assert formatter.trim_outliers == DEFAULT_TRIM_OUTLIERS
         assert formatter.winsorize_outliers is None
         assert formatter.figsize == (8, 4)
-        assert formatter.label_rotation_threshold == DEFAULT_LABEL_ROTATION_THRESHOLD
         assert formatter.engine == "seaborn"
         assert formatter.orientation == "vertical"
         assert formatter.plot_type == "violin"
@@ -2190,13 +2185,11 @@ class TestBarPlotFormatter:
 
     def test_init_with_custom_params(self) -> None:
         """Test initialization with custom parameters."""
-        thresh = 10
         formatter = BarPlotFormatter(
             metric="min",
             log_scale=True,
             data_limit=(0.0, 1.0),
             figsize=(8, 4),
-            label_rotation_threshold=thresh,
             engine="seaborn",
             orientation="vertical",
         )
@@ -2204,7 +2197,6 @@ class TestBarPlotFormatter:
         assert formatter.log_scale is True
         assert formatter.data_limit == (0.0, 1.0)
         assert formatter.figsize == (8, 4)
-        assert formatter.label_rotation_threshold == thresh
         assert formatter.engine == "seaborn"
         assert formatter.orientation == "vertical"
         plt.close()

@@ -121,7 +121,6 @@ class DistributionPlotFormatter(PlotFormatter):
         trim_outliers: float | None = None,
         winsorize_outliers: float | None = None,
         figsize: tuple[int, int] = (10, 6),
-        label_rotation_threshold: int = 4,
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
         orientation: Literal["vertical", "horizontal"] = "horizontal",
         plot_type: Literal["box", "violin"] = "box",
@@ -138,7 +137,6 @@ class DistributionPlotFormatter(PlotFormatter):
             trim_outliers: Optional percentile for trimming outliers (0.0-0.5)
             winsorize_outliers: Optional percentile for winsorizing outliers (0.0-0.5)
             figsize: Figure size (default: (10, 6))
-            label_rotation_threshold: Rotate x-axis labels if method count exceeds this.
             engine: Plotting backend to use ('matplotlib' or 'seaborn')
             orientation: Direction of plot ('vertical' or 'horizontal')
             plot_type: Type of plot ('box' for boxplot or 'violin' for violinplot)
@@ -152,7 +150,6 @@ class DistributionPlotFormatter(PlotFormatter):
         self.winsorize_outliers = winsorize_outliers
         self.figsize = figsize
         self.plot_kwargs = plot_kwargs
-        self.label_rotation_threshold = label_rotation_threshold
         self.showfliers = showfliers
         self.orientation = orientation
         self.plot_type = plot_type
@@ -211,7 +208,6 @@ class DistributionPlotFormatter(PlotFormatter):
                 self._apply_styling(
                     ax_time,
                     config,
-                    labels,
                     title_suffix="",
                     unit=str(time_unit),
                 )
@@ -233,7 +229,6 @@ class DistributionPlotFormatter(PlotFormatter):
                     self._apply_styling(
                         ax,
                         config,
-                        labels,
                         unit=str(time_unit),
                     )
 
@@ -275,7 +270,6 @@ class DistributionPlotFormatter(PlotFormatter):
         self._apply_styling(
             ax,
             config,
-            labels,
             title_suffix="Memory Usage",
             unit=str(memory_unit),
         )
@@ -629,7 +623,6 @@ class DistributionPlotFormatter(PlotFormatter):
         self,
         ax: plt.Axes,
         config: BenchConfig,
-        labels: list[str],
         title_suffix: str = "",
         unit: str = "s",
     ) -> None:
@@ -648,7 +641,9 @@ class DistributionPlotFormatter(PlotFormatter):
         self._set_axis_labels(ax, unit)
 
         # Apply label rotation if needed
-        self._apply_label_rotation(ax, labels)
+        if self.orientation != "horizontal":
+            # Use autofmt_xdate for automatic rotation of x labels
+            ax.figure.autofmt_xdate()
 
     def _set_axis_scale(self, ax: plt.Axes) -> None:
         """Set the axis scale (log or linear) based on orientation."""
@@ -685,15 +680,6 @@ class DistributionPlotFormatter(PlotFormatter):
         else:
             ax.set_ylabel(label_text)
 
-    def _apply_label_rotation(self, ax: plt.Axes, labels: list[str]) -> None:
-        """Apply rotation to axis labels if needed."""
-        if len(labels) > self.label_rotation_threshold:
-            if self.orientation == "horizontal":
-                pass  # Currently no rotation for horizontal orientation
-            else:
-                # For vertical plots, rotate x-tick labels
-                plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
-
 
 class BoxPlotFormatter(DistributionPlotFormatter):
     """Format benchmark results as a matplotlib boxplot."""
@@ -706,7 +692,6 @@ class BoxPlotFormatter(DistributionPlotFormatter):
         trim_outliers: float | None = None,
         winsorize_outliers: float | None = None,
         figsize: tuple[int, int] = (10, 6),
-        label_rotation_threshold: int = 4,
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
         orientation: Literal["vertical", "horizontal"] = "horizontal",
         sns_theme: dict[str, Any] | None = None,
@@ -722,7 +707,6 @@ class BoxPlotFormatter(DistributionPlotFormatter):
             trim_outliers: Optional percentile for trimming outliers (0.0-0.5)
             winsorize_outliers: Optional percentile for winsorizing outliers (0.0-0.5)
             figsize: Figure size (default: (10, 6))
-            label_rotation_threshold: Rotate x-axis labels if method count exceeds this.
             engine: Plotting backend to use ('matplotlib' or 'seaborn')
             orientation: Direction of boxplot ('vertical' or 'horizontal')
             sns_theme: Optional dictionary of seaborn theme parameters
@@ -736,7 +720,6 @@ class BoxPlotFormatter(DistributionPlotFormatter):
             trim_outliers=trim_outliers,
             winsorize_outliers=winsorize_outliers,
             figsize=figsize,
-            label_rotation_threshold=label_rotation_threshold,
             engine=engine,
             orientation=orientation,
             plot_type="box",
@@ -755,7 +738,6 @@ class ViolinPlotFormatter(DistributionPlotFormatter):
         trim_outliers: float | None = None,
         winsorize_outliers: float | None = None,
         figsize: tuple[int, int] = (10, 6),
-        label_rotation_threshold: int = 4,
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
         orientation: Literal["vertical", "horizontal"] = "horizontal",
         sns_theme: dict[str, Any] | None = None,
@@ -770,7 +752,6 @@ class ViolinPlotFormatter(DistributionPlotFormatter):
             trim_outliers: Optional percentile for trimming outliers (0.0-0.5)
             winsorize_outliers: Optional percentile for winsorizing outliers (0.0-0.5)
             figsize: Figure size (default: (10, 6))
-            label_rotation_threshold: Rotate x-axis labels if method count exceeds this.
             engine: Plotting backend to use ('matplotlib' or 'seaborn')
             orientation: Direction of violin plot ('vertical' or 'horizontal')
             sns_theme: Optional dictionary of seaborn theme parameters
@@ -784,7 +765,6 @@ class ViolinPlotFormatter(DistributionPlotFormatter):
             trim_outliers=trim_outliers,
             winsorize_outliers=winsorize_outliers,
             figsize=figsize,
-            label_rotation_threshold=label_rotation_threshold,
             engine=engine,
             orientation=orientation,
             plot_type="violin",
@@ -1409,7 +1389,6 @@ class BarPlotFormatter(PlotFormatter):
         log_scale: bool = False,
         data_limit: tuple[float, float] | None = None,
         figsize: tuple[int, int] = (10, 6),
-        label_rotation_threshold: int = 4,
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
         orientation: Literal["vertical", "horizontal"] = "horizontal",
         sns_theme: dict[str, Any] | None = None,
@@ -1424,7 +1403,6 @@ class BarPlotFormatter(PlotFormatter):
             log_scale: Whether to use logarithmic scale for data axis (default: False)
             data_limit: Optional tuple of (min, max) for data axis limits
             figsize: Figure size (default: (10, 6))
-            label_rotation_threshold: Rotate labels if method count exceeds this
             engine: Plotting backend to use ('matplotlib' or 'seaborn')
             orientation: Direction of plot ('vertical' or 'horizontal')
             sns_theme: Optional dictionary of seaborn theme parameters
@@ -1435,7 +1413,6 @@ class BarPlotFormatter(PlotFormatter):
         self.log_scale = log_scale
         self.data_limit = data_limit
         self.figsize = figsize
-        self.label_rotation_threshold = label_rotation_threshold
         self.orientation = orientation
         self.plot_kwargs = plot_kwargs
 
@@ -1648,9 +1625,9 @@ class BarPlotFormatter(PlotFormatter):
             ax.set_xticks(range(len(labels)))
             ax.set_xticklabels(labels)
 
-            # Rotate labels if there are many methods
-            if len(labels) > self.label_rotation_threshold:
-                plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
+            # Use autofmt_xdate for automatic rotation of x labels
+            if self.orientation == "vertical":
+                ax.figure.autofmt_xdate()
 
             # Set y-axis label based on metric type
             self._set_axis_label(ax, metric, config, "y")
