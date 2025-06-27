@@ -778,15 +778,7 @@ class JSONFormatter(Formatter):
         time_unit = TimeUnit.from_config(config)
         self.shrink_data(results, stats, config)
         output_data: dict[str, Any] = {
-            "config": {
-                "trials": config.trials,
-                "time": config.time,
-                "memory": config.memory,
-                "time_unit": str(time_unit),
-                "memory_unit": str(memory_unit),
-                "sort_by": config.sort_by,
-                "reverse": config.reverse,
-            },
+            "config": config.model_dump(exclude={"reporters", "progress"}),
             "stats": {},
             "results": results,
         }
