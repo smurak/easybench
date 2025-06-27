@@ -824,7 +824,7 @@ class TestJSONFormatter:
         output = formatter.format(results, stats, config)
         data = json.loads(output)
 
-        assert data["config"]["memory_unit"] == "MB"
+        assert data["config"]["memory"] == "MB"
         assert data["stats"]["test_func"]["avg_memory"] == TEST_AVG_MEMORY
         assert data["stats"]["test_func"]["max_memory"] == TEST_MAX_MEMORY
         assert data["results"] == results
@@ -1528,7 +1528,7 @@ class TestFormatterTimeUnits:
             json_formatter = JSONFormatter()
             json_output = json_formatter.format(results, stats, config)
             decoded_str = json_output.encode("utf-8").decode("unicode_escape")
-            assert f'"time_unit": "{display_unit}"' in decoded_str
+            assert f'"time": "{time_unit}"' in decoded_str
 
             # Test DataFrameFormatter (skip if pandas not installed)
             try:
