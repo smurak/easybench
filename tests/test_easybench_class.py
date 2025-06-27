@@ -3307,3 +3307,56 @@ class TestEasyBenchClipOutliers:
         partial_config = PartialBenchConfig(clip_outliers=clip2)
         merged = partial_config.merge_with(base_config)
         assert merged.clip_outliers == clip2
+
+    def test_clip_outliers_with_memory(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+        allocate_memory: Callable[[int], list[int]],
+    ) -> None:
+        """Test that clip_outliers works correctly with memory measurements."""
+        outlier_count = 3
+
+        class MemoryClipBench(EasyBench):
+            def __init__(self) -> None:
+                super().__init__()
+                self.trial_counter = 0
+
+            def bench_memory_outlier(self) -> list[int]:
+                # Increment trial counter
+                self.trial_counter += 1
+
+                # For one specific trial, allocate significantly more memory (outlier)
+                if self.trial_counter == outlier_count:  # Third trial is the outlier
+                    return allocate_memory(1000)  # Large memory allocation
+                return allocate_memory(100)  # Normal memory allocation
+
+        # Test without clipping outliers
+        bench1 = MemoryClipBench()
+        bench1.bench(trials=5, memory=True)
+
+        captured1 = capsys.readouterr()
+        parsed_out1 = parse_benchmark_output(captured1.out)
+
+        # With no clipping, the average should include the outlier
+        avg_with_outlier = parsed_out1["functions"]["bench_memory_outlier"][
+            "avg_memory"
+        ]
+
+        # Test with clipping outliers
+        bench2 = MemoryClipBench()
+        bench2.bench(trials=5, memory=True, clip_outliers=0.1)  # Clip 10% from each end
+
+        captured2 = capsys.readouterr()
+        parsed_out2 = parse_benchmark_output(captured2.out)
+
+        # With clipping, the average should exclude the outlier
+        avg_with_clipping = parsed_out2["functions"]["bench_memory_outlier"][
+            "avg_memory"
+        ]
+
+        # The clipped average should be lower since the high outlier is removed
+        assert avg_with_clipping < avg_with_outlier
+
+        # The clipped average should be closer to the normal allocation size
+        assert abs(avg_with_clipping - 100) < abs(avg_with_outlier - 100)
