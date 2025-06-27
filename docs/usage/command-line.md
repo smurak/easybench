@@ -20,7 +20,7 @@ easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-
 
 - `--trials N`: Number of trials (default: 5)
 - `--loops-per-trial N`: Number of loops to run per trial for improved precision
-- `--warmups N`: Number of warmup trials to run before timing
+- `--warmups N`: Number of warmup trials to run before benchmarking
 - `--memory`: Enable memory measurement
 - `--memory-unit UNIT`: Memory unit for displaying results (B/KB/MB/GB)
 - `--sort-by METRIC`: Sort criterion (def/avg/min/max/avg_memory/max_memory)

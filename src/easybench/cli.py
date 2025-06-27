@@ -233,7 +233,7 @@ def cli_main() -> None:
         type=int,
         default=None,
         help=(
-            "Number of warmup trials to run before timing "
+            "Number of warmup trials to run before benchmarking "
             f"(default: {default_config.warmups})"
         ),
     )
