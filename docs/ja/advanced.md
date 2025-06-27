@@ -143,9 +143,6 @@ if __name__ == "__main__":
 
 - `showfliers`：外れ値を表示するかどうか（デフォルト：`True`）
 - `log_scale`：対数スケールを使用するかどうか（デフォルト：`False`）
-- `data_limit`：軸のデータ範囲を指定（例：`(0, 0.01)`）
-- `trim_outliers`：外れ値のトリミングのパーセンタイル（0.0〜0.5）
-- `winsorize_outliers`：外れ値を強制的に範囲内に収めるパーセンタイル（0.0〜0.5）
 - `figsize`：図のサイズ（デフォルト：`(10, 6)`）
 - `engine`：プロットエンジン（`"matplotlib"`または`"seaborn"`）
 - `orientation`：ボックスプロットの向き（`"vertical"`または`"horizontal"`）

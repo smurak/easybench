@@ -142,9 +142,6 @@ if __name__ == "__main__":
 
 - `showfliers`: Whether to show outliers (default: `True`)
 - `log_scale`: Whether to use logarithmic scale (default: `False`)
-- `data_limit`: Specify axis data range (e.g., `(0, 0.01)`)
-- `trim_outliers`: Percentile for trimming outliers (0.0 to 0.5)
-- `winsorize_outliers`: Percentile for winsorizing outliers (0.0 to 0.5)
 - `figsize`: Figure size (default: `(10, 6)`)
 - `engine`: Plotting engine (`"matplotlib"` or `"seaborn"`)
 - `orientation`: Boxplot orientation (`"vertical"` or `"horizontal"`)
