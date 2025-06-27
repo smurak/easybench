@@ -45,7 +45,6 @@ TEST_AVG_TIME = 0.2
 TEST_TIME_VALUES = [TEST_TIME_VALUE, TEST_SLOW_TIME, TEST_SLOWER_TIME]
 
 # Constants for test configurations
-DEFAULT_TRIM_OUTLIERS = 0.1
 NUM_TEST_FUNCTIONS = 2
 DEFAULT_DPI = 100
 CUSTOM_DPI = 200
@@ -136,7 +135,6 @@ class TestBoxPlotFormatter:
         formatter = BoxPlotFormatter()
         assert formatter.showfliers is True
         assert formatter.log_scale is False
-        assert formatter.data_limit is None
         assert formatter.figsize == (10, 6)
         assert formatter.engine == "matplotlib"
         assert formatter.orientation == "horizontal"
@@ -146,18 +144,12 @@ class TestBoxPlotFormatter:
         formatter = BoxPlotFormatter(
             showfliers=False,
             log_scale=True,
-            data_limit=(0.0, 1.0),
-            trim_outliers=DEFAULT_TRIM_OUTLIERS,
-            winsorize_outliers=None,
             figsize=(8, 4),
             engine="seaborn",
             orientation="vertical",
         )
         assert formatter.showfliers is False
         assert formatter.log_scale is True
-        assert formatter.data_limit == (0.0, 1.0)
-        assert formatter.trim_outliers == DEFAULT_TRIM_OUTLIERS
-        assert formatter.winsorize_outliers is None
         assert formatter.figsize == (8, 4)
         assert formatter.engine == "seaborn"
         assert formatter.orientation == "vertical"
@@ -232,46 +224,6 @@ class TestBoxPlotFormatter:
             fig = formatter.format(sample_results, sample_stats, sample_config)
             assert fig is not None
             assert len(fig.axes) > 0
-        plt.close()
-
-    def test_trim_outliers(
-        self,
-        sample_results: dict[str, ResultType],
-        sample_stats: dict[str, StatType],
-        sample_config: BenchConfig,
-    ) -> None:
-        """Test outlier trimming functionality."""
-        if not find_spec("numpy"):
-            pytest.skip("numpy not installed")
-
-        formatter = BoxPlotFormatter(trim_outliers=DEFAULT_TRIM_OUTLIERS)
-        with (
-            mock.patch("matplotlib.pyplot.show"),
-            mock.patch("matplotlib.pyplot.savefig"),
-            mock.patch("matplotlib.pyplot.close"),
-        ):
-            fig = formatter.format(sample_results, sample_stats, sample_config)
-            assert fig is not None
-        plt.close()
-
-    def test_winsorize_outliers(
-        self,
-        sample_results: dict[str, ResultType],
-        sample_stats: dict[str, StatType],
-        sample_config: BenchConfig,
-    ) -> None:
-        """Test outlier winsorization functionality."""
-        if not find_spec("numpy"):
-            pytest.skip("numpy not installed")
-
-        formatter = BoxPlotFormatter(winsorize_outliers=DEFAULT_TRIM_OUTLIERS)
-        with (
-            mock.patch("matplotlib.pyplot.show"),
-            mock.patch("matplotlib.pyplot.savefig"),
-            mock.patch("matplotlib.pyplot.close"),
-        ):
-            fig = formatter.format(sample_results, sample_stats, sample_config)
-            assert fig is not None
         plt.close()
 
     def test_create_matplotlib_boxplot(self) -> None:
@@ -1216,7 +1168,6 @@ class TestViolinPlotFormatter:
         """Test initialization with default parameters."""
         formatter = ViolinPlotFormatter()
         assert formatter.log_scale is False
-        assert formatter.data_limit is None
         assert formatter.figsize == (10, 6)
         assert formatter.engine == "matplotlib"
         assert formatter.orientation == "horizontal"
@@ -1226,17 +1177,11 @@ class TestViolinPlotFormatter:
         """Test initialization with custom parameters."""
         formatter = ViolinPlotFormatter(
             log_scale=True,
-            data_limit=(0.0, 1.0),
-            trim_outliers=DEFAULT_TRIM_OUTLIERS,
-            winsorize_outliers=None,
             figsize=(8, 4),
             engine="seaborn",
             orientation="vertical",
         )
         assert formatter.log_scale is True
-        assert formatter.data_limit == (0.0, 1.0)
-        assert formatter.trim_outliers == DEFAULT_TRIM_OUTLIERS
-        assert formatter.winsorize_outliers is None
         assert formatter.figsize == (8, 4)
         assert formatter.engine == "seaborn"
         assert formatter.orientation == "vertical"
@@ -1312,46 +1257,6 @@ class TestViolinPlotFormatter:
             fig = formatter.format(sample_results, sample_stats, sample_config)
             assert fig is not None
             assert len(fig.axes) > 0
-        plt.close()
-
-    def test_trim_outliers(
-        self,
-        sample_results: dict[str, ResultType],
-        sample_stats: dict[str, StatType],
-        sample_config: BenchConfig,
-    ) -> None:
-        """Test outlier trimming functionality."""
-        if not find_spec("numpy"):
-            pytest.skip("numpy not installed")
-
-        formatter = ViolinPlotFormatter(trim_outliers=DEFAULT_TRIM_OUTLIERS)
-        with (
-            mock.patch("matplotlib.pyplot.show"),
-            mock.patch("matplotlib.pyplot.savefig"),
-            mock.patch("matplotlib.pyplot.close"),
-        ):
-            fig = formatter.format(sample_results, sample_stats, sample_config)
-            assert fig is not None
-        plt.close()
-
-    def test_winsorize_outliers(
-        self,
-        sample_results: dict[str, ResultType],
-        sample_stats: dict[str, StatType],
-        sample_config: BenchConfig,
-    ) -> None:
-        """Test outlier winsorization functionality."""
-        if not find_spec("numpy"):
-            pytest.skip("numpy not installed")
-
-        formatter = ViolinPlotFormatter(winsorize_outliers=DEFAULT_TRIM_OUTLIERS)
-        with (
-            mock.patch("matplotlib.pyplot.show"),
-            mock.patch("matplotlib.pyplot.savefig"),
-            mock.patch("matplotlib.pyplot.close"),
-        ):
-            fig = formatter.format(sample_results, sample_stats, sample_config)
-            assert fig is not None
         plt.close()
 
     def test_create_matplotlib_violinplot(self) -> None:
@@ -1827,7 +1732,6 @@ class TestHistPlotFormatter:
         """Test initialization with default parameters."""
         formatter = HistPlotFormatter()
         assert formatter.log_scale is False
-        assert formatter.data_limit is None
         assert formatter.figsize == (10, 6)
         assert formatter.bins == "auto"
         assert formatter.engine == "matplotlib"
@@ -1839,7 +1743,6 @@ class TestHistPlotFormatter:
         formatter = HistPlotFormatter(
             bins=bins,
             log_scale=True,
-            data_limit=(0.0, 1.0),
             figsize=(8, 4),
             engine="seaborn",
             alpha=alpha,
@@ -1847,7 +1750,6 @@ class TestHistPlotFormatter:
         )
         assert formatter.bins == bins
         assert formatter.log_scale is True
-        assert formatter.data_limit == (0.0, 1.0)
         assert formatter.figsize == (8, 4)
         assert formatter.engine == "seaborn"
         assert formatter.hist_kwargs["alpha"] == alpha
@@ -2082,20 +1984,6 @@ class TestHistPlotFormatter:
         # Verify the x-axis scale was set to "log"
         mock_ax.set_xscale.assert_called_once_with("log")
 
-    def test_data_limit_application(self) -> None:
-        """Test that data_limit parameter is correctly applied to axes."""
-        data_limit = (0.1, 1.0)
-        formatter = HistPlotFormatter(data_limit=data_limit)
-
-        # Create a mock axis
-        mock_ax = mock.MagicMock()
-
-        # Apply styling to the mock axis
-        formatter._apply_styling(mock_ax, BenchConfig(trials=10))
-
-        # Verify the x-axis limits were set to data_limit
-        mock_ax.set_xlim.assert_called_once_with(data_limit)
-
 
 class TestHistPlotFormatterTimeDisabled:
     """Tests for HistPlotFormatter with time measurement disabled."""
@@ -2177,7 +2065,6 @@ class TestBarPlotFormatter:
         formatter = BarPlotFormatter()
         assert formatter.metric is None
         assert formatter.log_scale is False
-        assert formatter.data_limit is None
         assert formatter.figsize == (10, 6)
         assert formatter.engine == "matplotlib"
         assert formatter.orientation == "horizontal"
@@ -2188,14 +2075,12 @@ class TestBarPlotFormatter:
         formatter = BarPlotFormatter(
             metric="min",
             log_scale=True,
-            data_limit=(0.0, 1.0),
             figsize=(8, 4),
             engine="seaborn",
             orientation="vertical",
         )
         assert formatter.metric == "min"
         assert formatter.log_scale is True
-        assert formatter.data_limit == (0.0, 1.0)
         assert formatter.figsize == (8, 4)
         assert formatter.engine == "seaborn"
         assert formatter.orientation == "vertical"
@@ -2314,30 +2199,6 @@ class TestBarPlotFormatter:
             mock_ax.set_xscale.assert_called_once_with("log")
         else:
             mock_ax.set_yscale.assert_called_once_with("log")
-
-        plt.close()
-
-    def test_data_limit_application(self) -> None:
-        """Test that data_limit parameter is correctly applied to axes."""
-        data_limit = (0.1, 1.0)
-        formatter = BarPlotFormatter(data_limit=data_limit)
-
-        # Create a mock axis
-        mock_ax = mock.MagicMock()
-
-        # Mock labels and prepare for the styling function
-        labels = ["test1", "test2"]
-        config = BenchConfig(trials=3)
-        metric: MetricType = "avg"
-
-        # Apply styling to the mock axis
-        formatter._apply_styling(mock_ax, labels, metric, config)
-
-        # Check that appropriate limit setting was called based on orientation
-        if formatter.orientation == "horizontal":
-            mock_ax.set_xlim.assert_called_once_with(data_limit)
-        else:
-            mock_ax.set_ylim.assert_called_once_with(data_limit)
 
         plt.close()
 

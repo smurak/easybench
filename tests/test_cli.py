@@ -141,6 +141,7 @@ def cli_args_mock() -> MagicMock:
     args.exclude = None
     args.include_files = None
     args.exclude_files = None
+    args.clip_outliers = None
     return args
 
 
@@ -862,6 +863,7 @@ class TestCliArguments:
         mock_args.exclude = None
         mock_args.include_files = None
         mock_args.exclude_files = None
+        mock_args.clip_outliers = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Set up other mocks
@@ -907,6 +909,7 @@ class TestCliArguments:
         mock_args.exclude = None
         mock_args.include_files = None
         mock_args.exclude_files = None
+        mock_args.clip_outliers = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -947,6 +950,7 @@ class TestCliArguments:
         mock_args.exclude = None
         mock_args.include_files = None
         mock_args.exclude_files = None
+        mock_args.clip_outliers = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -987,6 +991,7 @@ class TestCliArguments:
         mock_args.exclude = None
         mock_args.include_files = None
         mock_args.exclude_files = None
+        mock_args.clip_outliers = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1030,6 +1035,7 @@ class TestCliArguments:
             mock_args.exclude = None
             mock_args.include_files = None
             mock_args.exclude_files = None
+            mock_args.clip_outliers = None
             cli_setup["parse_args"].return_value = mock_args
 
             # Mock finding benchmark files
@@ -1073,6 +1079,7 @@ class TestCliArguments:
         mock_args.exclude = None
         mock_args.include_files = None
         mock_args.exclude_files = None
+        mock_args.clip_outliers = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1113,6 +1120,7 @@ class TestCliArguments:
         mock_args.exclude = None
         mock_args.include_files = None
         mock_args.exclude_files = None
+        mock_args.clip_outliers = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1153,6 +1161,7 @@ class TestCliArguments:
         mock_args.exclude = None
         mock_args.include_files = None
         mock_args.exclude_files = None
+        mock_args.clip_outliers = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1193,6 +1202,7 @@ class TestCliArguments:
         mock_args.exclude = None
         mock_args.include_files = None
         mock_args.exclude_files = None
+        mock_args.clip_outliers = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1241,6 +1251,7 @@ class TestCliArguments:
             mock_args.exclude = case["exclude"]
             mock_args.include_files = None
             mock_args.exclude_files = None
+            mock_args.clip_outliers = None
             cli_setup["parse_args"].return_value = mock_args
 
             # Mock finding benchmark files
@@ -1307,6 +1318,48 @@ class TestCliArguments:
 
         # Verify run_benchmarks was called
         cli_setup["run_benchmarks"].assert_called_once()
+
+    def test_clip_outliers_parameter(self, cli_setup: dict[str, MagicMock]) -> None:
+        """Test specifying clip_outliers parameter."""
+        # Setup mocks
+        clip_value = 0.1
+        mock_args = MagicMock()
+        mock_args.directory = "benchmarks"
+        mock_args.trials = None
+        mock_args.loops_per_trial = None
+        mock_args.memory = False
+        mock_args.sort_by = None
+        mock_args.reverse = False
+        mock_args.no_color = False
+        mock_args.show_output = False
+        mock_args.time_unit = "s"
+        mock_args.warmups = None
+        mock_args.no_progress = None
+        mock_args.memory_unit = None
+        mock_args.include = None
+        mock_args.exclude = None
+        mock_args.include_files = None
+        mock_args.exclude_files = None
+        mock_args.clip_outliers = clip_value
+        cli_setup["parse_args"].return_value = mock_args
+
+        # Mock finding benchmark files
+        mock_file = Path("benchmarks/bench_test.py")
+        cli_setup["discover_files"].return_value = [mock_file]
+
+        # Mock loading module and discovering benchmarks
+        mock_module = MagicMock()
+        cli_setup["load_module"].return_value = mock_module
+        mock_benchmarks = {"bench1": MagicMock()}
+        cli_setup["discover_benchmarks"].return_value = mock_benchmarks
+
+        # Run the CLI
+        cli_main()
+
+        # Verify run_benchmarks was called with the correct clip_outliers value
+        cli_setup["run_benchmarks"].assert_called_once()
+        args, kwargs = cli_setup["run_benchmarks"].call_args
+        assert kwargs["config"].clip_outliers == clip_value
 
 
 class TestCliEdgeCases:

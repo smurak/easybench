@@ -15,12 +15,12 @@ easybench [options] [path]
 ### Command Options
 
 ```bash
-easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [--progress] [--include PATTERN] [--exclude PATTERN] [--include-files PATTERN] [--exclude-files PATTERN] [--no-time] [path]
+easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [--progress] [--include PATTERN] [--exclude PATTERN] [--include-files PATTERN] [--exclude-files PATTERN] [--no-time] [--clip-outliers VALUE] [path]
 ```
 
 - `--trials N`: Number of trials (default: 5)
 - `--loops-per-trial N`: Number of loops to run per trial for improved precision
-- `--warmups N`: Number of warmup trials to run before timing
+- `--warmups N`: Number of warmup trials to run before benchmarking
 - `--memory`: Enable memory measurement
 - `--memory-unit UNIT`: Memory unit for displaying results (B/KB/MB/GB)
 - `--sort-by METRIC`: Sort criterion (def/avg/min/max/avg_memory/max_memory)
@@ -35,6 +35,7 @@ easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-
 - `--include-files PATTERN`: Regular expression pattern to include only matching benchmark files
 - `--exclude-files PATTERN`: Regular expression pattern to exclude matching benchmark files
 - `--no-time`: Disable time measurement reporting
+- `--clip-outliers VALUE`: Clip values on both sides (minimum and maximum) based on the specified proportion (between 0 and 0.5)
 - `path`: Directory containing benchmark files or a specific benchmark file (default: "benchmarks")
 
 ### Function-based Benchmark Example

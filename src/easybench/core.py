@@ -229,6 +229,7 @@ class PartialBenchConfig(BaseModel):
     progress: bool | Callable | None = None
     include: str | None = None
     exclude: str | None = None
+    clip_outliers: float | None = None
 
     @model_validator(mode="after")
     def validate_time_and_memory(self) -> PartialBenchConfig:
@@ -309,6 +310,15 @@ class PartialBenchConfig(BaseModel):
             raise ValueError(msg)
         return v
 
+    @field_validator("clip_outliers", mode="before")
+    @classmethod
+    def validate_clip_outliers(cls, v: float | None) -> float | None:
+        """Validate clip_outliers is in valid range."""
+        if v is not None and not (0.0 < v < 0.5):  # noqa: PLR2004
+            msg = "clip_outliers must be between 0.0 and 0.5"
+            raise ValueError(msg)
+        return v
+
 
 class BenchConfig(PartialBenchConfig):
     """Complete configuration for EasyBench with required values."""
@@ -327,6 +337,7 @@ class BenchConfig(PartialBenchConfig):
     progress: bool | Callable = False
     include: str | None = None
     exclude: str | None = None
+    clip_outliers: float | None = None
 
 
 def ensure_full_config(
@@ -1061,18 +1072,22 @@ class EasyBench:
         )
 
         # Run all benchmarks
-        results = self._run_benchmarks(
+        raw_results = self._run_benchmarks(
             config=complete_config,
             fixture_registry=fixture_registry,
         )
 
+        # Process results (apply outlier clipping if configured)
+        processed_results = self._process_results(raw_results, complete_config)
+
         # Display results using reporters
         self._display_results(
-            results=results,
+            results=processed_results,
             config=complete_config,
         )
 
-        return results
+        # Return the processed results
+        return processed_results
 
     class ScopeManager:
         """Context manager for handling benchmark scopes."""
@@ -1438,6 +1453,83 @@ class EasyBench:
                 stats=stats,
                 config=config,
             )
+
+    def _clip_outliers(self, values: list[float], clip_value: float) -> list[float]:
+        """
+        Clip outliers in a list of values based on percentiles.
+
+        Args:
+            values: List of values to clip
+            clip_value: Percentile threshold (0.0 to 0.5)
+
+        Returns:
+            List with outliers clipped
+
+        """
+        try:
+            import numpy as np  # noqa: PLC0415
+
+            # Convert values to NumPy array for vectorized operations
+            arr = np.array(values, dtype=float)
+
+            # Calculate percentile thresholds
+            lower = np.percentile(arr, clip_value * 100)
+            upper = np.percentile(arr, 100 - clip_value * 100)
+
+            # Clip values using np.clip
+            clipped = np.clip(arr, lower, upper)
+
+            return clipped.tolist()
+
+        except ImportError:
+            # If numpy is not available, log a warning and use original values
+            logger.warning(
+                "numpy is required for clip_outliers. "
+                "Install with pip install numpy or disable clip_outliers.",
+            )
+            return values
+
+    def _process_results(
+        self,
+        results: ResultsType,
+        config: BenchConfig,
+    ) -> ResultsType:
+        """
+        Process benchmark results by applying transformations like outlier clipping.
+
+        Args:
+            results: Dictionary of raw benchmark results
+            config: BenchConfig
+
+        Returns:
+            Processed results
+
+        """
+        # If no clipping is needed, return the original results
+        if config.clip_outliers is None:
+            return results
+
+        # Create a deep copy to avoid modifying the original data
+        processed_results: ResultsType = {}
+        clip_value = config.clip_outliers
+
+        for method_name, data in results.items():
+            processed_data = data.copy()
+
+            # Process time measurements if present
+            if "times" in data:
+                processed_data["times"] = self._clip_outliers(data["times"], clip_value)
+
+            # Process memory measurements if present
+            if "memory" in data:
+                processed_data["memory"] = self._clip_outliers(
+                    data["memory"],
+                    clip_value,
+                )
+
+            processed_results[method_name] = processed_data
+
+        return processed_results
 
     def _calculate_statistics(
         self,

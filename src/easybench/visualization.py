@@ -117,9 +117,6 @@ class DistributionPlotFormatter(PlotFormatter):
         self,
         showfliers: bool = True,
         log_scale: bool = False,
-        data_limit: tuple[float, float] | None = None,
-        trim_outliers: float | None = None,
-        winsorize_outliers: float | None = None,
         figsize: tuple[int, int] = (10, 6),
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
         orientation: Literal["vertical", "horizontal"] = "horizontal",
@@ -133,9 +130,6 @@ class DistributionPlotFormatter(PlotFormatter):
         Args:
             showfliers: Whether to show outliers (only for boxplot) (default: True)
             log_scale: Whether to use logarithmic scale for y-axis (default: False)
-            data_limit: Optional tuple of (min, max) for data axis limits
-            trim_outliers: Optional percentile for trimming outliers (0.0-0.5)
-            winsorize_outliers: Optional percentile for winsorizing outliers (0.0-0.5)
             figsize: Figure size (default: (10, 6))
             engine: Plotting backend to use ('matplotlib' or 'seaborn')
             orientation: Direction of plot ('vertical' or 'horizontal')
@@ -145,9 +139,6 @@ class DistributionPlotFormatter(PlotFormatter):
 
         """
         self.log_scale = log_scale
-        self.data_limit = data_limit
-        self.trim_outliers = trim_outliers
-        self.winsorize_outliers = winsorize_outliers
         self.figsize = figsize
         self.plot_kwargs = plot_kwargs
         self.showfliers = showfliers
@@ -292,60 +283,13 @@ class DistributionPlotFormatter(PlotFormatter):
             labels = [name for name in sorted_methods if "memory" in results[name]]
             return data, labels
 
-        # Extract time data without processing if no outlier handling is needed
-        if self.trim_outliers is None and self.winsorize_outliers is None:
-            # No outlier handling needed, extract raw data and return early
-            for method_name in sorted_methods:
-                if "times" in results[method_name]:
-                    # Convert time values to the specified unit
-                    data[method_name] = [
-                        time_unit.convert_seconds(t)
-                        for t in results[method_name]["times"]
-                    ]
-                    labels.append(method_name)
-            return data, labels
-
-        # If we reach here, we need numpy for outlier handling
-        try:
-            import numpy as np  # noqa: PLC0415
-        except ImportError as err:
-            error_msg = (
-                "numpy is required for outlier handling in DistributionPlotFormatter. "
-                "Install with pip install numpy."
-            )
-            raise ImportError(error_msg) from err
-
-        # Extract time data for each method with outlier handling
+        # Extract time data
         for method_name in sorted_methods:
             if "times" in results[method_name]:
-                times = results[method_name]["times"]
-
-                # Apply outlier handling if requested
-                if (
-                    self.trim_outliers is not None
-                    and MIN_PERCENTILE_THRESHOLD
-                    < self.trim_outliers
-                    < MAX_PERCENTILE_THRESHOLD
-                ):
-                    # Trim outliers by percentile
-                    lower = float(np.percentile(times, self.trim_outliers * 100))
-                    upper = float(np.percentile(times, 100 - self.trim_outliers * 100))
-                    times = [t for t in times if lower <= t <= upper]
-
-                if (
-                    self.winsorize_outliers is not None
-                    and MIN_PERCENTILE_THRESHOLD
-                    < self.winsorize_outliers
-                    < MAX_PERCENTILE_THRESHOLD
-                ):
-                    # Winsorize outliers (clip to percentile values)
-                    lower = float(np.percentile(times, self.winsorize_outliers * 100))
-                    upper = float(
-                        np.percentile(times, 100 - self.winsorize_outliers * 100),
-                    )
-                    times = [min(max(float(t), lower), upper) for t in times]
-
-                data[method_name] = times
+                # Convert time values to the specified unit
+                data[method_name] = [
+                    time_unit.convert_seconds(t) for t in results[method_name]["times"]
+                ]
                 labels.append(method_name)
 
         return data, labels
@@ -368,56 +312,6 @@ class DistributionPlotFormatter(PlotFormatter):
                     memory_unit.convert_bytes(value)
                     for value in results[method_name]["memory"]
                 ]
-
-                # Apply outlier handling if needed
-                if (
-                    self.trim_outliers is not None
-                    and MIN_PERCENTILE_THRESHOLD
-                    < self.trim_outliers
-                    < MAX_PERCENTILE_THRESHOLD
-                ):
-                    try:
-                        import numpy as np  # noqa: PLC0415
-
-                        lower = float(
-                            np.percentile(memory_values, self.trim_outliers * 100),
-                        )
-                        upper = float(
-                            np.percentile(
-                                memory_values,
-                                100 - self.trim_outliers * 100,
-                            ),
-                        )
-                        memory_values = [
-                            m for m in memory_values if lower <= m <= upper
-                        ]
-                    except ImportError:
-                        pass  # Fallback to using raw values if numpy is not available
-
-                if (
-                    self.winsorize_outliers is not None
-                    and MIN_PERCENTILE_THRESHOLD
-                    < self.winsorize_outliers
-                    < MAX_PERCENTILE_THRESHOLD
-                ):
-                    try:
-                        import numpy as np  # noqa: PLC0415
-
-                        lower = float(
-                            np.percentile(memory_values, self.winsorize_outliers * 100),
-                        )
-                        upper = float(
-                            np.percentile(
-                                memory_values,
-                                100 - self.winsorize_outliers * 100,
-                            ),
-                        )
-                        memory_values = [
-                            min(max(float(m), lower), upper) for m in memory_values
-                        ]
-                    except ImportError:
-                        pass  # Fallback to using raw values if numpy is not available
-
                 memory_data[method_name] = memory_values
             else:
                 # Use placeholder if no memory data available
@@ -630,9 +524,6 @@ class DistributionPlotFormatter(PlotFormatter):
         # Set the scale (log or linear)
         self._set_axis_scale(ax)
 
-        # Set axis limits if provided
-        self._set_axis_limits(ax)
-
         # Set the plot title
         title = self._get_plot_title(config.trials, title_suffix)
         ax.set_title(title)
@@ -652,14 +543,6 @@ class DistributionPlotFormatter(PlotFormatter):
                 ax.set_xscale("log")
             else:
                 ax.set_yscale("log")
-
-    def _set_axis_limits(self, ax: plt.Axes) -> None:
-        """Set axis limits if provided."""
-        if self.data_limit is not None:
-            if self.orientation == "horizontal":
-                ax.set_xlim(self.data_limit)
-            else:
-                ax.set_ylim(self.data_limit)
 
     def _get_plot_title(self, trials: int, title_suffix: str = "") -> str:
         """Generate the plot title."""
@@ -688,9 +571,6 @@ class BoxPlotFormatter(DistributionPlotFormatter):
         self,
         showfliers: bool = True,
         log_scale: bool = False,
-        data_limit: tuple[float, float] | None = None,
-        trim_outliers: float | None = None,
-        winsorize_outliers: float | None = None,
         figsize: tuple[int, int] = (10, 6),
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
         orientation: Literal["vertical", "horizontal"] = "horizontal",
@@ -703,9 +583,6 @@ class BoxPlotFormatter(DistributionPlotFormatter):
         Args:
             showfliers: Whether to show outliers in the boxplot (default: True)
             log_scale: Whether to use logarithmic scale for y-axis (default: False)
-            data_limit: Optional tuple of (min, max) for data axis limits
-            trim_outliers: Optional percentile for trimming outliers (0.0-0.5)
-            winsorize_outliers: Optional percentile for winsorizing outliers (0.0-0.5)
             figsize: Figure size (default: (10, 6))
             engine: Plotting backend to use ('matplotlib' or 'seaborn')
             orientation: Direction of boxplot ('vertical' or 'horizontal')
@@ -716,9 +593,6 @@ class BoxPlotFormatter(DistributionPlotFormatter):
         super().__init__(
             showfliers=showfliers,
             log_scale=log_scale,
-            data_limit=data_limit,
-            trim_outliers=trim_outliers,
-            winsorize_outliers=winsorize_outliers,
             figsize=figsize,
             engine=engine,
             orientation=orientation,
@@ -734,9 +608,6 @@ class ViolinPlotFormatter(DistributionPlotFormatter):
     def __init__(
         self,
         log_scale: bool = False,
-        data_limit: tuple[float, float] | None = None,
-        trim_outliers: float | None = None,
-        winsorize_outliers: float | None = None,
         figsize: tuple[int, int] = (10, 6),
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
         orientation: Literal["vertical", "horizontal"] = "horizontal",
@@ -748,9 +619,6 @@ class ViolinPlotFormatter(DistributionPlotFormatter):
 
         Args:
             log_scale: Whether to use logarithmic scale for y-axis (default: False)
-            data_limit: Optional tuple of (min, max) for data axis limits
-            trim_outliers: Optional percentile for trimming outliers (0.0-0.5)
-            winsorize_outliers: Optional percentile for winsorizing outliers (0.0-0.5)
             figsize: Figure size (default: (10, 6))
             engine: Plotting backend to use ('matplotlib' or 'seaborn')
             orientation: Direction of violin plot ('vertical' or 'horizontal')
@@ -761,9 +629,6 @@ class ViolinPlotFormatter(DistributionPlotFormatter):
         super().__init__(
             showfliers=True,
             log_scale=log_scale,
-            data_limit=data_limit,
-            trim_outliers=trim_outliers,
-            winsorize_outliers=winsorize_outliers,
             figsize=figsize,
             engine=engine,
             orientation=orientation,
@@ -785,7 +650,6 @@ class HistPlotFormatter(PlotFormatter):
         self,
         bins: int | str = "auto",
         log_scale: bool = False,
-        data_limit: tuple[float, float] | None = None,
         figsize: tuple[int, int] = (10, 6),
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
         sns_theme: dict[str, Any] | None = None,
@@ -797,7 +661,6 @@ class HistPlotFormatter(PlotFormatter):
         Args:
             bins: Number of bins or binning strategy (default: "auto")
             log_scale: Whether to use logarithmic scale for x-axis (default: False)
-            data_limit: Optional tuple of (min, max) for data axis limits
             figsize: Figure size (default: (10, 6))
             engine: Plotting backend to use ('matplotlib' or 'seaborn')
             sns_theme: Optional dictionary of seaborn theme parameters
@@ -806,7 +669,6 @@ class HistPlotFormatter(PlotFormatter):
         """
         self.bins = bins
         self.log_scale = log_scale
-        self.data_limit = data_limit
         self.figsize = figsize
         self.hist_kwargs = hist_kwargs
 
@@ -1053,10 +915,6 @@ class HistPlotFormatter(PlotFormatter):
 
         # Set axis labels based on unit type
         self._set_axis_labels(ax, unit)
-
-        # Set axis limits if provided
-        if self.data_limit is not None:
-            ax.set_xlim(self.data_limit)
 
         # Show legend if requested
         if show_legend:
@@ -1387,7 +1245,6 @@ class BarPlotFormatter(PlotFormatter):
         self,
         metric: MetricType | list[MetricType] | None = None,
         log_scale: bool = False,
-        data_limit: tuple[float, float] | None = None,
         figsize: tuple[int, int] = (10, 6),
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
         orientation: Literal["vertical", "horizontal"] = "horizontal",
@@ -1401,7 +1258,6 @@ class BarPlotFormatter(PlotFormatter):
             metric: The metric(s) to display. Can be a single metric
                 or a list of metrics: "avg", "min", "max", "avg_memory", "max_memory"
             log_scale: Whether to use logarithmic scale for data axis (default: False)
-            data_limit: Optional tuple of (min, max) for data axis limits
             figsize: Figure size (default: (10, 6))
             engine: Plotting backend to use ('matplotlib' or 'seaborn')
             orientation: Direction of plot ('vertical' or 'horizontal')
@@ -1411,7 +1267,6 @@ class BarPlotFormatter(PlotFormatter):
         """
         self.metric = metric
         self.log_scale = log_scale
-        self.data_limit = data_limit
         self.figsize = figsize
         self.orientation = orientation
         self.plot_kwargs = plot_kwargs
@@ -1603,13 +1458,6 @@ class BarPlotFormatter(PlotFormatter):
                 ax.set_xscale("log")
             else:
                 ax.set_yscale("log")
-
-        # Set axis limits if provided
-        if self.data_limit is not None:
-            if self.orientation == "horizontal":
-                ax.set_xlim(self.data_limit)
-            else:
-                ax.set_ylim(self.data_limit)
 
         # Set title based on metric
         self._set_title(ax, metric, config)
