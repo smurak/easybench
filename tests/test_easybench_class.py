@@ -3072,3 +3072,238 @@ class TestTimeDisabledAdvanced:
             match="At least one of 'time' or 'memory' must be enabled",
         ):
             bench.bench(config=PartialBenchConfig(time=False, memory=False))
+
+
+class TestEasyBenchClipOutliers:
+    """Tests for the clip_outliers parameter in BenchConfig."""
+
+    def test_clip_outliers_validation(self) -> None:
+        """Test validation of the clip_outliers parameter."""
+        # Valid values should work
+        clip = 0.1
+        config1 = PartialBenchConfig(clip_outliers=clip)
+        assert config1.clip_outliers == clip
+
+        clip2 = 0.4
+        config2 = PartialBenchConfig(clip_outliers=clip2)
+        assert config2.clip_outliers == clip2
+
+        # None should work (default)
+        config3 = PartialBenchConfig()
+        assert config3.clip_outliers is None
+
+        # Invalid values should raise ValueError
+        with pytest.raises(
+            ValueError,
+            match="clip_outliers must be between 0.0 and 0.5",
+        ):
+            PartialBenchConfig(clip_outliers=0.0)
+
+        with pytest.raises(
+            ValueError,
+            match="clip_outliers must be between 0.0 and 0.5",
+        ):
+            PartialBenchConfig(clip_outliers=0.5)
+
+        with pytest.raises(
+            ValueError,
+            match="clip_outliers must be between 0.0 and 0.5",
+        ):
+            PartialBenchConfig(clip_outliers=-0.1)
+
+        with pytest.raises(
+            ValueError,
+            match="clip_outliers must be between 0.0 and 0.5",
+        ):
+            PartialBenchConfig(clip_outliers=1.0)
+
+    @patch("time.perf_counter")
+    def test_clip_outliers_functionality(
+        self,
+        mock_perf_counter: mock.MagicMock,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test that clip_outliers properly removes outliers from measurements."""
+        # Create a sequence of mock times with an outlier
+        # Normal values: 0.1s, outlier: 1.0s
+        sec = 0.1
+        mock_perf_counter.side_effect = [
+            # First trial: 0.1s
+            0.0,
+            sec,
+            # Second trial: 0.1s
+            sec,
+            sec * 2,
+            # Third trial: 0.1s
+            sec * 2,
+            sec * 3,
+            # Fourth trial: 0.1s
+            sec * 3,
+            sec * 4,
+            # Fifth trial: 1.0s (outlier)
+            sec * 4,
+            1 + sec * 4,
+        ]
+
+        class ClipOutliersBench(EasyBench):
+            def bench_test(self) -> None:
+                # This function doesn't actually do anything since we're mocking time
+                pass
+
+        # Test without clipping outliers
+        bench1 = ClipOutliersBench()
+        bench1.bench(trials=5)
+
+        captured1 = capsys.readouterr()
+        parsed_out1 = parse_benchmark_output(captured1.out)
+
+        # With no clipping, the average should include the outlier
+        avg_with_outlier = parsed_out1["functions"]["bench_test"]["avg"]
+        assert avg_with_outlier == pytest.approx((1 + sec * 4) / 5)
+
+        # Reset the mock for next test
+        mock_perf_counter.reset_mock()
+        mock_perf_counter.side_effect = [
+            # First trial: 0.1s
+            0.0,
+            sec,
+            # Second trial: 0.1s
+            sec,
+            sec * 2,
+            # Third trial: 0.1s
+            sec * 2,
+            sec * 3,
+            # Fourth trial: 0.1s
+            sec * 3,
+            sec * 4,
+            # Fifth trial: 1.0s (outlier)
+            sec * 4,
+            1 + sec * 4,
+        ]
+
+        # Test with clipping outliers
+        bench2 = ClipOutliersBench()
+        bench2.bench(trials=5, clip_outliers=0.1)  # Clip 10% from each end
+
+        captured2 = capsys.readouterr()
+        parsed_out2 = parse_benchmark_output(captured2.out)
+
+        # With clipping, the average should exclude the outlier
+        avg_with_clipping = parsed_out2["functions"]["bench_test"]["avg"]
+        assert avg_with_clipping < (1 + sec * 4) / 5
+
+    @patch("time.perf_counter")
+    def test_clip_outliers_edge_cases(
+        self,
+        mock_perf_counter: mock.MagicMock,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test clip_outliers with edge case values."""
+        # Create sequence of mock times with high variance
+        # 0.01s, 0.05s, 0.1s, 0.5s, 1.0s
+        mock_perf_counter.side_effect = [
+            0.0,
+            0.01,  # Trial 1
+            0.01,
+            0.06,  # Trial 2
+            0.06,
+            0.16,  # Trial 3
+            0.16,
+            0.66,  # Trial 4
+            0.66,
+            1.66,  # Trial 5
+        ]
+
+        class ClipEdgeCasesBench(EasyBench):
+            def bench_test(self) -> None:
+                pass
+
+        # Test with small clip value (0.01)
+        bench1 = ClipEdgeCasesBench()
+        bench1.bench(trials=5, clip_outliers=0.01)
+
+        captured1 = capsys.readouterr()
+        parsed_out1 = parse_benchmark_output(captured1.out)
+
+        # Should still include most values
+        avg1 = parsed_out1["functions"]["bench_test"]["avg"]
+
+        # Reset for next test
+        mock_perf_counter.reset_mock()
+        mock_perf_counter.side_effect = [
+            0.0,
+            0.01,  # Trial 1
+            0.01,
+            0.06,  # Trial 2
+            0.06,
+            0.16,  # Trial 3
+            0.16,
+            0.66,  # Trial 4
+            0.66,
+            1.66,  # Trial 5
+        ]
+
+        # Test with large clip value (0.49)
+        bench2 = ClipEdgeCasesBench()
+        bench2.bench(trials=5, clip_outliers=0.49)
+
+        captured2 = capsys.readouterr()
+        parsed_out2 = parse_benchmark_output(captured2.out)
+
+        # Should exclude most extreme values
+        avg2 = parsed_out2["functions"]["bench_test"]["avg"]
+
+        # With more aggressive clipping, average should be closer to the median
+        assert avg2 < avg1
+
+    @patch("time.perf_counter")
+    def test_clip_outliers_with_few_samples(
+        self,
+        mock_perf_counter: mock.MagicMock,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test clip_outliers when there are few samples."""
+        # Create a sequence with just 3 trials
+        middle = 0.1
+        mock_perf_counter.side_effect = [
+            0.0,
+            middle,  # Trial 1 (0.1)
+            middle,
+            middle * 2,  # Trial 2 (0.1)
+            middle * 2,
+            1 + middle * 2,  # Trial 3 (1.0)
+            1 + middle * 2,
+            1 + middle * 2,  # Trial 4 (0.0)
+            1 + middle * 2,
+            1 + middle * 3,  # Trial 5 (0.1)
+        ]
+
+        class SmallSampleBench(EasyBench):
+            def bench_test(self) -> None:
+                pass
+
+        # Test with clipping on a small sample
+        bench = SmallSampleBench()
+        bench.bench(trials=5, clip_outliers=0.25)
+
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        avg = parsed_out["functions"]["bench_test"]["avg"]
+        assert avg == middle
+
+    def test_clip_outliers_runtime_override(self) -> None:
+        """Test that clip_outliers can be overridden at runtime."""
+        # Create a base config with clip_outliers
+        clip = 0.1
+        base_config = BenchConfig(trials=3, clip_outliers=clip)
+        assert base_config.clip_outliers == clip
+
+        # Override with a partial config
+        clip2 = 0.2
+        partial_config = PartialBenchConfig(clip_outliers=clip2)
+        merged = partial_config.merge_with(base_config)
+        assert merged.clip_outliers == clip2
