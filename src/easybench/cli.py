@@ -309,6 +309,15 @@ def cli_main() -> None:
         default=None,
         help="Regular expression pattern to exclude matching benchmark files",
     )
+    parser.add_argument(
+        "--clip-outliers",
+        type=float,
+        default=None,
+        help=(
+            "Clip values on both sides (minimum and maximum) "
+            "based on the specified proportion (between 0 and 0.5)"
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -331,6 +340,7 @@ def cli_main() -> None:
             progress=False if args.no_progress else True if args.progress else None,
             include=args.include,
             exclude=args.exclude,
+            clip_outliers=args.clip_outliers,
         )
 
         # Discover benchmark files with file filtering

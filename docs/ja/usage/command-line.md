@@ -15,7 +15,7 @@ easybench [オプション] [パス]
 ### コマンドオプション
 
 ```bash
-easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [--progress] [--include PATTERN] [--exclude PATTERN] [--include-files PATTERN] [--exclude-files PATTERN] [--no-time] [パス]
+easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [--progress] [--include PATTERN] [--exclude PATTERN] [--include-files PATTERN] [--exclude-files PATTERN] [--no-time] [--clip-outliers VALUE] [パス]
 ```
 
 - `--trials N`：試行数（デフォルト：5）
@@ -35,6 +35,7 @@ easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-
 - `--include-files PATTERN`：一致するベンチマークファイルのみを含める正規表現パターン
 - `--exclude-files PATTERN`：一致するベンチマークファイルを除外する正規表現パターン
 - `--no-time`：時間測定レポートを無効化
+- `--clip-outliers VALUE`: 指定した割合の両端（最小・最大側）の値を切り詰める （0より大きく0.5未満）
 - `パス`：ベンチマークファイルを含むディレクトリまたは特定のベンチマークファイル（デフォルト："benchmarks"）
 
 ### 関数ベースのベンチマーク例
