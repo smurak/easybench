@@ -198,6 +198,7 @@ class MyBenchmark(EasyBench):
         progress=True,          # tqdmによる進捗表示を有効化
         include=None,           # 一致するベンチマークのみを含める正規表現パターン
         exclude=None,           # 一致するベンチマークを除外する正規表現パターン
+        clip_outliers=None,     # 指定した割合の両端（最小・最大側）の値を切り詰める （0より大きく0.5未満）
     )
 
     # 個別のメソッドに対して設定をカスタマイズすることもできます
