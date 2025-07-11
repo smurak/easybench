@@ -194,7 +194,7 @@ class MyBenchmark(EasyBench):
         color=True,             # 結果でカラー出力を使用
         show_output=False,      # 関数の戻り値を表示
         loops_per_trial=1,      # 試行ごとの関数実行回数（下記説明参照）
-        reporters=["console"],  # カスタムレポーター（下記説明参照）
+        reporters=["console"],  # カスタムレポーター（「高度な使用方法」参照）
         progress=True,          # tqdmによる進捗表示を有効化
         include=None,           # 一致するベンチマークのみを含める正規表現パターン
         exclude=None,           # 一致するベンチマークを除外する正規表現パターン

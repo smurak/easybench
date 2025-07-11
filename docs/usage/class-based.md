@@ -193,7 +193,7 @@ class MyBenchmark(EasyBench):
         color=True,             # Use color output in results
         show_output=False,      # Display function return values
         loops_per_trial=1,      # Number of function executions per trial (see explanation below)
-        reporters=["console"],  # Custom reporters (see explanation below)
+        reporters=["console"],  # Custom reporters (see "Advanced Usage")
         progress=True,          # Enable progress tracking with tqdm
         include=None,           # Regex pattern to include only matching benchmarks
         exclude=None,           # Regex pattern to exclude matching benchmarks
