@@ -607,20 +607,27 @@ class Parametrize:
 parametrize = Parametrize()
 
 
-def customize(*, loops_per_trial: int | None = None) -> Callable:
+def customize(
+    *,
+    loops_per_trial: int | None = None,
+    name: str | None = None,
+) -> Callable:
     """
     Create a decorator for customizing benchmark settings for specific methods.
 
     Example:
         ```python
         class BenchList(EasyBench):
-            @customize(loops_per_trial=1000)
+            @customize(loops_per_trial=1000, name="Fast append operation")
             def bench_append(self):
-                self.big_list.append(0)
+                # This method uses 1000 loops per trial
+                # and displays as "Fast append operation"
+                pass
         ```
 
     Args:
         loops_per_trial: Number of loops per trial for this specific benchmark method
+        name: Custom display name for the benchmark in results
 
     Returns:
         A decorator function that applies custom benchmark settings to the method
@@ -629,7 +636,10 @@ def customize(*, loops_per_trial: int | None = None) -> Callable:
 
     def decorator(func: Callable) -> Callable:
         func = cast("CustomizedFunction", func)
-        func._bench_customize = {"loops_per_trial": loops_per_trial}  # noqa: SLF001
+        func._bench_customize = {  # noqa: SLF001
+            "loops_per_trial": loops_per_trial,
+            "name": name,
+        }
         return func
 
     return decorator
@@ -1009,6 +1019,14 @@ class EasyBench:
                 method_items = benchmark_methods.items()
 
             for method_name, method in method_items:
+                # Check for custom name if available
+                display_name = method_name
+                if hasattr(method, "_bench_customize"):
+                    method = cast("CustomizedFunction", method)
+                    custom_config = method._bench_customize  # noqa: SLF001
+                    if custom_config.get("name") is not None:
+                        display_name = custom_config["name"]
+
                 # Check if this method is parametrized
                 if hasattr(method, "_bench_params"):
                     # Process parametrized method with include/exclude patterns
@@ -1018,7 +1036,7 @@ class EasyBench:
                         config=config,
                     )
                     param_results = self._process_parametrized_method(
-                        method_info=(method_name, method, params_list),
+                        method_info=(display_name, method, params_list),
                         config=config,
                         fixture_registry=fixture_registry,
                         values=values,
@@ -1026,7 +1044,7 @@ class EasyBench:
                     results.update(param_results)
                 else:
                     # Regular (non-parametrized) method
-                    results[method_name] = self._run_benchmark_trials(
+                    results[display_name] = self._run_benchmark_trials(
                         method=method,
                         config=config,
                         fixture_registry=fixture_registry,

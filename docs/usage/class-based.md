@@ -201,9 +201,10 @@ class MyBenchmark(EasyBench):
     )
 
     # You can also customize settings for individual methods
-    @customize(loops_per_trial=1000)
+    @customize(loops_per_trial=1000, name="Pass")
     def bench_fast_operation(self):
         # This method uses 1000 loops per trial
+        # and will be displayed as "Pass" in results
         pass
 ```
 
