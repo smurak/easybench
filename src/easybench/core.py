@@ -1284,6 +1284,8 @@ class EasyBench:
         fixture_args = {
             name: values[name] for name in required_fixtures if name in values
         }
+        default_args = self._get_default_args(method)
+        method_args = default_args | fixture_args
 
         # Run the benchmark
         memory_usage = None
@@ -1300,9 +1302,9 @@ class EasyBench:
             start_time = time.perf_counter()
             for i in range(loops_per_trial):
                 if capture_output or i == 0:
-                    result = method(**fixture_args)
+                    result = method(**method_args)
                 else:
-                    method(**fixture_args)
+                    method(**method_args)
             end_time = time.perf_counter()
 
             # get memory usage
@@ -1314,9 +1316,9 @@ class EasyBench:
             start_time = time.perf_counter()
             for i in range(loops_per_trial):
                 if capture_output or i == 0:
-                    result = method(**fixture_args)
+                    result = method(**method_args)
                 else:
-                    method(**fixture_args)
+                    method(**method_args)
             end_time = time.perf_counter()
 
         return (end_time - start_time) / loops_per_trial, memory_usage, result
@@ -1425,6 +1427,27 @@ class EasyBench:
         """
         sig = inspect.signature(method)
         return list(sig.parameters.keys())
+
+    def _get_default_args(self, method: Callable[..., object]) -> dict[str, object]:
+        """
+        Determine the default args of a method.
+
+        Args:
+            method: The method to inspect
+
+        Returns:
+            Dictionary of default args
+
+        """
+        sig = inspect.signature(method)
+        defaults = {}
+        for name, param in sig.parameters.items():
+            # exclude self and cls
+            if name in ("self", "cls"):
+                continue
+            if param.default is not inspect.Parameter.empty:
+                defaults[name] = param.default
+        return defaults
 
     def _display_results(
         self,

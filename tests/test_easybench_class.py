@@ -757,6 +757,63 @@ class TestEasyBenchFixtures:
         # Total should be 6 functions
         assert len(parsed_out["functions"]) == len(params_list1) * len(params_list2)
 
+    def test_default_args_in_benchmark_method(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that benchmark methods with default arguments work correctly."""
+        # Track what values were used in the benchmark
+        used_values: list[tuple] = []
+
+        class DefaultArgsBench(EasyBench):
+            bench_config = BenchConfig(trials=DEFAULT_TRIALS, show_output=True)
+
+            def bench_with_defaults(
+                self,
+                a: int = 10,
+                b: str = "default",
+                c: None = None,
+            ) -> tuple:
+                """Benchmark method with various default arguments."""
+                result = (a, b, c)
+                used_values.append(result)
+                return result
+
+            def bench_mixed_args(self, a: int = 5, fixture_arg: None = None) -> tuple:
+                """Benchmark with mix of default args and fixture args."""
+                result = (a, fixture_arg)
+                used_values.append(result)
+                return result
+
+        # Create and register a fixture for the second benchmark
+        fixture_value = "fixture_value"
+        fixture_registry: FixtureRegistry = {"trial": {}, "function": {}, "class": {}}
+        fixture_registry["trial"]["fixture_arg"] = lambda: fixture_value
+
+        # Run the benchmark
+        bench = DefaultArgsBench()
+        bench.bench(fixture_registry=fixture_registry)
+
+        # Capture console output
+        captured = capsys.readouterr()
+
+        # Verify output contains expected return values
+        assert "(10, 'default', None)" in captured.out
+        assert f"(5, '{fixture_value}')" in captured.out
+
+        # Verify the first method used default values
+        default_calls = [v for v in used_values if v[1] == "default"]
+        assert len(default_calls) == DEFAULT_TRIALS
+        for call in default_calls:
+            assert call == (10, "default", None)
+
+        # Verify the second method used default value for 'a'
+        # but fixture value for 'fixture_arg'
+        mixed_calls = [v for v in used_values if v[1] == fixture_value]
+        assert len(mixed_calls) == DEFAULT_TRIALS
+        for call in mixed_calls:
+            assert call == (5, fixture_value)
+
 
 class TestEasyBenchLifecycle:
     """Tests for lifecycle methods in EasyBench."""

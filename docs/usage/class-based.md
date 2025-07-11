@@ -282,8 +282,8 @@ When to use:
 
 In environments with poor timer resolution (e.g., certain virtual machines or systems where `time.perf_counter()` has limited precision), you may need to run a function multiple times to get meaningful timing results.
 
-Additionally, when benchmarking very fast operations (less than a few microseconds), the overhead of function calls themselves can significantly impact measurement results.  
-In such cases, using the `loops_per_trial` parameter can help distribute the function call overhead and achieve more accurate measurements.
+Additionally, when benchmarking very fast operations (less than a few microseconds), the overhead of timer calls can significantly impact measurement results.  
+In such cases, using the `loops_per_trial` parameter can help distribute the timer call overhead and achieve more accurate measurements.
 
 The `loops_per_trial` parameter allows you to specify how many times a function should be executed in a single timing measurement (trial):
 
