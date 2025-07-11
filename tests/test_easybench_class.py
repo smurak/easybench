@@ -3152,25 +3152,19 @@ class TestEasyBenchClipOutliers:
         # Invalid values should raise ValueError
         with pytest.raises(
             ValueError,
-            match="clip_outliers must be between 0.0 and 0.5",
+            match="clip_outliers must be between 0.0 and 1.0",
         ):
             PartialBenchConfig(clip_outliers=0.0)
 
         with pytest.raises(
             ValueError,
-            match="clip_outliers must be between 0.0 and 0.5",
-        ):
-            PartialBenchConfig(clip_outliers=0.5)
-
-        with pytest.raises(
-            ValueError,
-            match="clip_outliers must be between 0.0 and 0.5",
+            match="clip_outliers must be between 0.0 and 1.0",
         ):
             PartialBenchConfig(clip_outliers=-0.1)
 
         with pytest.raises(
             ValueError,
-            match="clip_outliers must be between 0.0 and 0.5",
+            match="clip_outliers must be between 0.0 and 1.0",
         ):
             PartialBenchConfig(clip_outliers=1.0)
 
@@ -3333,9 +3327,9 @@ class TestEasyBenchClipOutliers:
             middle * 2,
             1 + middle * 2,  # Trial 3 (1.0)
             1 + middle * 2,
-            1 + middle * 2,  # Trial 4 (0.0)
-            1 + middle * 2,
-            1 + middle * 3,  # Trial 5 (0.1)
+            1 + middle * 3,  # Trial 4 (0.1)
+            1 + middle * 3,
+            1 + middle * 4,  # Trial 5 (0.1)
         ]
 
         class SmallSampleBench(EasyBench):

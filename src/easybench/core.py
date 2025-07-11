@@ -315,8 +315,8 @@ class PartialBenchConfig(BaseModel):
     @classmethod
     def validate_clip_outliers(cls, v: float | None) -> float | None:
         """Validate clip_outliers is in valid range."""
-        if v is not None and not (0.0 < v < 0.5):  # noqa: PLR2004
-            msg = "clip_outliers must be between 0.0 and 0.5"
+        if v is not None and not (0.0 < v < 1.0):
+            msg = "clip_outliers must be between 0.0 and 1.0"
             raise ValueError(msg)
         return v
 
@@ -1484,10 +1484,10 @@ class EasyBench:
 
         Args:
             values: List of values to clip
-            clip_value: Percentile threshold (0.0 to 0.5)
+            clip_value: Percentile threshold (0.0 to 1.0)
 
         Returns:
-            List with outliers clipped
+            List with maximum outliers clipped
 
         """
         try:
@@ -1496,12 +1496,11 @@ class EasyBench:
             # Convert values to NumPy array for vectorized operations
             arr = np.array(values, dtype=float)
 
-            # Calculate percentile thresholds
-            lower = np.percentile(arr, clip_value * 100)
+            # Calculate upper percentile threshold
             upper = np.percentile(arr, 100 - clip_value * 100)
 
-            # Clip values using np.clip
-            clipped = np.clip(arr, lower, upper)
+            # Clip only the upper values
+            clipped = np.minimum(arr, upper)
 
             return clipped.tolist()
 

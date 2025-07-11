@@ -197,7 +197,7 @@ class MyBenchmark(EasyBench):
         progress=True,          # Enable progress tracking with tqdm
         include=None,           # Regex pattern to include only matching benchmarks
         exclude=None,           # Regex pattern to exclude matching benchmarks
-        clip_outliers=None,     # Clip values on both sides (minimum and maximum) based on the specified proportion (between 0 and 0.5)
+        clip_outliers=None,     # Clip maximum values based on the specified proportion (between 0 and 1)
     )
 
     # You can also customize settings for individual methods
