@@ -1266,3 +1266,113 @@ class TestBenchDecoratorTimeDisabled:
         # But function should still return correctly
         assert isinstance(result, list)
         assert len(result) == value
+
+
+class TestBenchDecoratorDefaultArgs:
+    """Tests for the bench decorator with default args."""
+
+    def test_bench_with_default_args(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that benchmark decorator works with functions with default arguments."""
+        results = []
+
+        # Function with default arguments
+        @bench
+        @bench.config(trials=1, show_output=True)
+        def func_with_defaults(a: int, b: int = 20, c: str = "default") -> tuple:
+            """Benchmark function with default args."""
+            result = (a, b, c)
+            results.append(result)
+            return result
+
+        # Function with some arguments provided and some using defaults
+        @bench(a=10)
+        @bench.config(trials=1, show_output=True)
+        def func_with_partial_args(a: int, b: int = 20, c: str = "default") -> tuple:
+            result = (a, b, c)
+            results.append(result)
+            return result
+
+        # Function with all arguments provided (overriding defaults)
+        @bench(a=10, b=30, c="override")
+        @bench.config(trials=1, show_output=True)
+        def func_with_all_args(a: int, b: int = 20, c: str = "default") -> tuple:
+            result = (a, b, c)
+            results.append(result)
+            return result
+
+        # Using BenchParams to provide arguments
+        params = BenchParams(name="Custom", params={"a": 10, "b": 40})
+
+        @bench([params])
+        @bench.config(trials=1, show_output=True)
+        def func_with_params(a: int, b: int = 20, c: str = "default") -> tuple:
+            result = (a, b, c)
+            results.append(result)
+            return result
+
+        # Verify the output contains expected values
+        captured = capsys.readouterr()
+        output = captured.out
+
+        # Check that we have the expected results
+        assert (
+            "(10, 20, 'default')" in output
+        )  # func_with_partial_args (b and c use defaults)
+        assert (
+            "(10, 30, 'override')" in output
+        )  # func_with_all_args (all args provided)
+        assert (
+            "(10, 40, 'default')" in output
+        )  # func_with_params (a and b provided, c uses default)
+
+        # First function won't run because 'a' is required and not provided
+        assert "func_with_defaults" not in output
+
+        # Check the actual values used in the function calls
+        assert (10, 20, "default") in results  # func_with_partial_args
+        assert (10, 30, "override") in results  # func_with_all_args
+        assert (10, 40, "default") in results  # func_with_params
+        assert len([r for r in results if r == (10, 20, "default")]) == 1
+        assert len([r for r in results if r == (10, 30, "override")]) == 1
+        assert len([r for r in results if r == (10, 40, "default")]) == 1
+
+    def test_bench_with_fn_params_defaults(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that fn_params decorator works with default arguments."""
+        results = []
+
+        # Using fn_params to provide required arguments,
+        # letting defaults handle the rest
+        @bench.fn_params(a=lambda x, y: x + y)
+        @bench.config(trials=1, show_output=True)
+        def func_with_fn_params(a: Callable, b: int = 123, c: int = 456) -> tuple:
+            result = a(b, c)
+            results.append(result)
+            return result
+
+        # Using fn_params to override one default but not the other
+        value = 987
+
+        @bench.fn_params(a=min, b=max)
+        @bench.config(trials=1, show_output=True)
+        def func_with_fn_params_override(
+            a: Callable,
+            b: Callable = min,
+            c: int = 1000,
+        ) -> tuple:
+            result = b(a(value, c), 0)
+            results.append(result)
+            return result
+
+        captured = capsys.readouterr()
+        output = captured.out
+
+        # Check output contains expected values
+        assert "579" in output
+        assert str(value) in output
+
+        # Check the actual values used in function calls
+        assert 123 + 456 in results
+        assert value in results

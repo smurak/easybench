@@ -384,7 +384,13 @@ class BenchDecorator:
         """Run the benchmark if all required parameters are available."""
         # Get function signature to determine required parameters
         sig = inspect.signature(func)
-        required_params = set(sig.parameters.keys())
+
+        # Get parameters that have no defaults and must be provided
+        required_params = {
+            name
+            for name, param in sig.parameters.items()
+            if param.default is inspect.Parameter.empty
+        }
 
         # Check if all required parameters are available in fixtures
         provided_params = set(func.fixture_registry["trial"].keys())
