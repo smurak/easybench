@@ -3145,16 +3145,13 @@ class TestEasyBenchClipOutliers:
         config2 = PartialBenchConfig(clip_outliers=clip2)
         assert config2.clip_outliers == clip2
 
+        clip3 = 0.0
+        config2 = PartialBenchConfig(clip_outliers=clip3)
+        assert config2.clip_outliers == clip3
+
         # None should work (default)
         config3 = PartialBenchConfig()
         assert config3.clip_outliers is None
-
-        # Invalid values should raise ValueError
-        with pytest.raises(
-            ValueError,
-            match="clip_outliers must be between 0.0 and 1.0",
-        ):
-            PartialBenchConfig(clip_outliers=0.0)
 
         with pytest.raises(
             ValueError,

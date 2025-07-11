@@ -315,7 +315,7 @@ class PartialBenchConfig(BaseModel):
     @classmethod
     def validate_clip_outliers(cls, v: float | None) -> float | None:
         """Validate clip_outliers is in valid range."""
-        if v is not None and not (0.0 < v < 1.0):
+        if v is not None and not (0.0 <= v < 1.0):
             msg = "clip_outliers must be between 0.0 and 1.0"
             raise ValueError(msg)
         return v
@@ -338,7 +338,7 @@ class BenchConfig(PartialBenchConfig):
     progress: bool | Callable = False
     include: str | None = None
     exclude: str | None = None
-    clip_outliers: float | None = None
+    clip_outliers: float | None = 0.0
 
 
 def ensure_full_config(
@@ -1529,7 +1529,7 @@ class EasyBench:
 
         """
         # If no clipping is needed, return the original results
-        if config.clip_outliers is None:
+        if config.clip_outliers is None or config.clip_outliers == 0.0:
             return results
 
         # Create a deep copy to avoid modifying the original data
