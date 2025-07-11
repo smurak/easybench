@@ -7,6 +7,7 @@ benchmarks with support for fixtures, memory tracking, and convenient result rep
 
 from __future__ import annotations
 
+import gc
 import inspect
 import logging
 import re
@@ -1291,13 +1292,17 @@ class EasyBench:
         memory_usage = None
         result = None
 
-        if memory:
-            # Reset tracemalloc state
-            if tracemalloc.is_tracing():
-                tracemalloc.stop()
+        # Reset tracemalloc state
+        if memory and tracemalloc.is_tracing():
+            tracemalloc.stop()
 
-            tracemalloc.start()
-            before_current, _ = tracemalloc.get_traced_memory()
+        gcold = gc.isenabled()
+        gc.disable()
+
+        try:
+            if memory:
+                tracemalloc.start()
+                before_current, _ = tracemalloc.get_traced_memory()
 
             start_time = time.perf_counter()
             for i in range(loops_per_trial):
@@ -1308,18 +1313,14 @@ class EasyBench:
             end_time = time.perf_counter()
 
             # get memory usage
-            _, after_peak = tracemalloc.get_traced_memory()
-            memory_usage = after_peak - before_current
-
-            tracemalloc.stop()
-        else:
-            start_time = time.perf_counter()
-            for i in range(loops_per_trial):
-                if capture_output or i == 0:
-                    result = method(**method_args)
-                else:
-                    method(**method_args)
-            end_time = time.perf_counter()
+            if memory:
+                _, after_peak = tracemalloc.get_traced_memory()
+                memory_usage = after_peak - before_current
+        finally:
+            if memory:
+                tracemalloc.stop()
+            if gcold:
+                gc.enable()
 
         return (end_time - start_time) / loops_per_trial, memory_usage, result
 
