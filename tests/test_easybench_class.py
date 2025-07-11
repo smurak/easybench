@@ -2398,6 +2398,97 @@ class TestParametrizedDecorator:
             "Function: bench_test" in call.get("desc", "") for call in progress_calls
         )
 
+    def test_customize_with_name(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test customize decorator with the name option."""
+        custom_name = "CustomBenchmarkName"
+
+        class NameCustomizeBench(EasyBench):
+            bench_config = BenchConfig(trials=2)
+
+            @customize(name=custom_name)
+            def bench_test(self) -> int:
+                return 42
+
+        bench = NameCustomizeBench()
+        bench.bench()
+
+        captured = capsys.readouterr()
+        assert custom_name in captured.out
+        assert "bench_test" not in captured.out
+        assert "Benchmark Results" in captured.out
+
+    def test_customize_name_with_parametrize(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that customize name option works correctly with parametrize."""
+        # Define parameter sets
+        small = BenchParams(name="Small", params={"size": 100})
+        large = BenchParams(name="Large", params={"size": 500})
+
+        custom_name = "SizeTest"
+
+        class CombinedNameDecorators(EasyBench):
+            bench_config = BenchConfig(trials=2)
+
+            @parametrize([small, large])
+            @customize(name=custom_name)
+            def bench_test(self, size: int) -> None:
+                _ = size
+
+        bench = CombinedNameDecorators()
+        bench.bench()
+
+        captured = capsys.readouterr()
+        # The parametrize names should be appended to the custom name
+        assert f"{custom_name} (Small)" in captured.out
+        assert f"{custom_name} (Large)" in captured.out
+        assert "bench_test" not in captured.out
+        assert "Benchmark Results" in captured.out
+
+    def test_customize_name_with_parametrize_grid(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test customize name with parametrize.grid for complex combinations."""
+        # Define parameter sets
+        sizes = [
+            BenchParams(name="Small", params={"size": 10}),
+            BenchParams(name="Large", params={"size": 100}),
+        ]
+
+        operations = [
+            BenchParams(name="Append", fn_params={"op": lambda x: x.append(0)}),
+            BenchParams(name="Pop", fn_params={"op": lambda x: x.pop()}),
+        ]
+
+        custom_name = "OperationTest"
+
+        class GridNameBench(EasyBench):
+            bench_config = BenchConfig(trials=1)
+
+            @parametrize.grid([sizes, operations])
+            @customize(name=custom_name)
+            def bench_operation(
+                self,
+                size: int,
+                op: Callable[[list[int]], Any],
+            ) -> None:
+                lst = list(range(size))
+                op(lst)
+
+        bench = GridNameBench()
+        bench.bench()
+
+        captured = capsys.readouterr()
+        # Verify all combinations have the custom name
+        assert f"{custom_name} (Small x Append)" in captured.out
+        assert f"{custom_name} (Small x Pop)" in captured.out
+        assert f"{custom_name} (Large x Append)" in captured.out
+        assert f"{custom_name} (Large x Pop)" in captured.out
+        # Original function name should not appear
+        assert "bench_operation" not in captured.out
+
 
 class TestConfigValidation:
     """Tests for configuration validation in BenchConfig and PartialBenchConfig."""

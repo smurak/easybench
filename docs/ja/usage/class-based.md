@@ -202,9 +202,10 @@ class MyBenchmark(EasyBench):
     )
 
     # 個別のメソッドに対して設定をカスタマイズすることもできます
-    @customize(loops_per_trial=1000)
+    @customize(loops_per_trial=1000, name="Pass")
     def bench_fast_operation(self):
         # このメソッドは1試行あたり1000回実行されます
+        # そして結果には"Pass"という名前で表示されます
         pass
 ```
 
