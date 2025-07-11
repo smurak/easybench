@@ -1374,5 +1374,4 @@ class TestBenchDecoratorDefaultArgs:
         assert str(value) in output
 
         # Check the actual values used in function calls
-        assert 123 + 456 in results
-        assert value in results
+        assert [123 + 456, value] == results
