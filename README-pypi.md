@@ -15,17 +15,15 @@ A simple and easy-to-use Python benchmarking library.
 
 ## Features
 
-- Three flexible benchmarking styles (decorator, class-based, and command-line)
-- Measure both execution time and estimated memory usage ([see limitations](#memory-measurement-limitations))
-- Visualization of benchmark results as boxplots for analyzing distribution and outliers
-- Parametrized benchmarks to compare the same function with different input sizes
-- A pytest-like fixture system for easy test data setup
-- Complete lifecycle hooks (setup/teardown) for fine-grained benchmark control
-- Switch between normal function execution and benchmarked execution on demand
-- Customizable benchmark configuration with sorting and formatting options
-- Command-line tool to run multiple benchmarks at once
+- Three benchmarking styles: decorator, class-based, and command-line
+- Measure both execution time and memory usage ([see limitations](#memory-measurement-limitations))
+- Rich visualizations (Boxplot, Violinplot, Lineplot, Histogram, Barplot)
+- Advanced options: warmup runs, multiple loops per trial, outlier trimming
+- Parametrized benchmarks for comparing function performance with different inputs
+- pytest-like fixtures and lifecycle hooks (setup/teardown)
+- Flexible configuration: time/memory units, progress tracking, filtering
 - Multiple output formats (text tables, CSV, JSON, pandas.DataFrame)
-- Extensible reporting system for custom output destinations
+- Extensible reporting system for custom outputs
 
 ## Installation
 

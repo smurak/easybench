@@ -140,10 +140,16 @@ if __name__ == "__main__":
 
 これにより、4つのパラメータ組み合わせが作成されます：
 
-- Small × Append
-- Small × Pop
-- Large × Append
-- Large × Pop
+```
+Benchmark Results (5 trials):
+
+Function                            Avg Time (s)  Min Time (s)  Max Time (s)
+----------------------------------------------------------------------------
+bench_operation (Small x Append)        0.000260      0.000004      0.001239
+bench_operation (Small x Pop)           0.000005      0.000004      0.000008
+bench_operation (Large x Append)        0.001642      0.000277      0.006804
+bench_operation (Large x Pop)           0.000204      0.000183      0.000247
+```
 
 ### フィクスチャ（`fixture`デコレータ）
 
@@ -194,7 +200,7 @@ class MyBenchmark(EasyBench):
         color=True,             # 結果でカラー出力を使用
         show_output=False,      # 関数の戻り値を表示
         loops_per_trial=1,      # 試行ごとの関数実行回数（下記説明参照）
-        reporters=["console"],  # カスタムレポーター（下記説明参照）
+        reporters=["console"],  # カスタムレポーター（「高度な使用方法」参照）
         progress=True,          # tqdmによる進捗表示を有効化
         include=None,           # 一致するベンチマークのみを含める正規表現パターン
         exclude=None,           # 一致するベンチマークを除外する正規表現パターン

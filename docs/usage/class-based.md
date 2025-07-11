@@ -140,10 +140,16 @@ if __name__ == "__main__":
 
 This creates four parameter combinations:
 
-- Small × Append
-- Small × Pop
-- Large × Append
-- Large × Pop
+```
+Benchmark Results (5 trials):
+
+Function                            Avg Time (s)  Min Time (s)  Max Time (s)
+----------------------------------------------------------------------------
+bench_operation (Small x Append)        0.000260      0.000004      0.001239
+bench_operation (Small x Pop)           0.000005      0.000004      0.000008
+bench_operation (Large x Append)        0.001642      0.000277      0.006804
+bench_operation (Large x Pop)           0.000204      0.000183      0.000247
+```
 
 ### Fixtures (`fixture` decorator)
 
@@ -193,7 +199,7 @@ class MyBenchmark(EasyBench):
         color=True,             # Use color output in results
         show_output=False,      # Display function return values
         loops_per_trial=1,      # Number of function executions per trial (see explanation below)
-        reporters=["console"],  # Custom reporters (see explanation below)
+        reporters=["console"],  # Custom reporters (see "Advanced Usage")
         progress=True,          # Enable progress tracking with tqdm
         include=None,           # Regex pattern to include only matching benchmarks
         exclude=None,           # Regex pattern to exclude matching benchmarks
