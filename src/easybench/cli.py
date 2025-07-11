@@ -314,8 +314,9 @@ def cli_main() -> None:
         type=float,
         default=None,
         help=(
-            "Clip values on both sides (minimum and maximum) "
-            "based on the specified proportion (between 0 and 0.5)"
+            "Clip maximum values based on the specified proportion "
+            "(between 0 and 1, exclusive). "
+            "For example, 0.1 removes the top 10% of values."
         ),
     )
 
