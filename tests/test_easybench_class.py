@@ -3499,3 +3499,150 @@ class TestEasyBenchClipOutliers:
 
         # The clipped average should be closer to the normal allocation size
         assert abs(avg_with_clipping - 100) < abs(avg_with_outlier - 100)
+
+
+class TestCustomDisplayNameFiltering:
+    """Test that include/exclude patterns correctly use custom display names."""
+
+    def test_include_with_custom_name(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test that include patterns match against custom display names."""
+
+        class TestBench(EasyBench):
+            @customize(name="Custom Function Name")
+            @parametrize(
+                [
+                    BenchParams(name="Param1", params={"value": 1}),
+                    BenchParams(name="Param2", params={"value": 2}),
+                ],
+            )
+            def bench_original_name(self, value: int) -> int:
+                return value
+
+        bench = TestBench()
+
+        # Should match custom name but not original name
+        config = BenchConfig(trials=1, include=r"Custom.*Param")
+        _ = bench.bench(config)
+        captured = capsys.readouterr()
+
+        # Both parameter sets should be included because pattern matches custom name
+        assert "Custom Function Name (Param1)" in captured.out
+        assert "Custom Function Name (Param2)" in captured.out
+
+        # Using original name in pattern should not match
+        config = BenchConfig(trials=1, include=r"original_name")
+        with caplog.at_level(logging.WARNING):
+            _ = bench.bench(config)
+            assert any(
+                "No benchmark methods found to run" in record.message
+                for record in caplog.records
+            )
+
+    def test_exclude_with_custom_name(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that exclude patterns match against custom display names."""
+
+        class TestBench(EasyBench):
+            @customize(name="Custom Function Name")
+            @parametrize(
+                [
+                    BenchParams(name="Param1", params={"value": 1}),
+                    BenchParams(name="Param2", params={"value": 2}),
+                ],
+            )
+            def bench_original_name(self, value: int) -> int:
+                return value
+
+        bench = TestBench()
+
+        # Should exclude based on custom name
+        config = BenchConfig(trials=1, exclude=r"Custom.*Param1")
+        _ = bench.bench(config)
+        captured = capsys.readouterr()
+
+        # Only Param2 should be included since Param1 is excluded by pattern
+        assert "Custom Function Name (Param1)" not in captured.out
+        assert "Custom Function Name (Param2)" in captured.out
+
+    def test_combined_include_exclude_with_custom_name(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test both include and exclude patterns with custom display names."""
+
+        class TestBench(EasyBench):
+            @customize(name="Custom Name A")
+            @parametrize(
+                [
+                    BenchParams(name="Param1", params={"value": 1}),
+                    BenchParams(name="Param2", params={"value": 2}),
+                ],
+            )
+            def bench_method_a(self, value: int) -> int:
+                return value
+
+            @customize(name="Custom Name B")
+            @parametrize(
+                [
+                    BenchParams(name="Param1", params={"value": 1}),
+                    BenchParams(name="Param2", params={"value": 2}),
+                ],
+            )
+            def bench_method_b(self, value: int) -> int:
+                return value
+
+        bench = TestBench()
+
+        # Include custom name A, exclude Param2
+        config = BenchConfig(trials=1, include=r"Custom Name A", exclude=r".*Param2")
+        _ = bench.bench(config)
+        captured = capsys.readouterr()
+
+        # Should only include A with Param1
+        assert "Custom Name A (Param1)" in captured.out
+        assert "Custom Name A (Param2)" not in captured.out
+        assert "Custom Name B (Param1)" not in captured.out
+        assert "Custom Name B (Param2)" not in captured.out
+
+    def test_multiple_parametrized_methods_with_custom_names(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test filtering multiple parametrized methods with custom names."""
+
+        class TestBench(EasyBench):
+            @customize(name="First Custom Name")
+            @parametrize(
+                [
+                    BenchParams(name="Fast", params={"value": 1}),
+                    BenchParams(name="Slow", params={"value": 2}),
+                ],
+            )
+            def bench_first_method(self, value: int) -> int:
+                return value
+
+            @customize(name="Second Custom Name")
+            @parametrize(
+                [
+                    BenchParams(name="Small", params={"size": 10}),
+                    BenchParams(name="Large", params={"size": 1000}),
+                ],
+            )
+            def bench_second_method(self, size: int) -> int:
+                return size
+
+        bench = TestBench()
+
+        # Test pattern that matches across different custom names
+        config = BenchConfig(trials=1, include=r"Custom.*\((?:Fast|Small)")
+        _ = bench.bench(config)
+        captured = capsys.readouterr()
+
+        # Should match the Fast param from first method and Small param from second
+        assert "First Custom Name (Fast)" in captured.out
+        assert "First Custom Name (Slow)" not in captured.out
+        assert "Second Custom Name (Small)" in captured.out
+        assert "Second Custom Name (Large)" not in captured.out
