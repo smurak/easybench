@@ -1020,18 +1020,13 @@ class EasyBench:
 
             for method_name, method in method_items:
                 # Check for custom name if available
-                display_name = method_name
-                if hasattr(method, "_bench_customize"):
-                    method = cast("CustomizedFunction", method)
-                    custom_config = method._bench_customize  # noqa: SLF001
-                    if custom_config.get("name") is not None:
-                        display_name = custom_config["name"]
+                display_name = self._get_method_custom_name(method) or method_name
 
                 # Check if this method is parametrized
                 if hasattr(method, "_bench_params"):
                     # Process parametrized method with include/exclude patterns
                     params_list = self._get_params_list(
-                        method_name=method_name,
+                        method_name=display_name,
                         method=method,
                         config=config,
                     )
@@ -1363,6 +1358,15 @@ class EasyBench:
 
         return benchmark_methods
 
+    def _get_method_custom_name(self, method: Callable) -> str | None:
+        """Get method's custom name."""
+        if hasattr(method, "_bench_customize"):
+            method = cast("CustomizedFunction", method)
+            custom_config = method._bench_customize  # noqa: SLF001
+            if custom_config.get("name") is not None:
+                return custom_config["name"]
+        return None
+
     def _filter_benchmark_methods(
         self,
         methods: dict[str, Callable[..., object]],
@@ -1383,32 +1387,31 @@ class EasyBench:
         if config.include is None and config.exclude is None:
             return methods
 
-        filtered_methods = {}
+        filtered_methods: dict[str, Callable] = {}
 
         # Apply include filter if specified
         if config.include is not None:
-            filtered_methods = {
-                name: method
-                for name, method in methods.items()
-                if (
-                    re.search(config.include, name)
-                    or (
-                        hasattr(method, "_bench_params")
-                        and any(
-                            re.search(config.include, f"{name} ({params.name})")
-                            for params in getattr(method, "_bench_params", [])
-                        )
+            filtered_methods = {}
+            for name, method in methods.items():
+                display_name = self._get_method_custom_name(method) or name
+
+                if re.search(config.include, display_name) or (
+                    hasattr(method, "_bench_params")
+                    and any(
+                        re.search(config.include, f"{display_name} ({params.name})")
+                        for params in getattr(method, "_bench_params", [])
                     )
-                )
-            }
+                ):
+                    filtered_methods[name] = method
         else:
             # If no include filter, start with all methods
             filtered_methods = methods.copy()
 
         # Apply exclude filter
         if config.exclude is not None:
-            for name in list(filtered_methods.keys()):
-                if re.search(config.exclude, name):
+            for name, method in list(filtered_methods.items()):
+                display_name = self._get_method_custom_name(method) or name
+                if re.search(config.exclude, display_name):
                     del filtered_methods[name]
 
         return filtered_methods
