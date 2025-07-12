@@ -1391,7 +1391,6 @@ class EasyBench:
 
         # Apply include filter if specified
         if config.include is not None:
-            filtered_methods = {}
             for name, method in methods.items():
                 display_name = self._get_method_custom_name(method) or name
 
