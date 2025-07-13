@@ -10,6 +10,7 @@ This module contains various test cases for the EasyBench class, including:
 - Configuration tests
 """
 
+import builtins
 import logging
 import time
 from collections.abc import Callable, Generator, Iterable
@@ -3256,12 +3257,15 @@ class TestEasyBenchClipOutliers:
         ):
             PartialBenchConfig(clip_outliers=1.0)
 
+    @pytest.mark.parametrize("numpy_available", [True, False])
     @patch("time.perf_counter")
     def test_clip_outliers_functionality(
         self,
         mock_perf_counter: mock.MagicMock,
         capsys: pytest.CaptureFixture[str],
         parse_benchmark_output: Callable[[str], dict[str, Any]],
+        numpy_available: bool,  # noqa: FBT001
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that clip_outliers properly removes outliers from measurements."""
         # Create a sequence of mock times with an outlier
@@ -3284,6 +3288,17 @@ class TestEasyBenchClipOutliers:
             sec * 4,
             1 + sec * 4,
         ]
+
+        if not numpy_available:
+            orig_import = builtins.__import__
+
+            def fake_import(name: str, *args: object, **kwargs: object) -> object:
+                if name == "numpy":
+                    msg = "No module named 'numpy'"
+                    raise ImportError(msg)
+                return orig_import(name, *args, **kwargs)
+
+            monkeypatch.setattr(builtins, "__import__", fake_import)
 
         class ClipOutliersBench(EasyBench):
             def bench_test(self) -> None:
@@ -3332,12 +3347,15 @@ class TestEasyBenchClipOutliers:
         avg_with_clipping = parsed_out2["functions"]["bench_test"]["avg"]
         assert avg_with_clipping < (1 + sec * 4) / 5
 
+    @pytest.mark.parametrize("numpy_available", [True, False])
     @patch("time.perf_counter")
     def test_clip_outliers_edge_cases(
         self,
         mock_perf_counter: mock.MagicMock,
         capsys: pytest.CaptureFixture[str],
         parse_benchmark_output: Callable[[str], dict[str, Any]],
+        numpy_available: bool,  # noqa: FBT001
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test clip_outliers with edge case values."""
         # Create sequence of mock times with high variance
@@ -3354,6 +3372,17 @@ class TestEasyBenchClipOutliers:
             0.66,
             1.66,  # Trial 5
         ]
+
+        if not numpy_available:
+            orig_import = builtins.__import__
+
+            def fake_import(name: str, *args: object, **kwargs: object) -> object:
+                if name == "numpy":
+                    msg = "No module named 'numpy'"
+                    raise ImportError(msg)
+                return orig_import(name, *args, **kwargs)
+
+            monkeypatch.setattr(builtins, "__import__", fake_import)
 
         class ClipEdgeCasesBench(EasyBench):
             def bench_test(self) -> None:
@@ -3397,12 +3426,15 @@ class TestEasyBenchClipOutliers:
         # With more aggressive clipping, average should be closer to the median
         assert avg2 < avg1
 
+    @pytest.mark.parametrize("numpy_available", [True, False])
     @patch("time.perf_counter")
     def test_clip_outliers_with_few_samples(
         self,
         mock_perf_counter: mock.MagicMock,
         capsys: pytest.CaptureFixture[str],
         parse_benchmark_output: Callable[[str], dict[str, Any]],
+        numpy_available: bool,  # noqa: FBT001
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test clip_outliers when there are few samples."""
         # Create a sequence with just 3 trials
@@ -3419,6 +3451,17 @@ class TestEasyBenchClipOutliers:
             1 + middle * 3,
             1 + middle * 4,  # Trial 5 (0.1)
         ]
+
+        if not numpy_available:
+            orig_import = builtins.__import__
+
+            def fake_import(name: str, *args: object, **kwargs: object) -> object:
+                if name == "numpy":
+                    msg = "No module named 'numpy'"
+                    raise ImportError(msg)
+                return orig_import(name, *args, **kwargs)
+
+            monkeypatch.setattr(builtins, "__import__", fake_import)
 
         class SmallSampleBench(EasyBench):
             def bench_test(self) -> None:
@@ -3447,14 +3490,28 @@ class TestEasyBenchClipOutliers:
         merged = partial_config.merge_with(base_config)
         assert merged.clip_outliers == clip2
 
+    @pytest.mark.parametrize("numpy_available", [True, False])
     def test_clip_outliers_with_memory(
         self,
         capsys: pytest.CaptureFixture[str],
         parse_benchmark_output: Callable[[str], dict[str, Any]],
         allocate_memory: Callable[[int], list[int]],
+        numpy_available: bool,  # noqa: FBT001
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that clip_outliers works correctly with memory measurements."""
         outlier_count = 3
+
+        if not numpy_available:
+            orig_import = builtins.__import__
+
+            def fake_import(name: str, *args: object, **kwargs: object) -> object:
+                if name == "numpy":
+                    msg = "No module named 'numpy'"
+                    raise ImportError(msg)
+                return orig_import(name, *args, **kwargs)
+
+            monkeypatch.setattr(builtins, "__import__", fake_import)
 
         class MemoryClipBench(EasyBench):
             def __init__(self) -> None:
