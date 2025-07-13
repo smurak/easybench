@@ -1534,7 +1534,8 @@ class EasyBench:
             sorted_vals = sorted(values)
             n = len(sorted_vals)
 
-            # Calculate the upper percentile value
+            # Calculate the upper percentile value using linear interpolation.
+            # This logic mimics NumPy's default behavior for percentile calculation.
             percentile_index = (1.0 - clip_value) * (n - 1)
             lower_index = int(percentile_index)
             upper_index = min(lower_index + 1, n - 1)
