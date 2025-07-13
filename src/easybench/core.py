@@ -1510,6 +1510,12 @@ class EasyBench:
             List with maximum outliers clipped
 
         """
+        if not values:
+            return []
+
+        # Clamp clip_value between 0.0 and 1.0
+        clip_value = max(0.0, min(clip_value, 1.0))
+
         try:
             import numpy as np  # noqa: PLC0415
 
@@ -1525,12 +1531,23 @@ class EasyBench:
             return clipped.tolist()
 
         except ImportError:
-            # If numpy is not available, log a warning and use original values
-            logger.warning(
-                "numpy is required for clip_outliers. "
-                "Install with pip install numpy or disable clip_outliers.",
+            sorted_vals = sorted(values)
+            n = len(sorted_vals)
+
+            # Calculate the upper percentile value using linear interpolation.
+            # This logic mimics NumPy's default behavior for percentile calculation.
+            percentile_index = (1.0 - clip_value) * (n - 1)
+            lower_index = int(percentile_index)
+            upper_index = min(lower_index + 1, n - 1)
+            weight = percentile_index - lower_index
+
+            upper_percentile = (
+                sorted_vals[lower_index] * (1.0 - weight)
+                + sorted_vals[upper_index] * weight
             )
-            return values
+
+            # Clip values above the upper_percentile
+            return [min(v, upper_percentile) for v in values]
 
     def _process_results(
         self,
