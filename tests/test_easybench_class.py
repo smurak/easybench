@@ -3296,7 +3296,7 @@ class TestEasyBenchClipOutliers:
                 if name == "numpy":
                     msg = "No module named 'numpy'"
                     raise ImportError(msg)
-                return orig_import(name, *args, **kwargs)
+                return orig_import(name, *args, **kwargs)  # type: ignore[arg-type]
 
             monkeypatch.setattr(builtins, "__import__", fake_import)
 
@@ -3380,7 +3380,7 @@ class TestEasyBenchClipOutliers:
                 if name == "numpy":
                     msg = "No module named 'numpy'"
                     raise ImportError(msg)
-                return orig_import(name, *args, **kwargs)
+                return orig_import(name, *args, **kwargs)  # type: ignore[arg-type]
 
             monkeypatch.setattr(builtins, "__import__", fake_import)
 
@@ -3459,7 +3459,7 @@ class TestEasyBenchClipOutliers:
                 if name == "numpy":
                     msg = "No module named 'numpy'"
                     raise ImportError(msg)
-                return orig_import(name, *args, **kwargs)
+                return orig_import(name, *args, **kwargs)  # type: ignore[arg-type]
 
             monkeypatch.setattr(builtins, "__import__", fake_import)
 
@@ -3509,7 +3509,7 @@ class TestEasyBenchClipOutliers:
                 if name == "numpy":
                     msg = "No module named 'numpy'"
                     raise ImportError(msg)
-                return orig_import(name, *args, **kwargs)
+                return orig_import(name, *args, **kwargs)  # type: ignore[arg-type]
 
             monkeypatch.setattr(builtins, "__import__", fake_import)
 
