@@ -412,6 +412,7 @@ class BenchDecorator:
         *,
         trials: int | None = None,
         loops_per_trial: int | None = None,
+        warmups: int | None = None,
         sort_by: SortType | None = None,
         reverse: bool | None = None,
         memory: bool | MemoryUnit | str | None = None,
@@ -420,6 +421,7 @@ class BenchDecorator:
         show_output: bool | None = None,
         reporters: list[Reporter] | None = None,
         progress: bool | Callable | None = None,
+        clip_outliers: float | None = None,
     ) -> Callable: ...
 
     def config(self, **kwargs: Any) -> Callable:
