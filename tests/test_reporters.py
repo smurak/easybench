@@ -829,6 +829,45 @@ class TestJSONFormatter:
         assert data["stats"]["test_func"]["max_memory"] == TEST_MAX_MEMORY
         assert data["results"] == results
 
+    def test_format_with_output_mode_all(self) -> None:
+        """Test JSON formatting with output_mode='all'."""
+        formatter = JSONFormatter(output_mode="all")
+        results: dict[str, ResultType] = {
+            "test_func": {"times": [TEST_TIME_VALUE]},
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
+        config = BenchConfig(trials=1)
+
+        output = formatter.format(results, stats, config)
+        data = json.loads(output)
+
+        assert "config" in data
+        assert "stats" in data
+        assert "results" in data
+        assert data["stats"]["test_func"]["avg"] == TEST_TIME_VALUE
+        assert data["results"] == results
+
+    def test_format_with_output_mode_no_results(self) -> None:
+        """Test JSON formatting with output_mode='no_results'."""
+        formatter = JSONFormatter(output_mode="no_results")
+        results: dict[str, ResultType] = {
+            "test_func": {"times": [TEST_TIME_VALUE]},
+        }
+        stats: dict[str, StatType] = {
+            "test_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
+        config = BenchConfig(trials=1)
+
+        output = formatter.format(results, stats, config)
+        data = json.loads(output)
+
+        assert "config" in data
+        assert "stats" in data
+        assert "results" not in data
+        assert data["stats"]["test_func"]["avg"] == TEST_TIME_VALUE
+
 
 class TestSimpleFormatter:
     """Tests for the SimpleFormatter class."""

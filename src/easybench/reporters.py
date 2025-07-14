@@ -767,6 +767,17 @@ class CSVFormatter(Formatter):
 class JSONFormatter(Formatter):
     """Format results as JSON."""
 
+    def __init__(self, output_mode: Literal["all", "no_results"] = "all") -> None:
+        """
+        Initialize.
+
+        Args:
+            output_mode: Output mode, either "all" (include results) or "no_results"
+
+        """
+        super().__init__()
+        self.output_mode = output_mode
+
     def format(
         self,
         results: ResultsType,
@@ -780,8 +791,11 @@ class JSONFormatter(Formatter):
         output_data: dict[str, Any] = {
             "config": config.model_dump(exclude={"reporters", "progress"}),
             "stats": {},
-            "results": results,
         }
+
+        # Only include results if output_mode is "all"
+        if self.output_mode == "all":
+            output_data["results"] = results
 
         for method_name in self.sort_keys(stats, config):
             stat = stats[method_name].copy()
