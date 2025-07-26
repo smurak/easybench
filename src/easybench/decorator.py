@@ -197,7 +197,7 @@ class BenchDecorator:
             comparison_config.reporters = [ConsoleReporter()]
 
         comparison = EasyBench(bench_config=comparison_config)
-        comparison._display_results(  # noqa: SLF001
+        comparison.report_results(
             results=all_results,
             config=comparison_config,
         )
@@ -663,7 +663,7 @@ class BenchDecorator:
         # Display combined results using the final config
         if all_results:
             comparison = EasyBench(bench_config=final_config)
-            comparison._display_results(  # noqa: SLF001
+            comparison.report_results(
                 results=all_results,
                 config=final_config,
             )
