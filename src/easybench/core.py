@@ -1095,7 +1095,7 @@ class EasyBench:
         processed_results = self._process_results(raw_results, complete_config)
 
         # Display results using reporters
-        self._display_results(
+        self.report_results(
             results=processed_results,
             config=complete_config,
         )
@@ -1470,7 +1470,7 @@ class EasyBench:
                 defaults[name] = param.default
         return defaults
 
-    def _display_results(
+    def report_results(
         self,
         results: ResultsType,
         config: BenchConfig,

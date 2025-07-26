@@ -155,3 +155,43 @@ print(result)  # 1000001
   result = insert_first.bench(3, list(range(100_000)), bench_trials=10)
   print(result)  # 100001
   ```
+
+### **遅延ベンチマーク** (`@bench.config(defer=...)`)
+
+デフォルトでは、ベンチマークは関数が定義された時点で即座に実行されます。しかし、`defer`オプションを使用して実行を遅延させることができます：
+
+```python
+from easybench import bench
+
+# ベンチマークを定義するが、まだ実行しない
+@bench(item=123, big_list=lambda: list(range(1_000_000)))
+@bench.config(defer=True)
+def insert_first(item, big_list):
+    big_list.insert(0, item)
+```
+
+`defer=True`を設定すると、オンデマンドベンチマークのセクションで説明したように、`.bench()`メソッドを明示的に呼び出した時のみベンチマークが実行されます。
+
+#### **グループ化されたベンチマーク**
+
+複数のベンチマークをグループ化して、一括で実行することもできます：
+
+```python
+@bench.config(defer="examples")
+def example1():
+    return list(range(100_000))
+
+@bench.config(defer="examples")
+def example2():
+    return list(range(1_000))
+
+# "examples"グループのすべてのベンチマークを実行
+_ = bench.run("examples")
+```
+
+これは、関連するベンチマークをグループ化して整理し、一貫した設定で一括実行したい場合に便利です。カスタム設定でグループを実行することも可能です：
+
+```python
+# カスタム設定で実行
+bench.run("examples", config=BenchConfig(trials=10, memory=True))
+```

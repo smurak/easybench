@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from easybench import BenchParams, bench
+from easybench import BenchConfig, BenchParams, bench
 
 if TYPE_CHECKING:
     from easybench.decorator import BenchmarkableFunction
@@ -1200,6 +1200,144 @@ class TestBenchParamsDecorator:
         assert return_values["process_number (Large x Add x String)"] == "21"
 
 
+class TestBenchDecoratorRun:
+    """Tests for the bench decorator's run method."""
+
+    def test_bench_decorator_run(self, capsys: pytest.CaptureFixture) -> None:
+        """Test the bench.run method for grouped functions."""
+        # Clean up any existing test groups (in case other tests created them)
+        original_deferred = bench._deferred_functions.copy()
+        bench._deferred_functions.clear()
+
+        try:
+            # Test 1: Running a non-existent group should raise an error
+            with pytest.raises(ValueError, match="No functions in group"):
+                bench.run("nonexistent_group")
+
+            # Test 2: Create an empty group and verify it raises an error
+            bench._deferred_functions["empty_group"] = []
+            with pytest.raises(
+                ValueError,
+                match="Group 'empty_group' exists but contains no functions",
+            ):
+                bench.run("empty_group")
+
+            # Test 3: Basic group functionality with config inheritance
+            @bench.config(defer="test_group", trials=3)
+            def func1(x: int = 10) -> int:
+                return x * 2
+
+            @bench.config(defer="test_group", trials=5, show_output=True)
+            def func2(x: int = 20) -> int:
+                return x * 3
+
+            # Run the group (should use func2's config as it was added last)
+            results = bench.run("test_group")
+
+            # Verify results
+            assert "func1" in results
+            assert "func2" in results
+
+            # Verify func2's config was used
+            captured = capsys.readouterr()
+            assert "5 trials" in captured.out
+            assert "Return Values" in captured.out
+
+            # Test 4: Custom config overrides function configs
+            custom_config = BenchConfig(
+                trials=1,
+                memory=True,
+                show_output=False,  # Override func2's show_output=True
+            )
+
+            # Run the group with custom config
+            results = bench.run("test_group", config=custom_config)
+
+            # Verify custom config was used
+            captured = capsys.readouterr()
+            assert "1 trial" in captured.out  # Custom trials=1
+            assert (
+                "Memory" in captured.out or "Mem" in captured.out
+            )  # Custom memory=True
+            assert "Return Values" not in captured.out  # Custom show_output=False
+
+        finally:
+            # Restore the original deferred functions
+            bench._deferred_functions = original_deferred
+
+    def test_bench_decorator_run_loops_per_trial(
+        self,
+    ) -> None:
+        """Test that loops_per_trial settings are respected for each function."""
+        original_deferred = bench._deferred_functions.copy()
+        bench._deferred_functions.clear()
+
+        execution_counts = {"func1": 0, "func2": 0}
+
+        try:
+
+            count_loop = 2
+            count_loop2 = 3
+
+            @bench.config(defer="loops_group", loops_per_trial=count_loop, trials=1)
+            def func1() -> int:
+                execution_counts["func1"] += 1
+                return 10
+
+            @bench.config(defer="loops_group", loops_per_trial=count_loop2, trials=1)
+            def func2() -> int:
+                execution_counts["func2"] += 1
+                return 20
+
+            # Run with a custom config that doesn't override loops_per_trial
+            custom_config = BenchConfig(trials=1)
+            results = bench.run("loops_group", config=custom_config)
+
+            # Each function should be executed according to
+            # its own loops_per_trial setting
+            assert execution_counts["func1"] == count_loop
+            assert execution_counts["func2"] == count_loop2
+
+            # Verify results
+            assert "func1" in results
+            assert "func2" in results
+
+        finally:
+            bench._deferred_functions = original_deferred
+
+    def test_bench_decorator_run_result_combination(self) -> None:
+        """Test that results from multiple functions are correctly combined."""
+        original_deferred = bench._deferred_functions.copy()
+        bench._deferred_functions.clear()
+
+        try:
+
+            @bench.config(defer="result_group", trials=1, show_output=True)
+            def func1() -> str:
+                return "result1"
+
+            value = 42
+
+            @bench.config(defer="result_group", trials=1, show_output=True)
+            def func2() -> int:
+                return value
+
+            results = bench.run("result_group")
+
+            # Verify results are correctly combined
+            assert "func1" in results
+            assert "func2" in results
+            assert results["func1"]["output"][0] == "result1"
+            assert results["func2"]["output"][0] == value
+
+            # Verify time and memory measurements are present
+            assert "times" in results["func1"]
+            assert "times" in results["func2"]
+
+        finally:
+            bench._deferred_functions = original_deferred
+
+
 class TestBenchDecoratorTimeDisabled:
     """Tests for the bench decorator with time measurement disabled."""
 
@@ -1375,3 +1513,232 @@ class TestBenchDecoratorDefaultArgs:
 
         # Check the actual values used in function calls
         assert [123 + 456, value] == results
+
+
+class TestBenchDecoratorDefer:
+    """Tests for the defer option in the bench decorator's config method."""
+
+    def test_defer_boolean(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that a function with defer=True is not executed immediately."""
+        # Clean up any existing test groups
+        original_deferred = bench._deferred_functions.copy()
+        bench._deferred_functions.clear()
+
+        try:
+
+            @bench
+            @bench.config(defer=True, trials=1)
+            def deferred_function() -> int:
+                return 42
+
+            # Since defer=True, no output should be generated
+            captured = capsys.readouterr()
+            assert captured.out == ""
+
+            # Directly execute the function's bench method
+            deferred_function = cast("BenchmarkableFunction", deferred_function)
+            deferred_function.bench.bench()
+
+            # Now we should see output
+            captured = capsys.readouterr()
+            assert "Benchmark Results" in captured.out
+            assert "deferred_function" in captured.out
+
+        finally:
+            # Restore the original deferred functions
+            bench._deferred_functions = original_deferred
+
+    def test_defer_group(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that a function with string defer is added to the correct group."""
+        # Clean up any existing test groups
+        original_deferred = bench._deferred_functions.copy()
+        bench._deferred_functions.clear()
+
+        try:
+
+            @bench
+            @bench.config(defer="test_group", trials=1)
+            def grouped_function() -> int:
+                return 42
+
+            # Since defer="test_group", no output should be generated
+            captured = capsys.readouterr()
+            assert captured.out == ""
+
+            # Check that the function was added to the group
+            assert "test_group" in bench._deferred_functions
+            assert len(bench._deferred_functions["test_group"]) == 1
+            assert (
+                bench._deferred_functions["test_group"][0].__name__
+                == "grouped_function"
+            )
+
+        finally:
+            # Restore the original deferred functions
+            bench._deferred_functions = original_deferred
+
+    def test_defer_multiple_functions(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that multiple functions can be added to the same group."""
+        # Clean up any existing test groups
+        original_deferred = bench._deferred_functions.copy()
+        bench._deferred_functions.clear()
+
+        try:
+
+            @bench
+            @bench.config(defer="multi_group", trials=1)
+            def first_function() -> int:
+                return 1
+
+            value = 2
+
+            @bench
+            @bench.config(defer="multi_group", trials=1)
+            def second_function() -> int:
+                return value
+
+            # No output should be generated for either function
+            captured = capsys.readouterr()
+            assert captured.out == ""
+
+            # Check that both functions were added to the group
+            assert "multi_group" in bench._deferred_functions
+            assert len(bench._deferred_functions["multi_group"]) == value
+            assert (
+                bench._deferred_functions["multi_group"][0].__name__ == "first_function"
+            )
+            assert (
+                bench._deferred_functions["multi_group"][1].__name__
+                == "second_function"
+            )
+
+        finally:
+            # Restore the original deferred functions
+            bench._deferred_functions = original_deferred
+
+    def test_run_group(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that the run method runs all functions in a group."""
+        # Clean up any existing test groups
+        original_deferred = bench._deferred_functions.copy()
+        bench._deferred_functions.clear()
+
+        try:
+
+            @bench
+            @bench.config(defer="run_group", trials=1)
+            def func1() -> int:
+                return 10
+
+            @bench
+            @bench.config(defer="run_group", trials=1)
+            def func2() -> int:
+                return 20
+
+            # Run the group
+            results = bench.run("run_group")
+
+            # Check output
+            captured = capsys.readouterr()
+            assert "Benchmark Results" in captured.out
+            assert "func1" in captured.out
+            assert "func2" in captured.out
+
+            # Check results
+            assert "func1" in results
+            assert "func2" in results
+
+        finally:
+            # Restore the original deferred functions
+            bench._deferred_functions = original_deferred
+
+    def test_run_with_custom_config(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that the run method uses the provided config."""
+        # Clean up any existing test groups
+        original_deferred = bench._deferred_functions.copy()
+        bench._deferred_functions.clear()
+
+        try:
+
+            @bench
+            @bench.config(defer="config_group", trials=5)
+            def config_func() -> int:
+                return 42
+
+            # Run with custom config
+            custom_config = BenchConfig(trials=2, show_output=True)
+            _ = bench.run("config_group", config=custom_config)
+
+            # Check output
+            captured = capsys.readouterr()
+            assert (
+                "Benchmark Results (2 trials)" in captured.out
+            )  # Should use custom trials=2
+            assert "config_func" in captured.out
+            assert "Return Values" in captured.out  # Should show output
+            assert "42" in captured.out  # Should show the return value
+
+        finally:
+            # Restore the original deferred functions
+            bench._deferred_functions = original_deferred
+
+    def test_run_nonexistent_group(self) -> None:
+        """Test that run raises an error when the group doesn't exist."""
+        with pytest.raises(ValueError, match="No functions in group"):
+            bench.run("nonexistent_group")
+
+    def test_run_empty_group(self) -> None:
+        """Test that run raises an error when the group is empty."""
+        # Clean up any existing test groups
+        original_deferred = bench._deferred_functions.copy()
+        bench._deferred_functions.clear()
+
+        try:
+            # Create an empty group
+            bench._deferred_functions["empty_group"] = []
+
+            with pytest.raises(
+                ValueError,
+                match="Group 'empty_group' exists but contains no functions",
+            ):
+                bench.run("empty_group")
+
+        finally:
+            # Restore the original deferred functions
+            bench._deferred_functions = original_deferred
+
+    def test_defer_with_parametrize(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that defer works with parametrize."""
+        # Clean up any existing test groups
+        original_deferred = bench._deferred_functions.copy()
+        bench._deferred_functions.clear()
+
+        try:
+            # Create parameter sets
+            small = BenchParams(name="Small", params={"size": 10})
+            large = BenchParams(name="Large", params={"size": 100})
+
+            @bench([small, large])
+            @bench.config(defer="param_group", trials=1)
+            def create_list(size: int) -> list:
+                return list(range(size))
+
+            # No output should be generated
+            captured = capsys.readouterr()
+            assert captured.out == ""
+
+            # Run the group
+            results = bench.run("param_group")
+
+            # Check output
+            captured = capsys.readouterr()
+            assert "Benchmark Results" in captured.out
+            assert "create_list (Small)" in captured.out
+            assert "create_list (Large)" in captured.out
+
+            # Check results
+            assert "create_list (Small)" in results
+            assert "create_list (Large)" in results
+
+        finally:
+            # Restore the original deferred functions
+            bench._deferred_functions = original_deferred

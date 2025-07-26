@@ -74,6 +74,46 @@ Main configuration options:
     * `False`: Disable time measurement reporting
 * For other options, see [Configuration Options](./class-based.md#configuration-options)
 
+### **Deferred benchmarking** (`@bench.config(defer=...)`)
+
+By default, benchmarks are executed immediately when the function is defined. However, you can defer the execution using the `defer` option:
+
+```python
+from easybench import bench
+
+# Define benchmark but don't run yet
+@bench(item=123, big_list=lambda: list(range(1_000_000)))
+@bench.config(defer=True)
+def insert_first(item, big_list):
+    big_list.insert(0, item)
+```
+
+When `defer=True` is set, the benchmark will only be executed when you explicitly call the `.bench()` method as described in the on-demand benchmarking section.
+
+#### **Grouped benchmarks**
+
+You can also group multiple benchmarks together and run them as a batch:
+
+```python
+@bench.config(defer="examples")
+def example1():
+    return list(range(100_000))
+
+@bench.config(defer="examples")
+def example2():
+    return list(range(1_000))
+
+# Run all benchmarks in the "examples" group
+_ = bench.run("examples")
+```
+
+This is useful when you want to organize related benchmarks and run them together with consistent configuration. You can also specify a custom configuration when running a group:
+
+```python
+# Run with custom configuration
+bench.run("examples", config=BenchConfig(trials=10, memory=True))
+```
+
 ### **Multiple parameter sets** (`BenchParams`)
 
 When you want to benchmark a function with multiple parameter sets,

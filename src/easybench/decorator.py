@@ -34,13 +34,24 @@ class BenchmarkableFunction(Protocol[P, R_co]):
         """Call method."""
         ...
 
+    @property
+    def __name__(self) -> str:
+        """Name of the function."""
+        ...
+
     bench: FunctionBench
-    fixture_registry: FixtureRegistry
+    fixtures: dict[str, object]
     last_results: ResultsType
+    defer: bool | str
+    params_list: list[BenchParams] | None
 
 
 class BenchDecorator:
     """Decorator for benchmarking functions."""
+
+    def __init__(self) -> None:
+        """Initialize BenchDecorator with storage for deferred functions."""
+        self._deferred_functions: dict[str, list[BenchmarkableFunction]] = {}
 
     def _initialize_bench_attributes(self, func: Callable) -> BenchmarkableFunction:
         """
@@ -56,13 +67,13 @@ class BenchDecorator:
         func = cast("BenchmarkableFunction", func)
         if not hasattr(func, "bench"):
             func.bench = FunctionBench(func)
-            func.fixture_registry = {
-                "trial": {},
-                "function": {},
-                "class": {},
-            }
+            func.fixtures = {}
             # Initialize last_results together with bench
             func.last_results = {}
+            # Initialize defer attribute
+            func.defer = False
+            # Initialize params_list attribute
+            func.params_list = None
 
         return func
 
@@ -186,7 +197,7 @@ class BenchDecorator:
             comparison_config.reporters = [ConsoleReporter()]
 
         comparison = EasyBench(bench_config=comparison_config)
-        comparison._display_results(  # noqa: SLF001
+        comparison.report_results(
             results=all_results,
             config=comparison_config,
         )
@@ -210,6 +221,17 @@ class BenchDecorator:
         """
 
         def decorator(func: Callable) -> Callable:
+            # Initialize benchmark attributes
+            func = self._initialize_bench_attributes(func)
+
+            # Store the params_list with the function for possible deferred execution
+            func.params_list = params_list
+
+            # If deferred, register in the group and return
+            if func.defer:
+                return func
+
+            # Not deferred - run benchmarks immediately
             # Store original function
             orig_func = func
             func_name = func.__name__
@@ -278,17 +300,17 @@ class BenchDecorator:
             # Apply function parameters
             if param.fn_params:
                 for name, value in param.fn_params.items():
-                    func.fixture_registry["trial"][name] = lambda v=value: v
+                    func.fixtures[name] = lambda v=value: v
 
             # Apply bench parameters
             if param.params:
                 for name, value in param.params.items():
                     if callable(value) and not isinstance(value, type):
                         # For callables like lambdas, register the callable itself
-                        func.fixture_registry["trial"][name] = value
+                        func.fixtures[name] = value
                     else:
                         # For values, create a lambda that returns the value
-                        func.fixture_registry["trial"][name] = lambda v=value: v
+                        func.fixtures[name] = lambda v=value: v
 
             # Run benchmark if all parameters are satisfied
             self._maybe_run_benchmark(func)
@@ -316,10 +338,10 @@ class BenchDecorator:
         for name, value in kwargs.items():
             if callable(value) and not isinstance(value, type):
                 # For callables like lambdas, register the callable itself
-                func.fixture_registry["trial"][name] = value
+                func.fixtures[name] = value
             else:
                 # For values, create a lambda that returns the value
-                func.fixture_registry["trial"][name] = lambda v=value: v
+                func.fixtures[name] = lambda v=value: v
 
         # Check if all required parameters are available and run if they are
         self._maybe_run_benchmark(func)
@@ -342,11 +364,7 @@ class BenchDecorator:
 
         """
         if reset_params:
-            func.fixture_registry = {
-                "trial": {},
-                "function": {},
-                "class": {},
-            }
+            func.fixtures = {}
 
         if reset_config:
             func.bench.bench_config = BenchConfig()
@@ -373,7 +391,7 @@ class BenchDecorator:
 
             # Register function parameters as fixtures
             for name, value in kwargs.items():
-                func.fixture_registry["trial"][name] = lambda v=value: v
+                func.fixtures[name] = lambda v=value: v
 
             self._maybe_run_benchmark(func)
             return func
@@ -381,7 +399,11 @@ class BenchDecorator:
         return decorator
 
     def _maybe_run_benchmark(self, func: BenchmarkableFunction) -> None:
-        """Run the benchmark if all required parameters are available."""
+        """Run the benchmark if all parameters are available and not deferred."""
+        # Skip if deferred
+        if func.defer:
+            return
+
         # Get function signature to determine required parameters
         sig = inspect.signature(func)
 
@@ -393,11 +415,16 @@ class BenchDecorator:
         }
 
         # Check if all required parameters are available in fixtures
-        provided_params = set(func.fixture_registry["trial"].keys())
+        provided_params = set(func.fixtures.keys())
 
         if required_params.issubset(provided_params):
             # All parameters are satisfied, run the benchmark
-            results = func.bench.bench(fixture_registry=func.fixture_registry)
+            fixture_registry: FixtureRegistry = {
+                "trial": func.fixtures,
+                "function": {},
+                "class": {},
+            }
+            results = func.bench.bench(fixture_registry=fixture_registry)
             func.last_results = results
 
             # Reset bench
@@ -422,6 +449,7 @@ class BenchDecorator:
         reporters: list[Reporter] | None = None,
         progress: bool | Callable | None = None,
         clip_outliers: float | None = None,
+        defer: bool | str | None = None,
     ) -> Callable: ...
 
     def config(self, **kwargs: Any) -> Callable:
@@ -447,6 +475,16 @@ class BenchDecorator:
         def decorator(func: Callable) -> Callable:
             # Initialize benchmark attributes
             func = self._initialize_bench_attributes(func)
+
+            # Extract defer parameter (not part of BenchConfig)
+            defer = kwargs.pop("defer", False)
+            func.defer = defer
+
+            # Register function in group if a group name is provided
+            if isinstance(defer, str):
+                if defer not in self._deferred_functions:
+                    self._deferred_functions[defer] = []
+                self._deferred_functions[defer].append(func)
 
             # Create partial config from kwargs
             partial_config = PartialBenchConfig(**kwargs)
@@ -531,6 +569,106 @@ class BenchDecorator:
             return self._decorate_with_bench_param_list(result_params)(func)
 
         return decorator
+
+    def run(
+        self,
+        group: str,
+        config: BenchConfig | None = None,
+    ) -> ResultsType:
+        """
+        Run all benchmarks in a specified group.
+
+        Args:
+            group: The group name to run
+            config: Optional BenchConfig to use for all benchmarks in the group
+
+        Returns:
+            Combined results from all benchmarks in the group
+
+        Example:
+            ```python
+            @bench.config(defer="examples")
+            def example1(x):
+                return x * 2
+
+            @bench.config(defer="examples")
+            def example2(x):
+                return x * 3
+
+            # Run all examples
+            bench.run("examples")
+            ```
+
+        """
+        if group not in self._deferred_functions:
+            msg = f"No functions in group '{group}'"
+            raise ValueError(msg)
+
+        # Get all functions in the group
+        functions = self._deferred_functions[group]
+
+        if not functions:
+            msg = f"Group '{group}' exists but contains no functions"
+            raise ValueError(msg)
+
+        # Use the config of the last added function if no config provided
+        final_config = config or functions[-1].bench.bench_config.model_copy(deep=True)
+
+        all_results: ResultsType = {}
+
+        # Process each function
+        for func in functions:
+            # Prepare config
+            _config = final_config.model_copy(deep=True)
+            _config.reporters = []
+
+            # Use individual config for loops_per_trial
+            _config.loops_per_trial = func.bench.bench_config.loops_per_trial
+
+            # Check if this function has params_list for comparison benchmarking
+            if func.params_list:
+                # Handle parameter comparison benchmarking
+                func_name = func.__name__
+
+                # Run benchmarks for each parameter set
+                org_defer = func.defer
+                func.defer = False
+                for i, params in enumerate(func.params_list):
+                    param_name, results, _ = self._process_single_param_set(
+                        func,
+                        params,
+                        i,
+                        func_name,
+                    )
+
+                    if results:
+                        all_results[f"{func_name} ({param_name})"] = results
+                func.defer = org_defer
+            else:
+                # Standard benchmark for a single function
+                fixture_registry: FixtureRegistry = {
+                    "trial": func.fixtures,
+                    "function": {},
+                    "class": {},
+                }
+                _results = func.bench.bench(
+                    config=_config,
+                    fixture_registry=fixture_registry,
+                )
+
+                # Add results to the combined results
+                if _results:
+                    all_results.update(_results)
+
+        # Display combined results using the final config
+        if all_results:
+            comparison = EasyBench(bench_config=final_config)
+            comparison.report_results(
+                results=all_results,
+                config=final_config,
+            )
+
+        return all_results
 
 
 # Create decorator instance

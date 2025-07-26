@@ -296,7 +296,7 @@ def _parse_return_values(lines: list[str]) -> dict[str, str | list[str]]:
 @pytest.fixture
 def parse_benchmark_output() -> Callable[[str], dict[str, Any]]:
     """
-    Parse the output from EasyBench's _display_results method.
+    Parse the output from EasyBench's report_results method.
 
     Returns:
         A function that takes a string output and returns a dictionary
