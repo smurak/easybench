@@ -369,9 +369,6 @@ class BenchDecorator:
                 # For values, create a lambda that returns the value
                 func.fixtures[name] = lambda v=value: v
 
-        # Make sure the function is properly registered for recursion
-        self._register_in_globals(func)
-
         # Check if all required parameters are available and run if they are
         self._maybe_run_benchmark(func)
         return func
