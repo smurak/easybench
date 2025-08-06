@@ -1742,3 +1742,80 @@ class TestBenchDecoratorDefer:
         finally:
             # Restore the original deferred functions
             bench._deferred_functions = original_deferred
+
+
+class TestBenchDecoratorRecursion:
+    """Tests for the bench decorator with recursive functions."""
+
+    def test_basic_recursive_function(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that a recursive function works with the bench decorator."""
+
+        @bench(n=10)
+        def fibonacci(n: int) -> int:
+            """Calculate nth Fibonacci number recursively."""
+            if n <= 0:
+                return 0
+            if n == 1:
+                return 1
+            return fibonacci(n - 1) + fibonacci(n - 2)
+
+        # Fibonacci(10) should be 55
+        result = fibonacci(10)
+        fib_10 = 55
+        assert result == fib_10
+
+        captured = capsys.readouterr()
+        assert "Benchmark Results" in captured.out
+        assert "fibonacci" in captured.out
+        assert "Avg Time" in captured.out
+
+    def test_recursive_function_with_params(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test that a recursive function works with BenchParams for multiple values."""
+
+        # Use smaller range for testing (n=15+ gets very slow with naive recursion)
+        @bench([BenchParams(name=f"n={n}", params={"n": n}) for n in range(5, 10)])
+        def fibonacci(n: int) -> int:
+            """Calculate nth Fibonacci number recursively."""
+            if n <= 0:
+                return 0
+            if n == 1:
+                return 1
+            return fibonacci(n - 1) + fibonacci(n - 2)
+
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # Verify all parameter versions were benchmarked
+        assert "fibonacci (n=5)" in parsed_out["functions"]
+        assert "fibonacci (n=6)" in parsed_out["functions"]
+        assert "fibonacci (n=7)" in parsed_out["functions"]
+        assert "fibonacci (n=8)" in parsed_out["functions"]
+        assert "fibonacci (n=9)" in parsed_out["functions"]
+
+    def test_recursive_function_with_show_output(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        parse_benchmark_output: Callable[[str], dict[str, Any]],
+    ) -> None:
+        """Test that recursive function results are correctly captured and displayed."""
+
+        @bench(n=7)
+        @bench.config(trials=1, show_output=True)
+        def fibonacci(n: int) -> int:
+            """Calculate nth Fibonacci number recursively."""
+            if n <= 0:
+                return 0
+            if n == 1:
+                return 1
+            return fibonacci(n - 1) + fibonacci(n - 2)
+
+        captured = capsys.readouterr()
+        parsed_out = parse_benchmark_output(captured.out)
+
+        # Check that the function output is correct and displayed
+        assert parsed_out["has_return_values"]
+        assert parsed_out["return_values"]["fibonacci"] == "13"  # Fibonacci(7) = 13
