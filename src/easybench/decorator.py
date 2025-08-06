@@ -7,6 +7,7 @@ parameters and settings. It allows for easy setup and running of benchmarks.
 
 import inspect
 from collections.abc import Callable, Iterable
+from types import CellType
 from typing import Any, ParamSpec, Protocol, TypeVar, cast, overload
 
 from .core import (
@@ -74,8 +75,33 @@ class BenchDecorator:
             func.defer = False
             # Initialize params_list attribute
             func.params_list = None
+            # Add the function to its global namespace to enable recursion
+            self._register_in_globals(func)
 
         return func
+
+    def _register_in_globals(self, func: BenchmarkableFunction) -> None:
+        """
+        Register the function in its global namespace to enable recursion.
+
+        Args:
+            func: The function to register in the global namespace
+
+        """
+        if hasattr(func, "__globals__") and hasattr(func, "__name__"):
+            # Register the function in the module's global namespace
+            # with its original name
+            func.__globals__[func.__name__] = func
+
+            # Add self-reference to the function's closure if needed
+            code = getattr(func, "__code__", None)
+            closure = getattr(func, "__closure__", None)
+            freevars = getattr(code, "co_freevars", ()) if code else ()
+            if closure is not None and func.__name__ in freevars:
+                for i, var_name in enumerate(freevars):
+                    if var_name == func.__name__ and isinstance(closure[i], CellType):
+                        object.__setattr__(closure[i], "cell_contents", func)
+                        break
 
     def __call__(
         self,
