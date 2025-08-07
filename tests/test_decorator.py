@@ -1337,6 +1337,48 @@ class TestBenchDecoratorRun:
         finally:
             bench._deferred_functions = original_deferred
 
+    def test_bench_decorator_run_with_param_list(self) -> None:
+        """Test that bench.run with a custom config applies to parameter lists."""
+        original_deferred = bench._deferred_functions.copy()
+        bench._deferred_functions.clear()
+
+        execution_counts: dict[str, int] = {}
+
+        try:
+            # Create parameter lists
+            params1 = BenchParams(name="Small", params={"size": 10})
+            params2 = BenchParams(name="Large", params={"size": 100})
+            params = [params1, params2]
+
+            custom_trials = 3  # Set a specific number of trials
+
+            @bench(params)
+            @bench.config(defer="param_list_group")
+            def test_func(size: int) -> int:
+                # Track how many times this gets called
+                execution_counts[f"size_{size}"] = (
+                    execution_counts.get(f"size_{size}", 0) + 1
+                )
+                return size
+
+            # Run with custom config that specifies trials
+            custom_config = BenchConfig(trials=custom_trials)
+            results = bench.run("param_list_group", config=custom_config)
+
+            # Verify results contain both parameter versions
+            assert "test_func (Small)" in results
+            assert "test_func (Large)" in results
+
+            # Verify each parameter set was executed the expected number of times
+            # For each parameter set, we expect trials*loops_per_trial executions
+            # Default loops_per_trial is 1, so we expect custom_trials executions
+            assert execution_counts["size_10"] == custom_trials
+            assert execution_counts["size_100"] == custom_trials
+            assert all(len(v["times"]) == custom_trials for v in results.values())
+
+        finally:
+            bench._deferred_functions = original_deferred
+
 
 class TestBenchDecoratorTimeDisabled:
     """Tests for the bench decorator with time measurement disabled."""
@@ -1738,6 +1780,50 @@ class TestBenchDecoratorDefer:
             # Check results
             assert "create_list (Small)" in results
             assert "create_list (Large)" in results
+
+        finally:
+            # Restore the original deferred functions
+            bench._deferred_functions = original_deferred
+
+    def test_defer_restore_config_after_run(self) -> None:
+        """Test that original config is restored with parameter lists."""
+        # Clean up any existing test groups
+        original_deferred = bench._deferred_functions.copy()
+        bench._deferred_functions.clear()
+
+        try:
+            # Create parameter sets
+            small = BenchParams(name="Small", params={"size": 10})
+            large = BenchParams(name="Large", params={"size": 100})
+
+            original_trials = 7  # Distinct value to check for restoration
+
+            # Set up a function with parameter list and specific config
+            params = [small, large]
+
+            @bench(params)
+            @bench.config(
+                defer="config_restore_group",
+                trials=original_trials,
+                memory=True,
+            )
+            def test_func(size: int) -> list:
+                return list(range(size))
+
+            # Store original config for later comparison
+            original_config = test_func.bench.bench_config.model_copy(deep=True)
+
+            # Run the group with a different config
+            custom_config = BenchConfig(trials=2, memory=False)
+            _ = bench.run("config_restore_group", config=custom_config)
+
+            # Verify original config was restored
+            assert test_func.bench.bench_config.trials == original_trials
+            assert test_func.bench.bench_config.memory == original_config.memory
+
+            # Verify the function still works with its original configuration
+            assert test_func.params_list is not None
+            assert len(test_func.params_list) == len(params)
 
         finally:
             # Restore the original deferred functions
