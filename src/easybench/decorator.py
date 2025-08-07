@@ -658,7 +658,9 @@ class BenchDecorator:
 
                 # Run benchmarks for each parameter set
                 org_defer = func.defer
+                org_config = func.bench.bench_config
                 func.defer = False
+                func.bench.bench_config = _config
                 for i, params in enumerate(func.params_list):
                     param_name, results, _ = self._process_single_param_set(
                         func,
@@ -670,6 +672,7 @@ class BenchDecorator:
                     if results:
                         all_results[f"{func_name} ({param_name})"] = results
                 func.defer = org_defer
+                func.bench.bench_config = org_config
             else:
                 # Standard benchmark for a single function
                 fixture_registry: FixtureRegistry = {
