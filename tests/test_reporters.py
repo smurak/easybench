@@ -319,7 +319,7 @@ class TestTableFormatter:
             "テスト関数": complete_stat({"avg": TEST_SLOW_TIME}),
             "测试函数": complete_stat({"avg": TEST_SLOWER_TIME}),
         }
-        config = BenchConfig(trials=1)
+        config = BenchConfig(trials=1, color=False)
 
         output = formatter.format(results, stats, config)
 
@@ -368,7 +368,7 @@ class TestTableFormatter:
             "漢字_mixed_with_ascii": complete_stat({"avg": TEST_SLOW_TIME}),
             "all_アジア文字_chars": complete_stat({"avg": TEST_SLOWER_TIME}),
         }
-        config = BenchConfig(trials=1)
+        config = BenchConfig(trials=1, color=False)
 
         output = formatter.format(results, stats, config)
 
@@ -400,7 +400,7 @@ class TestTableFormatter:
             names["wide"]: complete_stat({"avg": TEST_SLOW_TIME}),
             names["mixed"]: complete_stat({"avg": TEST_SLOWER_TIME}),
         }
-        config = BenchConfig(trials=1)
+        config = BenchConfig(trials=1, color=False)
 
         output = formatter.format(results, stats, config)
 
@@ -572,6 +572,130 @@ class TestTableFormatter:
 
         # All data lines should have the same visual width
         assert len({visual_width(line) for line in lines}) == 1
+
+    def test_color_option_with_single_trial(self) -> None:
+        """Test that color option works correctly with a single trial."""
+        formatter = TableFormatter()
+        results: dict[str, ResultType] = {
+            "fast_func": {"times": [TEST_TIME_VALUE]},  # This will be the minimum
+            "slow_func": {"times": [TEST_SLOWER_TIME]},  # This will be the maximum
+        }
+        stats: dict[str, StatType] = {
+            "fast_func": complete_stat({"avg": TEST_TIME_VALUE}),
+            "slow_func": complete_stat({"avg": TEST_SLOWER_TIME}),
+        }
+
+        # Test with color=True
+        config_with_color = BenchConfig(trials=1, color=True)
+        output_with_color = formatter.format(results, stats, config_with_color)
+
+        # Check that the output contains ANSI color codes
+        assert "\033[32m" in output_with_color  # Green color for min value
+        assert "\033[31m" in output_with_color  # Red color for max value
+        assert "\033[0m" in output_with_color  # Reset color code
+
+        # Test with color=False (default)
+        config_without_color = BenchConfig(trials=1, color=False)
+        output_without_color = formatter.format(results, stats, config_without_color)
+
+        # Check that the output doesn't contain ANSI color codes
+        assert "\033[32m" not in output_without_color
+        assert "\033[31m" not in output_without_color
+        assert "\033[0m" not in output_without_color
+
+    def test_color_option_with_multiple_trials(self) -> None:
+        """Test that color option works correctly with multiple trials."""
+        formatter = TableFormatter()
+        results: dict[str, ResultType] = {
+            "fast_func": {"times": [TEST_TIME_VALUE, TEST_TIME_VALUE, TEST_TIME_VALUE]},
+            "slow_func": {
+                "times": [TEST_SLOWER_TIME, TEST_SLOWER_TIME, TEST_SLOWER_TIME],
+            },
+        }
+        stats: dict[str, StatType] = {
+            "fast_func": complete_stat(
+                {"avg": TEST_AVG_TIME, "min": TEST_TIME_VALUE, "max": TEST_TIME_VALUE},
+            ),
+            "slow_func": complete_stat(
+                {
+                    "avg": TEST_SLOWER_TIME,
+                    "min": TEST_SLOWER_TIME,
+                    "max": TEST_SLOWER_TIME,
+                },
+            ),
+        }
+
+        # Test with color=True
+        config_with_color = BenchConfig(trials=3, color=True)
+        output_with_color = formatter.format(results, stats, config_with_color)
+
+        # Check that the output contains ANSI color codes
+        assert "\033[32m" in output_with_color  # Green color for min value
+        assert "\033[31m" in output_with_color  # Red color for max value
+        assert "\033[0m" in output_with_color  # Reset color code
+
+        # Test with color=False
+        config_without_color = BenchConfig(trials=3, color=False)
+        output_without_color = formatter.format(results, stats, config_without_color)
+
+        # Check that the output doesn't contain ANSI color codes
+        assert "\033[32m" not in output_without_color
+        assert "\033[31m" not in output_without_color
+        assert "\033[0m" not in output_without_color
+
+    def test_color_option_single_function(self) -> None:
+        """Test that color is not applied when there's only one function."""
+        formatter = TableFormatter()
+        results: dict[str, ResultType] = {
+            "single_func": {"times": [TEST_TIME_VALUE]},
+        }
+        stats: dict[str, StatType] = {
+            "single_func": complete_stat({"avg": TEST_TIME_VALUE}),
+        }
+
+        # Even with color=True, no coloring should happen with a single function
+        config = BenchConfig(trials=1, color=True)
+        output = formatter.format(results, stats, config)
+
+        # Check that the output doesn't contain ANSI color codes
+        assert "\033[32m" not in output
+        assert "\033[31m" not in output
+        assert "\033[0m" not in output
+
+    def test_color_option_with_memory(self) -> None:
+        """Test that color option works correctly with memory metrics."""
+        formatter = TableFormatter()
+        results: dict[str, ResultType] = {
+            "low_mem": {"times": [TEST_TIME_VALUE], "memory": [1024]},  # Low memory
+            "high_mem": {"times": [TEST_TIME_VALUE], "memory": [2048]},  # High memory
+        }
+        stats: dict[str, StatType] = {
+            "low_mem": complete_stat(
+                {"avg": TEST_TIME_VALUE, "avg_memory": 1024, "max_memory": 1024},
+                memory=True,
+            ),
+            "high_mem": complete_stat(
+                {"avg": TEST_TIME_VALUE, "avg_memory": 2048, "max_memory": 2048},
+                memory=True,
+            ),
+        }
+
+        # Test with a single trial and color=True
+        config = BenchConfig(trials=1, memory=True, color=True)
+        output = formatter.format(results, stats, config)
+
+        # Check that the memory values are colored
+        assert "\033[32m" in output  # Green for min memory
+        assert "\033[31m" in output  # Red for max memory
+
+        # Find if the coloring is in the memory column
+        lines = output.strip().split("\n")
+        data_lines = [line for line in lines if "low_mem" in line or "high_mem" in line]
+
+        # The color codes should be in the memory part of the output
+        # (after the time value which is the same for both functions)
+        assert any("\033[32m" in line and "low_mem" in line for line in data_lines)
+        assert any("\033[31m" in line and "high_mem" in line for line in data_lines)
 
 
 class TestCSVFormatter:

@@ -372,9 +372,8 @@ class TableFormatter(Formatter):
         # Calculate column widths based on converted values
         self._calculate_column_widths(data, config)
 
-        # Calculate extremes for coloring (only for multiple trials)
-        if config.trials > 1:
-            self._calculate_extremes(data, config)
+        # Calculate extremes for coloring
+        self._calculate_extremes(data, config)
 
         return data
 
@@ -524,20 +523,33 @@ class TableFormatter(Formatter):
         """Format results for a single trial benchmark."""
         converted_stats = self.formatting_data["converted_stats"]
         column_widths = self.formatting_data["column_widths"]
+        extremes = self.formatting_data["extremes"]
+
+        color = config.color if len(converted_stats) > 1 else False
 
         for method_name in self.sorted_methods:
             converted = converted_stats[method_name]
             line = visual_ljust(method_name, self.max_name_len + 2)
 
             if config.time:
-                time_val = f"{converted['avg_time']:.{self.precision}f}".rjust(
-                    column_widths["time"],
+                # Format time values with coloring
+                time_val = self._format_metric(
+                    converted["avg_time"],
+                    extremes["min_avg_time"],
+                    extremes["max_avg_time"],
+                    width=column_widths["time"],
+                    color=color,
                 )
                 line += time_val
 
             if config.memory:
-                mem_val = f"{converted['avg_memory']:.{self.precision}f}".rjust(
-                    column_widths["memory"],
+                # Format memory values with coloring
+                mem_val = self._format_metric(
+                    converted["avg_memory"],
+                    extremes["min_avg_memory"],
+                    extremes["max_avg_memory"],
+                    width=column_widths["memory"],
+                    color=color,
                 )
                 line += mem_val
 
