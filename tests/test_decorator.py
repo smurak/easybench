@@ -1342,7 +1342,7 @@ class TestBenchDecoratorRun:
         original_deferred = bench._deferred_functions.copy()
         bench._deferred_functions.clear()
 
-        execution_counts = {}
+        execution_counts: dict[str, int] = {}
 
         try:
             # Create parameter lists
@@ -1356,7 +1356,9 @@ class TestBenchDecoratorRun:
             @bench.config(defer="param_list_group")
             def test_func(size: int) -> int:
                 # Track how many times this gets called
-                execution_counts[f"size_{size}"] = execution_counts.get(f"size_{size}", 0) + 1
+                execution_counts[f"size_{size}"] = (
+                    execution_counts.get(f"size_{size}", 0) + 1
+                )
                 return size
 
             # Run with custom config that specifies trials
@@ -1372,7 +1374,7 @@ class TestBenchDecoratorRun:
             # Default loops_per_trial is 1, so we expect custom_trials executions
             assert execution_counts["size_10"] == custom_trials
             assert execution_counts["size_100"] == custom_trials
-            assert [len(v["times"]) == custom_trials for v in results.values()]
+            assert all(len(v["times"]) == custom_trials for v in results.values())
 
         finally:
             bench._deferred_functions = original_deferred
@@ -1784,7 +1786,7 @@ class TestBenchDecoratorDefer:
             bench._deferred_functions = original_deferred
 
     def test_defer_restore_config_after_run(self) -> None:
-        """Test that original config is restored after running a deferred group with parameter lists."""
+        """Test that original config is restored with parameter lists."""
         # Clean up any existing test groups
         original_deferred = bench._deferred_functions.copy()
         bench._deferred_functions.clear()
@@ -1797,8 +1799,14 @@ class TestBenchDecoratorDefer:
             original_trials = 7  # Distinct value to check for restoration
 
             # Set up a function with parameter list and specific config
-            @bench([small, large])
-            @bench.config(defer="config_restore_group", trials=original_trials, memory=True)
+            params = [small, large]
+
+            @bench(params)
+            @bench.config(
+                defer="config_restore_group",
+                trials=original_trials,
+                memory=True,
+            )
             def test_func(size: int) -> list:
                 return list(range(size))
 
@@ -1815,7 +1823,7 @@ class TestBenchDecoratorDefer:
 
             # Verify the function still works with its original configuration
             assert test_func.params_list is not None
-            assert len(test_func.params_list) == 2
+            assert len(test_func.params_list) == len(params)
 
         finally:
             # Restore the original deferred functions
