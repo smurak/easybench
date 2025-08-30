@@ -24,7 +24,7 @@ from typing import (
     get_args,
 )
 
-from .utils import visual_ljust, visual_width
+from .utils import calculate_statistics, visual_ljust, visual_width
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -32,7 +32,8 @@ if TYPE_CHECKING:
     import pandas as pd
     from matplotlib.figure import Figure
 
-    from .core import BenchConfig, ResultsType, StatsType, StatType
+    from .core import BenchConfig
+    from .utils import ResultsType, StatsType, StatType
 
 T = TypeVar("T")
 
@@ -139,6 +140,34 @@ class TimeUnit(str, Enum):
 
 class Formatter(ABC):
     """Base class for all result formatters."""
+
+    def format_(
+        self,
+        results: ResultsType,
+        stats: StatsType | None = None,
+        config: BenchConfig | None = None,
+    ) -> Formatted:
+        """
+        Format benchmark results.
+
+        Args:
+            results: Dictionary mapping benchmark names to result data.
+            stats: Dictionary of calculated statistics.
+                If None, stats will be calculated from results.
+            config: Benchmark configuration. Required.
+
+        Returns:
+            Formatted results in the appropriate format
+
+        """
+        if stats is None:
+            stats = calculate_statistics(results)
+
+        if config is None:
+            msg = "The 'config' option is required."
+            raise TypeError(msg)
+
+        return self.format(results, stats, config)
 
     @abstractmethod
     def format(
@@ -994,8 +1023,8 @@ class Reporter:
     def report(
         self,
         results: ResultsType,
-        stats: StatsType,
-        config: BenchConfig,
+        stats: StatsType | None = None,
+        config: BenchConfig | None = None,
     ) -> None:
         """
         Report benchmark results.
@@ -1003,10 +1032,10 @@ class Reporter:
         Args:
             results: Dictionary mapping benchmark names to result data
             stats: Dictionary of calculated statistics
-            config: Benchmark configuration
+            config: Benchmark configuration. Required.
 
         """
-        formatted = self.formatter.format(
+        formatted = self.formatter.format_(
             results=results,
             stats=stats,
             config=config,

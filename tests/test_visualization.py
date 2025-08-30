@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 import pytest
 
 from easybench import BenchConfig
-from easybench.core import ResultsType, ResultType, StatsType, StatType
+from easybench.utils import ResultsType, ResultType, StatsType, StatType
 from easybench.visualization import (
     DEFAULT_SNS_THEME,
     BarPlotFormatter,
@@ -1084,7 +1084,7 @@ class TestPlotReporter:
         """Test saving a figure to file."""
         mock_formatter = MagicMock()
         mock_figure = MagicMock(spec=matplotlib.figure.Figure)
-        mock_formatter.format.return_value = mock_figure
+        mock_formatter.format_.return_value = mock_figure
 
         # Create a temporary file for testing
         with tempfile.NamedTemporaryFile(suffix=".png") as temp_file:
@@ -1105,7 +1105,7 @@ class TestPlotReporter:
         """Test showing a figure."""
         mock_formatter = MagicMock()
         mock_figure = MagicMock(spec=matplotlib.figure.Figure)
-        mock_formatter.format.return_value = mock_figure
+        mock_formatter.format_.return_value = mock_figure
 
         reporter = PlotReporter(mock_formatter, show=True)
 

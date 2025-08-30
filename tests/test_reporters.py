@@ -26,7 +26,7 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
-from easybench.core import BenchConfig, ResultType, StatType, get_reporter
+from easybench.core import BenchConfig, get_reporter
 from easybench.reporters import (
     CallbackReporter,
     ConsoleReporter,
@@ -45,7 +45,7 @@ from easybench.reporters import (
     StreamReporter,
     TableFormatter,
 )
-from easybench.utils import visual_width
+from easybench.utils import ResultType, StatType, visual_width
 from easybench.visualization import PlotReporter
 
 # Constants for test values to avoid magic numbers
@@ -1484,7 +1484,7 @@ class TestReporters:
         # Import MagicMock
         # Create a mock formatter
         formatter = MagicMock(spec=Formatter)
-        formatter.format.return_value = "Formatted output"
+        formatter.format_.return_value = "Formatted output"
 
         # Create a concrete reporter subclass that implements report_formatted
         class TestReporter(Reporter):
@@ -1506,7 +1506,7 @@ class TestReporters:
         reporter.report(results, stats, config)
 
         # Use keyword arguments to match the actual call pattern
-        formatter.format.assert_called_once_with(
+        formatter.format_.assert_called_once_with(
             results=results,
             stats=stats,
             config=config,

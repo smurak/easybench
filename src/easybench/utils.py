@@ -5,7 +5,34 @@ import platform
 import sys
 import time
 import unicodedata
-from typing import Any
+from typing import Any, TypeAlias
+
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict
+else:
+    from typing_extensions import NotRequired, TypedDict
+
+
+class ResultType(TypedDict):
+    """Type of benchmark result."""
+
+    times: NotRequired[list[float]]
+    memory: NotRequired[list[float]]
+    output: NotRequired[list[object]]
+
+
+class StatType(TypedDict):
+    """Type of benchmark statistics."""
+
+    avg: NotRequired[float]
+    min: NotRequired[float]
+    max: NotRequired[float]
+    avg_memory: NotRequired[float]
+    max_memory: NotRequired[float]
+
+
+ResultsType: TypeAlias = dict[str, ResultType]
+StatsType: TypeAlias = dict[str, StatType]
 
 
 def measure_timer_overhead(iterations: int = 1_000_000) -> float:
@@ -150,3 +177,39 @@ def visual_rjust(text: str, width: int, fillchar: str = " ") -> str:
     current_width = visual_width(text)
     padding_width = max(0, width - current_width)
     return (fillchar * padding_width) + text
+
+
+def calculate_statistics(
+    results: ResultsType,
+) -> StatsType:
+    """
+    Calculate statistics from benchmark results.
+
+    Args:
+        results: Dictionary of benchmark results
+
+    Returns:
+        Dictionary of calculated statistics
+
+    """
+    stats: StatsType = {}
+    for method_name, data in results.items():
+        if "times" in data and len(data["times"]) != 0:
+            times = data["times"]
+            stats[method_name] = {
+                "avg": sum(times) / len(times),
+                "min": min(times),
+                "max": max(times),
+            }
+        else:
+            stats[method_name] = {}
+
+        if "memory" in data and len(data["memory"]) != 0:
+            memory_values = data["memory"]
+            avg_memory = sum(memory_values) / len(memory_values)
+            max_memory = max(memory_values)
+            stats[method_name].update(
+                {"avg_memory": avg_memory, "max_memory": max_memory},
+            )
+
+    return stats
