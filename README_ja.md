@@ -17,7 +17,7 @@
 
 ## 特徴
 
-- 3種類のベンチマークスタイル：デコレータ、クラスベース、コマンドライン
+- 4種類のベンチマークスタイル：デコレータ、クラスベース、コマンドライン、Jupyter Notebook
 - 実行時間とメモリ使用量の測定（[制限あり](#メモリ測定の制限)）
 - 豊富な可視化（ボックスプロット、バイオリンプロット、ラインプロット、ヒストグラム、バープロット）
 - 高度なオプション：ウォームアップ実行、複数ループ測定、外れ値トリミング
@@ -53,7 +53,7 @@ pip install easybench[all]
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/smurak/easybench/blob/main/notebooks/easybench_quickstart.ipynb)
 
-`easybench`を使用する方法は3種類あります：
+`easybench`を使用する方法は4種類あります：
 
 1. `@bench`デコレータ
 
@@ -126,6 +126,23 @@ pip install easybench[all]
 
         ```bash
         easybench --trials 10 --memory --sort-by avg
+        ```
+
+4. `%%easybench`マジックコマンド（Jupyter Notebook）
+
+    1. 拡張機能を読み込む
+
+        ```python
+        %load_ext easybench
+        ```
+    
+    2. セル内のコードをベンチマーク
+
+        ```python
+        %%easybench --trials=3 --memory
+        result = []
+        for i in range(1_000_000):
+            result.append(i)
         ```
 
 **ベンチマーク結果の例：**

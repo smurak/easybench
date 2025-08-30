@@ -2,7 +2,7 @@
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/smurak/easybench/blob/main/notebooks/easybench_quickstart.ipynb)
 
-`easybench`でベンチマークを行う方法は3種類あります：
+`easybench`でベンチマークを行う方法は4種類あります：
 
 1. `@bench`デコレータ
 
@@ -76,6 +76,23 @@
 
         ```bash
         easybench --trials 10 --memory --sort-by avg
+        ```
+
+4. `%%easybench`マジックコマンド（Jupyter Notebook）
+
+    1. 拡張機能を読み込む
+
+        ```python
+        %load_ext easybench
+        ```
+    
+    2. セル内のコードをベンチマーク
+
+        ```python
+        %%easybench --trials=3 --memory
+        result = []
+        for i in range(1_000_000):
+            result.append(i)
         ```
 
 **ベンチマーク結果の例：**
