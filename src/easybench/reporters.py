@@ -154,7 +154,7 @@ class Formatter(ABC):
             results: Dictionary mapping benchmark names to result data.
             stats: Dictionary of calculated statistics.
                 If None, stats will be calculated from results.
-            config: Benchmark configuration
+            config: Benchmark configuration. Required.
 
         Returns:
             Formatted results in the appropriate format
@@ -1032,7 +1032,7 @@ class Reporter:
         Args:
             results: Dictionary mapping benchmark names to result data
             stats: Dictionary of calculated statistics
-            config: Benchmark configuration
+            config: Benchmark configuration. Required.
 
         """
         formatted = self.formatter.format_(
