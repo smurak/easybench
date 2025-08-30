@@ -21,6 +21,7 @@ nav:
     - デコレータベースのベンチマーク: usage/decorator-based.md
     - クラスベースのベンチマーク: usage/class-based.md
     - コマンドラインインターフェース: usage/command-line.md
+    - Jupyter Notebook マジックコマンド: usage/notebook-magic.md
   - 高度な使用方法: advanced.md
   - リファレンス:
     - CLI: reference/cli.md

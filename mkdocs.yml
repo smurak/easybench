@@ -19,6 +19,7 @@ nav:
     - Decorator-based Benchmarks: usage/decorator-based.md
     - Class-based Benchmarks: usage/class-based.md
     - Command Line Interface: usage/command-line.md
+    - Jupyter Notebook Magic Command: usage/notebook-magic.md
   - Advanced Usage: advanced.md
   - Reference:
     - CLI: reference/cli.md

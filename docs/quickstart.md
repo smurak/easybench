@@ -2,7 +2,7 @@
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/smurak/easybench/blob/main/notebooks/easybench_quickstart.ipynb)
 
-There are 3 ways to benchmark with `easybench`:
+There are 4 ways to benchmark with `easybench`:
 
 1. `@bench` decorator
 
@@ -76,6 +76,23 @@ There are 3 ways to benchmark with `easybench`:
 
         ```bash
         easybench --trials 10 --memory --sort-by avg
+        ```
+
+4. `%%easybench` magic command (Jupyter Notebook)
+
+    1. Load the extension
+
+        ```python
+        %load_ext easybench
+        ```
+    
+    2. Benchmark cell code
+
+        ```python
+        %%easybench --trials=3 --memory
+        result = []
+        for i in range(1_000_000):
+            result.append(i)
         ```
 
 **Example of benchmark results:**

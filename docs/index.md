@@ -4,7 +4,7 @@ A simple and easy-to-use Python benchmarking library.
 
 ## Features
 
-- Three benchmarking styles: decorator, class-based, and command-line
+- Four benchmarking styles: decorator, class-based, command-line, and Jupyter Notebook
 - Measure both execution time and memory usage ([see limitations](usage/class-based.md#memory-measurement-limitations))
 - Rich visualizations (Boxplot, Violinplot, Lineplot, Histogram, Barplot)
 - Advanced options: warmup runs, multiple loops per trial, outlier trimming
