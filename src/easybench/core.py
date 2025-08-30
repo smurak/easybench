@@ -11,7 +11,6 @@ import gc
 import inspect
 import logging
 import re
-import sys
 import time
 import tracemalloc
 import types
@@ -27,17 +26,13 @@ from typing import (
     cast,
 )
 
-if sys.version_info >= (3, 11):
-    from typing import NotRequired, TypedDict
-else:
-    from typing_extensions import NotRequired, TypedDict
-
-
 from pydantic import BaseModel, field_validator, model_validator
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
     from contextlib import AbstractContextManager
+
+    from .utils import ResultsType, ResultType
 
 from .reporters import (
     ConsoleReporter,
@@ -162,26 +157,6 @@ def _get_visualization_reporter(name: str, kwargs: dict) -> Reporter:
     raise ValueError(err)
 
 
-class ResultType(TypedDict):
-    """Type of benchmark result."""
-
-    times: NotRequired[list[float]]
-    memory: NotRequired[list[float]]
-    output: NotRequired[list[object]]
-
-
-class StatType(TypedDict):
-    """Type of benchmark statistics."""
-
-    avg: NotRequired[float]
-    min: NotRequired[float]
-    max: NotRequired[float]
-    avg_memory: NotRequired[float]
-    max_memory: NotRequired[float]
-
-
-ResultsType: TypeAlias = dict[str, ResultType]
-StatsType: TypeAlias = dict[str, StatType]
 FixtureRegistry: TypeAlias = dict[ScopeType, dict[str, object]]
 
 P = ParamSpec("P")
@@ -1487,14 +1462,10 @@ class EasyBench:
             logger.info("\nNo benchmark results to display.")
             return
 
-        # Calculate statistics
-        stats = self._calculate_statistics(results)
-
         # Use each reporter to report the results
         for reporter in config.reporters:
             reporter.report(
                 results=results,
-                stats=stats,
                 config=config,
             )
 
@@ -1590,42 +1561,6 @@ class EasyBench:
             processed_results[method_name] = processed_data
 
         return processed_results
-
-    def _calculate_statistics(
-        self,
-        results: ResultsType,
-    ) -> StatsType:
-        """
-        Calculate statistics from benchmark results.
-
-        Args:
-            results: Dictionary of benchmark results
-
-        Returns:
-            Dictionary of calculated statistics
-
-        """
-        stats: StatsType = {}
-        for method_name, data in results.items():
-            if "times" in data:
-                times = data["times"]
-                stats[method_name] = {
-                    "avg": sum(times) / len(times),
-                    "min": min(times),
-                    "max": max(times),
-                }
-            else:
-                stats[method_name] = {}
-
-            if "memory" in data:
-                memory_values = data["memory"]
-                avg_memory = sum(memory_values) / len(memory_values)
-                max_memory = max(memory_values)
-                stats[method_name].update(
-                    {"avg_memory": avg_memory, "max_memory": max_memory},
-                )
-
-        return stats
 
 
 class FunctionBench(EasyBench):

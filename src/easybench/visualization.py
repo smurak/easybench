@@ -21,8 +21,9 @@ except ImportError as err:
     )
     raise ImportError(error_msg) from err
 
-from .core import BenchConfig, ResultsType, StatsType
+from .core import BenchConfig
 from .reporters import Formatted, Formatter, MemoryUnit, MetricType, Reporter, TimeUnit
+from .utils import ResultsType, StatsType
 
 # Constants for magic values
 MAX_PERCENTILE_THRESHOLD = 0.5

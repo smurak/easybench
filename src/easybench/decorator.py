@@ -17,11 +17,10 @@ from .core import (
     FixtureRegistry,
     FunctionBench,
     PartialBenchConfig,
-    ResultsType,
-    ResultType,
     SortType,
 )
 from .reporters import ConsoleReporter, MemoryUnit, Reporter, TimeUnit
+from .utils import ResultsType, ResultType
 
 # Type for decorated functions
 P = ParamSpec("P")
