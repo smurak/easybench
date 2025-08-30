@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from IPython import get_ipython
 from IPython.core.magic import Magics, cell_magic, magics_class
 
 from .cli import create_parser, parse_args_to_config
@@ -140,8 +139,6 @@ class CellBenchRunner:
         return result
 
 
-def load_ipython_extension() -> None:
+def load_ipython_extension(ipython: InteractiveShell) -> None:
     """Register the EasyBenchMagics magics."""
-    ipython = get_ipython()
-    if ipython is not None:
-        ipython.register_magics(EasyBenchMagics)
+    ipython.register_magics(EasyBenchMagics)

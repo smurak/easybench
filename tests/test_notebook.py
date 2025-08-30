@@ -28,28 +28,16 @@ TRIALS_COUNT = 2  # Number of trials in tests
 class TestLoadIPythonExtension:
     """Tests for the load_ipython_extension function."""
 
-    @patch("easybench.notebook.get_ipython")
-    def test_load_extension(self, mock_get_ipython: MagicMock) -> None:
+    def test_load_extension(self) -> None:
         """Test that the extension is registered with IPython."""
         mock_ipython = MagicMock()
-        mock_get_ipython.return_value = mock_ipython
 
-        load_ipython_extension()
+        load_ipython_extension(mock_ipython)
 
         mock_ipython.register_magics.assert_called_once()
         # Verify that EasyBenchMagics is registered
         args, _ = mock_ipython.register_magics.call_args
         assert args[0] == EasyBenchMagics
-
-    @patch("easybench.notebook.get_ipython")
-    def test_load_extension_no_ipython(self, mock_get_ipython: MagicMock) -> None:
-        """Test that the function handles the case when IPython is not available."""
-        mock_get_ipython.return_value = None
-
-        # Should not raise an exception
-        load_ipython_extension()
-
-        mock_get_ipython.assert_called_once()
 
 
 class TestEasyBenchMagics:

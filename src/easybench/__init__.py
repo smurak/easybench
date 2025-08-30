@@ -10,9 +10,13 @@ from .utils import get_bench_env
 
 # Register IPython magic if in IPython/Jupyter environment
 try:
+    from IPython import get_ipython
+
     from .notebook import load_ipython_extension
 
-    load_ipython_extension()
+    ipython = get_ipython()
+    if ipython is not None:
+        load_ipython_extension(ipython)
 except (NameError, ImportError):
     # Not in IPython environment
     pass
