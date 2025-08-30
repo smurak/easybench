@@ -274,8 +274,3 @@ class TestCellBenchRunner:
         # Verify that loops_per_trial was passed to measure_execution
         _, kwargs = mock_measure_execution.call_args
         assert kwargs["loops"] == loops
-        runner.run_cell_benchmark(EXAMPLE_CODE, config)
-
-        # Verify that loops_per_trial was passed to measure_execution
-        _, kwargs = mock_measure_execution.call_args
-        assert kwargs["loops"] == loops
