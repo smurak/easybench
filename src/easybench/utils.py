@@ -194,7 +194,7 @@ def calculate_statistics(
     """
     stats: StatsType = {}
     for method_name, data in results.items():
-        if "times" in data:
+        if "times" in data and len(data["times"]) != 0:
             times = data["times"]
             stats[method_name] = {
                 "avg": sum(times) / len(times),
