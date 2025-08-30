@@ -204,7 +204,7 @@ def calculate_statistics(
         else:
             stats[method_name] = {}
 
-        if "memory" in data:
+        if "memory" in data and len(data["memory"]) != 0:
             memory_values = data["memory"]
             avg_memory = sum(memory_values) / len(memory_values)
             max_memory = max(memory_values)
