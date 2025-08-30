@@ -187,15 +187,13 @@ def run_benchmarks(
             logger.exception("Error running benchmark %s", name)
 
 
-def cli_main() -> None:
+def create_parser() -> argparse.ArgumentParser:
     """
-    Execute the main command line interface for easybench.
+    Create an argument parser for EasyBench CLI.
 
-    Usage:
-    easybench [`--trials N`] [`--loops-per-trial N`] [`--memory`] [`--memory-unit UNIT`]
-    [`--sort-by METRIC`] [`--reverse`] [`--show-output`] [`--time-unit UNIT`]
-    [`--warmups N`] [`--no-progress`] [`--include PATTERN`] [`--exclude PATTERN`]
-    [`--include-files PATTERN`] [`--exclude-files PATTERN`] [`--no-time`] [`path`]
+    Returns:
+        An ArgumentParser instance with all EasyBench options
+
     """
     default_config = BenchConfig()
     parser = argparse.ArgumentParser(
@@ -320,29 +318,58 @@ def cli_main() -> None:
         ),
     )
 
+    return parser
+
+
+def parse_args_to_config(args: argparse.Namespace) -> PartialBenchConfig:
+    """
+    Convert parsed arguments to a PartialBenchConfig.
+
+    Args:
+        args: Parsed command line arguments
+
+    Returns:
+        A PartialBenchConfig object with settings from command line arguments
+
+    """
+    # Set memory value based on arguments
+    memory = args.memory_unit if args.memory_unit else True if args.memory else None
+    time = args.time_unit if args.time_unit else False if args.no_time else None
+
+    # Create config from CLI arguments
+    return PartialBenchConfig(
+        trials=args.trials,
+        loops_per_trial=args.loops_per_trial,
+        warmups=args.warmups,
+        memory=memory,
+        time=time,
+        sort_by=args.sort_by,
+        reverse=args.reverse or None,
+        color=False if args.no_color else None,
+        show_output=args.show_output or None,
+        progress=False if args.no_progress else True if args.progress else None,
+        include=args.include,
+        exclude=args.exclude,
+        clip_outliers=args.clip_outliers,
+    )
+
+
+def cli_main() -> None:
+    """
+    Execute the main command line interface for easybench.
+
+    Usage:
+    easybench [`--trials N`] [`--loops-per-trial N`] [`--memory`] [`--memory-unit UNIT`]
+    [`--sort-by METRIC`] [`--reverse`] [`--show-output`] [`--time-unit UNIT`]
+    [`--warmups N`] [`--no-progress`] [`--include PATTERN`] [`--exclude PATTERN`]
+    [`--include-files PATTERN`] [`--exclude-files PATTERN`] [`--no-time`] [`path`]
+    """
+    parser = create_parser()
     args = parser.parse_args()
 
     try:
-        # Set memory value based on arguments
-        memory = args.memory_unit if args.memory_unit else True if args.memory else None
-        time = args.time_unit if args.time_unit else False if args.no_time else None
-
         # Create config from CLI arguments
-        config = PartialBenchConfig(
-            trials=args.trials,
-            loops_per_trial=args.loops_per_trial,
-            warmups=args.warmups,
-            memory=memory,
-            time=time,
-            sort_by=args.sort_by,
-            reverse=args.reverse or None,
-            color=False if args.no_color else None,
-            show_output=args.show_output or None,
-            progress=False if args.no_progress else True if args.progress else None,
-            include=args.include,
-            exclude=args.exclude,
-            clip_outliers=args.clip_outliers,
-        )
+        config = parse_args_to_config(args)
 
         # Discover benchmark files with file filtering
         benchmark_files = discover_benchmark_files(

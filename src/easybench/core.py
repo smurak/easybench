@@ -620,6 +620,71 @@ def customize(
     return decorator
 
 
+def measure_execution(
+    execution_func: Callable[[], object],
+    *,
+    loops: int = 1,
+    measure_memory: bool = False,
+    capture_output: bool = True,
+) -> tuple[float, float | None, object]:
+    """
+    Measure execution time and memory usage of a callable function.
+
+    Args:
+        execution_func: Function to execute
+        measure_memory: Whether to measure memory usage
+        loops: Number of loops to run
+        capture_output: Whether to capture and return function result
+
+    Returns:
+        Tuple of (execution_time, memory_usage, result)
+
+    """
+    # Reset tracemalloc
+    if measure_memory and tracemalloc.is_tracing():
+        tracemalloc.stop()
+
+    # Disable garbage collection during measurement
+    gcold = gc.isenabled()
+    gc.disable()
+
+    result = None
+    memory_usage = None
+
+    try:
+        # Start memory tracking if needed
+        if measure_memory:
+            tracemalloc.start()
+            before_current, _ = tracemalloc.get_traced_memory()
+
+        # Measure execution time
+        start_time = time.perf_counter()
+
+        # Execute the function multiple times
+        for i in range(loops):
+            if capture_output or i == 0:
+                result = execution_func()
+            else:
+                execution_func()
+
+        end_time = time.perf_counter()
+        execution_time = (end_time - start_time) / loops
+
+        # Measure memory if requested
+        if measure_memory:
+            _, after_peak = tracemalloc.get_traced_memory()
+            memory_usage = after_peak - before_current
+
+        return execution_time, memory_usage, result
+
+    finally:
+        # Clean up
+        if measure_memory and tracemalloc.is_tracing():
+            tracemalloc.stop()
+        if gcold:
+            gc.enable()
+
+
 class EasyBench:
     """Base class for benchmark classes."""
 
@@ -1067,7 +1132,7 @@ class EasyBench:
         )
 
         # Process results (apply outlier clipping if configured)
-        processed_results = self._process_results(raw_results, complete_config)
+        processed_results = self.process_results(raw_results, complete_config)
 
         # Display results using reporters
         self.report_results(
@@ -1276,41 +1341,12 @@ class EasyBench:
         default_args = self._get_default_args(method)
         method_args = default_args | fixture_args
 
-        # Run the benchmark
-        memory_usage = None
-        result = None
-
-        # Reset tracemalloc state
-        if memory and tracemalloc.is_tracing():
-            tracemalloc.stop()
-
-        gcold = gc.isenabled()
-        gc.disable()
-
-        try:
-            if memory:
-                tracemalloc.start()
-                before_current, _ = tracemalloc.get_traced_memory()
-
-            start_time = time.perf_counter()
-            for i in range(loops_per_trial):
-                if capture_output or i == 0:
-                    result = method(**method_args)
-                else:
-                    method(**method_args)
-            end_time = time.perf_counter()
-
-            # get memory usage
-            if memory:
-                _, after_peak = tracemalloc.get_traced_memory()
-                memory_usage = after_peak - before_current
-        finally:
-            if memory:
-                tracemalloc.stop()
-            if gcold:
-                gc.enable()
-
-        return (end_time - start_time) / loops_per_trial, memory_usage, result
+        return measure_execution(
+            execution_func=lambda: method(**method_args),
+            measure_memory=memory,
+            loops=loops_per_trial,
+            capture_output=capture_output,
+        )
 
     def _find_benchmark_methods(self) -> dict[str, Callable[..., object]]:
         """
@@ -1520,7 +1556,7 @@ class EasyBench:
             # Clip values above the upper_percentile
             return [min(v, upper_percentile) for v in values]
 
-    def _process_results(
+    def process_results(
         self,
         results: ResultsType,
         config: BenchConfig,
