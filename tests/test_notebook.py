@@ -11,6 +11,8 @@ This module tests:
 from collections.abc import Callable
 from unittest.mock import MagicMock, patch
 
+from IPython.core.interactiveshell import ExecutionResult
+
 from easybench.core import BenchConfig
 from easybench.notebook import CellBenchRunner, EasyBenchMagics, load_ipython_extension
 
@@ -100,8 +102,7 @@ class TestEasyBenchMagics:
         assert isinstance(args[1], BenchConfig)
         assert args[1].trials == CUSTOM_TRIALS
 
-        # Result should be whatever the runner returned
-        assert result == mock_runner.run_cell_benchmark.return_value
+        assert result is None
 
     def test_easybench_no_shell(self) -> None:
         """Test the %%easybench magic when shell is None."""
@@ -137,9 +138,11 @@ class TestCellBenchRunner:
         def side_effect_func(
             execution_func: Callable[[], None],
             **_: object,
-        ) -> tuple[float, int, str]:
+        ) -> tuple[float, int, ExecutionResult]:
             execution_func()  # This will call shell.ex(EXAMPLE_CODE)
-            return (MOCK_EXECUTION_TIME, MOCK_MEMORY_USAGE, MOCK_RESULT)
+            result = ExecutionResult(None)
+            result.result = MOCK_RESULT  # type: ignore[assignment]
+            return (MOCK_EXECUTION_TIME, MOCK_MEMORY_USAGE, result)
 
         mock_measure_execution.side_effect = side_effect_func
 
@@ -153,8 +156,11 @@ class TestCellBenchRunner:
         result = runner.run_cell_benchmark(EXAMPLE_CODE, config)
 
         # Check that ex was called on the shell with the cell code
-        assert mock_shell.ex.call_count == TRIALS_COUNT  # Called once for each trial
-        mock_shell.ex.assert_called_with(EXAMPLE_CODE)
+        assert mock_shell.run_cell.call_count == TRIALS_COUNT
+        mock_shell.run_cell.assert_called_with(
+            EXAMPLE_CODE,
+            silent=True,
+        )
 
         # Check that measure_execution was called with the right arguments
         assert (
@@ -189,14 +195,18 @@ class TestCellBenchRunner:
         def side_effect_func(
             execution_func: Callable[[], None],
             **_: object,
-        ) -> tuple[float, int, str]:
+        ) -> tuple[float, int, ExecutionResult]:
             nonlocal call_count
             execution_func()  # This will call shell.ex(EXAMPLE_CODE)
             call_count += 1
             if call_count == 1:  # First call (warmup)
-                return (0.2, 120, warmup_result)
+                result = ExecutionResult(None)
+                result.result = warmup_result  # type: ignore[assignment]
+                return (0.2, 120, result)
             # Second call (trial)
-            return (MOCK_EXECUTION_TIME, MOCK_MEMORY_USAGE, trial_result)
+            result = ExecutionResult(None)
+            result.result = trial_result  # type: ignore[assignment]
+            return (MOCK_EXECUTION_TIME, MOCK_MEMORY_USAGE, result)
 
         mock_measure_execution.side_effect = side_effect_func
 
@@ -211,7 +221,7 @@ class TestCellBenchRunner:
 
         # Check that ex was called twice (once for warmup, once for trial)
         warmup_plus_trial = 2
-        assert mock_shell.ex.call_count == warmup_plus_trial
+        assert mock_shell.run_cell.call_count == warmup_plus_trial
 
         # Check that measure_execution was called twice
         assert mock_measure_execution.call_count == warmup_plus_trial
@@ -243,9 +253,11 @@ class TestCellBenchRunner:
         def side_effect_func(
             execution_func: Callable[[], None],
             **_: object,
-        ) -> tuple[float, int, str]:
+        ) -> tuple[float, int, ExecutionResult]:
             execution_func()  # This will call shell.ex(EXAMPLE_CODE)
-            return (MOCK_EXECUTION_TIME, MOCK_MEMORY_USAGE, MOCK_RESULT)
+            result = ExecutionResult(None)
+            result.result = MOCK_RESULT  # type: ignore[assignment]
+            return (MOCK_EXECUTION_TIME, MOCK_MEMORY_USAGE, result)
 
         mock_measure_execution.side_effect = side_effect_func
 

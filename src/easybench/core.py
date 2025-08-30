@@ -621,12 +621,11 @@ def customize(
 
 
 def measure_execution(
-    execution_func: Callable[[], object],
+    execution_func: Callable[[], T],
     *,
     loops: int = 1,
     measure_memory: bool = False,
-    capture_output: bool = True,
-) -> tuple[float, float | None, object]:
+) -> tuple[float, float | None, T | None]:
     """
     Measure execution time and memory usage of a callable function.
 
@@ -634,7 +633,6 @@ def measure_execution(
         execution_func: Function to execute
         measure_memory: Whether to measure memory usage
         loops: Number of loops to run
-        capture_output: Whether to capture and return function result
 
     Returns:
         Tuple of (execution_time, memory_usage, result)
@@ -662,7 +660,7 @@ def measure_execution(
 
         # Execute the function multiple times
         for i in range(loops):
-            if capture_output or i == 0:
+            if i == 0:
                 result = execution_func()
             else:
                 execution_func()
@@ -899,7 +897,6 @@ class EasyBench:
                             method=method,
                             values=values,
                             memory=bool(config.memory),
-                            capture_output=capture_output,
                             loops_per_trial=loops_per_trial,
                         )
                     )
@@ -1313,7 +1310,6 @@ class EasyBench:
         method: Callable[..., object],
         values: dict[str, object],
         memory: bool = False,
-        capture_output: bool = False,
         loops_per_trial: int = 1,
     ) -> tuple[float, float | None, object | None]:
         """
@@ -1323,7 +1319,6 @@ class EasyBench:
             method: The benchmark method to run
             values: Dictionary containing fixture values
             memory: Whether to measure memory usage
-            capture_output: Whether to capture and return function result
             loops_per_trial: Number of loops per trial
 
         Returns:
@@ -1345,7 +1340,6 @@ class EasyBench:
             execution_func=lambda: method(**method_args),
             measure_memory=memory,
             loops=loops_per_trial,
-            capture_output=capture_output,
         )
 
     def _find_benchmark_methods(self) -> dict[str, Callable[..., object]]:

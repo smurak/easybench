@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from IPython.core.magic import Magics, cell_magic, magics_class
 
@@ -15,7 +15,9 @@ from .core import (
 )
 
 if TYPE_CHECKING:
-    from IPython.core.interactiveshell import InteractiveShell
+    from collections.abc import Callable
+
+    from IPython.core.interactiveshell import ExecutionResult, InteractiveShell
 
     from .utils import ResultType
 
@@ -25,7 +27,7 @@ class EasyBenchMagics(Magics):
     """Magics for the EasyBench library."""
 
     @cell_magic
-    def easybench(self, line: str, cell: str) -> object:
+    def easybench(self, line: str, cell: str) -> None:
         """
         Run the cell code as a benchmark and display performance metrics.
 
@@ -52,7 +54,7 @@ class EasyBenchMagics(Magics):
         """
         # Return None if not in IPython environment
         if self.shell is None:
-            return None
+            return
 
         # Parse options
         config = self._parse_options(line)
@@ -61,7 +63,7 @@ class EasyBenchMagics(Magics):
         bench_runner = CellBenchRunner(self.shell)
 
         # Execute benchmark
-        return bench_runner.run_cell_benchmark(cell, config)
+        bench_runner.run_cell_benchmark(cell, config)
 
     def _parse_options(self, line: str) -> BenchConfig:
         """Parse magic options into a BenchConfig object."""
@@ -105,12 +107,19 @@ class CellBenchRunner:
             is_warmup = i < config.warmups
 
             # Measure a single trial
+            is_first = i == config.warmups
             execution_time, memory_usage, result = measure_execution(
-                execution_func=lambda: self.shell.ex(cell),
+                execution_func=cast(
+                    "Callable[[], ExecutionResult]",
+                    lambda is_first=is_first: self.shell.run_cell(
+                        cell,
+                        silent=not is_first,
+                    ),
+                ),
                 measure_memory=bool(config.memory),
                 loops=config.loops_per_trial,
-                capture_output=capture_output,
             )
+            output = result.result if result is not None else None
 
             # Record results (except during warmup)
             if not is_warmup:
@@ -121,7 +130,7 @@ class CellBenchRunner:
                     results["memory"].append(memory_usage)
 
                 if config.return_output or config.show_output:
-                    results["output"].append(result)
+                    results["output"].append(output)
 
         # Create a benchmark instance to process and report results
         bench = EasyBench(config)
@@ -135,8 +144,7 @@ class CellBenchRunner:
         # Report results
         bench.report_results(processed_results, config)
 
-        # Return the last result to make variables available in the namespace
-        return result
+        return output
 
 
 def load_ipython_extension(ipython: InteractiveShell) -> None:
