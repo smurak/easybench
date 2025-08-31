@@ -26,7 +26,12 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
-from easybench.core import BenchConfig, get_reporter
+from easybench.core import (
+    BenchConfig,
+    _custom_reporters_dict,
+    get_reporter,
+    set_reporter,
+)
 from easybench.reporters import (
     CallbackReporter,
     ConsoleReporter,
@@ -2048,3 +2053,75 @@ class TestFormattersWithTimeDisabled:
 
         output = formatter.format(results, stats, config)
         assert output.strip() == "test_func: 1.00 MB"
+
+
+class TestSetReporter:
+    """Tests for the set_reporter function."""
+
+    def test_set_reporter_function_call(self) -> None:
+        """Test setting a reporter using direct function call."""
+
+        # Create a test reporter generator function
+        def custom_reporter_generator(**kwargs: object) -> Reporter:
+            return ConsoleReporter(SimpleFormatter(**kwargs))  # type: ignore[arg-type]
+
+        # Register the reporter with a custom name
+        set_reporter("test-simple", custom_reporter_generator)
+
+        # Try to get the reporter by name
+        reporter = get_reporter("test-simple", {"metric": "min"})
+
+        # Verify that we got the correct type of reporter
+        assert isinstance(reporter, ConsoleReporter)
+        assert isinstance(reporter.formatter, SimpleFormatter)
+        assert reporter.formatter.metric == "min"
+
+        # Clean up (remove test reporter from registry)
+        if "test-simple" in _custom_reporters_dict:
+            del _custom_reporters_dict["test-simple"]
+
+    def test_set_reporter_decorator(self) -> None:
+        """Test setting a reporter using decorator syntax."""
+
+        # Define and register a reporter using decorator syntax
+        @set_reporter("test-decorator")  # type: ignore[misc]
+        def custom_reporter_generator(**kwargs: object) -> Reporter:
+            return FileReporter("test.csv", CSVFormatter(), **kwargs)  # type: ignore[arg-type]
+
+        # Try to get the reporter by name
+        reporter = get_reporter("test-decorator", {"mode": "a"})
+
+        # Verify that we got the correct type of reporter
+        assert isinstance(reporter, FileReporter)
+        assert isinstance(reporter.formatter, CSVFormatter)
+        assert reporter.mode == "a"
+
+        # Clean up (remove test reporter from registry)
+        if "test-decorator" in _custom_reporters_dict:
+            del _custom_reporters_dict["test-decorator"]
+
+    def test_set_reporter_overrides_existing(self) -> None:
+        """Test that set_reporter can override an existing reporter."""
+
+        # Register a reporter
+        def reporter1(**kwargs: object) -> Reporter:
+            return ConsoleReporter(TableFormatter(**kwargs))  # type: ignore[arg-type]
+
+        set_reporter("test-override", reporter1)
+
+        # Override with a new reporter
+        def reporter2(**kwargs: object) -> Reporter:
+            return ConsoleReporter(SimpleFormatter(**kwargs))  # type: ignore[arg-type]
+
+        set_reporter("test-override", reporter2)
+
+        # Get the reporter and verify it's the new one
+        reporter = get_reporter("test-override", {"metric": "max"})
+
+        assert isinstance(reporter, ConsoleReporter)
+        assert isinstance(reporter.formatter, SimpleFormatter)
+        assert reporter.formatter.metric == "max"
+
+        # Clean up
+        if "test-override" in _custom_reporters_dict:
+            del _custom_reporters_dict["test-override"]

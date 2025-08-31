@@ -83,6 +83,36 @@ bench_config = BenchConfig(
 )
 ```
 
+### Registering Custom Reporters
+
+You can register custom reporters with a name, allowing them to be used via string references:
+
+```python
+from easybench import BenchConfig, set_reporter
+from easybench.reporters import ConsoleReporter, SimpleFormatter
+from easybench.visualization import PlotReporter, LinePlotFormatter
+
+# Method 1: Using function call
+def create_log_plot(**kwargs):
+    return PlotReporter(LinePlotFormatter(log_scale=True, **kwargs))
+
+set_reporter("log-lineplot", create_log_plot)
+
+# Method 2: Using decorator syntax
+@set_reporter("custom-simple")
+def create_simple_reporter(**kwargs):
+    return ConsoleReporter(SimpleFormatter(**kwargs))
+
+# Then use these registered reporters by name
+bench_config = BenchConfig(
+    reporters=[
+        "console",  # Built-in reporter
+        "log-lineplot",  # Custom registered reporter 
+        ("custom-simple", {"metric": "min"})  # With parameters
+    ]
+)
+```
+
 ## Boxplot Visualization (`BoxPlotFormatter`)
 
 You can visualize benchmark results as boxplots, which is useful for analyzing distribution and outliers across multiple trials:

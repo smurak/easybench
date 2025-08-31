@@ -83,6 +83,36 @@ bench_config = BenchConfig(
 )
 ```
 
+### カスタムReporterの登録
+
+カスタムレポーターを名前をつけて登録すると、文字列で指定して使用できるようになります：
+
+```python
+from easybench import BenchConfig, set_reporter
+from easybench.reporters import ConsoleReporter, SimpleFormatter
+from easybench.visualization import PlotReporter, LinePlotFormatter
+
+# 方法1: 関数呼び出しを使用
+def create_log_plot(**kwargs):
+    return PlotReporter(LinePlotFormatter(log_scale=True, **kwargs))
+
+set_reporter("log-lineplot", create_log_plot)
+
+# 方法2: デコレーター構文を使用
+@set_reporter("custom-simple")
+def create_simple_reporter(**kwargs):
+    return ConsoleReporter(SimpleFormatter(**kwargs))
+
+# 登録したレポーターを名前で使用
+bench_config = BenchConfig(
+    reporters=[
+        "console",  # 組み込みレポーター
+        "log-lineplot",  # カスタム登録レポーター
+        ("custom-simple", {"metric": "min"})  # パラメータ付き
+    ]
+)
+```
+
 ## ボックスプロット可視化（`BoxPlotFormatter`）
 
 ベンチマーク結果をボックスプロットとして可視化できます。  

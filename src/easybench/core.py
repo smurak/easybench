@@ -88,6 +88,8 @@ _VISUALIZATION_REPORTERS = {
     "barplot-sns",
 }
 
+_custom_reporters_dict: dict[str, Callable[..., Reporter]] = {}
+
 
 def get_reporter(name: str, kwargs: dict | None = None) -> Reporter:
     """Convert string to reporter."""
@@ -106,9 +108,44 @@ def get_reporter(name: str, kwargs: dict | None = None) -> Reporter:
     if reporter_name in _VISUALIZATION_REPORTERS:
         return _get_visualization_reporter(reporter_name, kwargs)
 
+    # Custom reporter
+    if name in _custom_reporters_dict:
+        return _custom_reporters_dict[name](**kwargs)
+
     # Unknown reporter
     err = f"Unknown reporter type: {name}"
     raise ValueError(err)
+
+
+def set_reporter(
+    name: str,
+    reporter_generator: Callable[..., Reporter] | None = None,
+) -> Callable | None:
+    """
+    Register a custom reporter.
+
+    Can be used both as a normal function and as a decorator.
+
+    Examples:
+        set_reporter(
+            "lineplot-log", lambda: PlotReporter(LinePlotFormatter(log_scale=True)),
+        )
+
+        @set_reporter("lineplot-log")
+        def custom_reporter_generator():
+            return PlotReporter(LinePlotFormatter(log_scale=True))
+
+    """
+
+    def decorator(func: Callable) -> Callable:
+        _custom_reporters_dict[name] = func
+        return func
+
+    if reporter_generator is None:
+        return decorator
+
+    _custom_reporters_dict[name] = reporter_generator
+    return None
 
 
 def _get_basic_reporter(name: str, kwargs: dict) -> Reporter:
