@@ -456,11 +456,15 @@ class BenchDecorator:
             self._reset_bench(func, reset_config=False)
 
     @overload
-    def config(self) -> Callable: ...
+    def config(self, /) -> Callable: ...
+
+    @overload
+    def config(self, config: BenchConfig, /, **kwargs: object) -> Callable: ...
 
     @overload
     def config(
         self,
+        /,
         *,
         trials: int | None = None,
         loops_per_trial: int | None = None,
@@ -477,12 +481,13 @@ class BenchDecorator:
         defer: bool | str | None = None,
     ) -> Callable: ...
 
-    def config(self, **kwargs: Any) -> Callable:
+    def config(self, config: BenchConfig | None = None, /, **kwargs: Any) -> Callable:
         """
         Configure benchmark settings.
 
         Example:
             ```python
+            # Using keyword arguments
             @bench(
                 item=123,
                 big_list=lambda: list(range(1_000_000)),
@@ -490,7 +495,17 @@ class BenchDecorator:
             @bench.config(trials=5, loops_per_trial=10, memory=True)
             def add_item(item, big_list):
                 big_list.append(item)
+
+            # Using BenchConfig as positional argument
+            my_config = BenchConfig(trials=10, memory=True)
+            @bench.config(my_config)
+            def another_function():
+                pass
             ```
+
+        Args:
+            config: Optional BenchConfig instance as positional argument
+            **kwargs: Configuration parameters to set
 
         Returns:
             A decorator function that configures benchmark settings
@@ -513,9 +528,10 @@ class BenchDecorator:
 
             # Create partial config from kwargs
             partial_config = PartialBenchConfig(**kwargs)
-
             # Update benchmark config with merged values
-            func.bench.bench_config = partial_config.merge_with(func.bench.bench_config)
+            func.bench.bench_config = partial_config.merge_with(
+                config or func.bench.bench_config,
+            )
 
             # Check if all required parameters are available
             self._maybe_run_benchmark(func)
