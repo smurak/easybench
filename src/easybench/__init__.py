@@ -4,7 +4,15 @@ EasyBench: A simple and easy-to-use Python benchmarking library.
 This package provides tools for benchmarking Python code with an easy-to-use interface.
 """
 
-from .core import BenchConfig, BenchParams, EasyBench, customize, fixture, parametrize
+from .core import (
+    BenchConfig,
+    BenchParams,
+    EasyBench,
+    customize,
+    fixture,
+    parametrize,
+    set_reporter,
+)
 from .decorator import bench
 from .utils import get_bench_env
 
@@ -32,4 +40,5 @@ __all__ = [
     "fixture",
     "get_bench_env",
     "parametrize",
+    "set_reporter",
 ]
