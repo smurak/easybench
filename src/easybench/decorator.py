@@ -459,7 +459,7 @@ class BenchDecorator:
     def config(self, /) -> Callable: ...
 
     @overload
-    def config(self, config: BenchConfig, /) -> Callable: ...
+    def config(self, config: BenchConfig, /, **kwargs: object) -> Callable: ...
 
     @overload
     def config(
@@ -526,16 +526,12 @@ class BenchDecorator:
                     self._deferred_functions[defer] = []
                 self._deferred_functions[defer].append(func)
 
-            if config is not None:
-                # Use the provided BenchConfig directly
-                func.bench.bench_config = config.model_copy(deep=True)
-            else:
-                # Create partial config from kwargs
-                partial_config = PartialBenchConfig(**kwargs)
-                # Update benchmark config with merged values
-                func.bench.bench_config = partial_config.merge_with(
-                    func.bench.bench_config,
-                )
+            # Create partial config from kwargs
+            partial_config = PartialBenchConfig(**kwargs)
+            # Update benchmark config with merged values
+            func.bench.bench_config = partial_config.merge_with(
+                config or func.bench.bench_config,
+            )
 
             # Check if all required parameters are available
             self._maybe_run_benchmark(func)

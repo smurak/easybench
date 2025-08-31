@@ -212,6 +212,25 @@ class TestBenchDecoratorOutput:
         assert "Return Values" in captured.out
         assert "10" in captured.out  # Verify return value is shown
 
+    def test_bench_decorator_config_with_benchconfig_and_kwargs(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test that kwargs override values in BenchConfig when both are provided."""
+        custom_config = BenchConfig(trials=MULTIPLE_TRIALS, memory=False)
+
+        @bench(value=10)
+        @bench.config(custom_config, trials=SINGLE_TRIAL, memory=True)
+        def function_with_config_override(value: int) -> int:
+            return value
+
+        captured = capsys.readouterr()
+        # Should use SINGLE_TRIAL from kwargs, not MULTIPLE_TRIALS from config
+        assert f"Benchmark Results ({SINGLE_TRIAL} trial)" in captured.out
+        # Should show memory because kwargs override config
+        assert "Memory" in captured.out
+        assert "function_with_config_override" in captured.out
+
     def test_bench_decorator_display_fn_params(
         self,
         capsys: pytest.CaptureFixture,
