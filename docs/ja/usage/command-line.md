@@ -35,7 +35,7 @@ easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-
 - `--include-files PATTERN`：一致するベンチマークファイルのみを含める正規表現パターン
 - `--exclude-files PATTERN`：一致するベンチマークファイルを除外する正規表現パターン
 - `--no-time`：時間測定レポートを無効化
-- `--clip-outliers VALUE`: 指定した割合の両端（最小・最大側）の値を切り詰める （0より大きく0.5未満）
+- `--clip-outliers VALUE`: 指定した割合の最大側の値を切り詰める （0以上1未満）
 - `--reporters REPORTERS [REPORTERS ...]`: 使用するレポーター（複数指定可能）。例：console、simple、boxplot、violinplot、lineplot、histplot、barplot、または.csv/.json拡張子を持つファイルパス
 - `パス`：ベンチマークファイルを含むディレクトリまたは特定のベンチマークファイル（デフォルト："benchmarks"）
 

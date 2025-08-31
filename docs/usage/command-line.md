@@ -35,7 +35,7 @@ easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-
 - `--include-files PATTERN`: Regular expression pattern to include only matching benchmark files
 - `--exclude-files PATTERN`: Regular expression pattern to exclude matching benchmark files
 - `--no-time`: Disable time measurement reporting
-- `--clip-outliers VALUE`: Clip values on both sides (minimum and maximum) based on the specified proportion (between 0 and 0.5)
+- `--clip-outliers VALUE`: Clip maximum values based on the specified proportion (between 0 (inclusive) and 1 (exclusive))
 - `--reporters REPORTERS [REPORTERS ...]`: Reporters to use (can specify multiple). Examples: console, simple, boxplot, violinplot, lineplot, histplot, barplot, or file paths with .csv/.json extensions
 - `path`: Directory containing benchmark files or a specific benchmark file (default: "benchmarks")
 
