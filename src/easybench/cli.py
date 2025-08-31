@@ -317,6 +317,16 @@ def create_parser() -> argparse.ArgumentParser:
             "For example, 0.1 removes the top 10% of values."
         ),
     )
+    parser.add_argument(
+        "--reporters",
+        nargs="+",
+        default=None,
+        help=(
+            "Reporters to use (can specify multiple). Examples: console, simple, "
+            "boxplot, violinplot, lineplot, histplot, barplot, "
+            "results.csv, results.json"
+        ),
+    )
 
     return parser
 
@@ -351,6 +361,7 @@ def parse_args_to_config(args: argparse.Namespace) -> PartialBenchConfig:
         include=args.include,
         exclude=args.exclude,
         clip_outliers=args.clip_outliers,
+        reporters=args.reporters,  # Add reporters to the config
     )
 
 

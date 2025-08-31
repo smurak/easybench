@@ -22,12 +22,14 @@ import pytest
 
 from easybench.cli import (
     cli_main,
+    create_parser,
     discover_benchmark_files,
     discover_benchmarks,
     load_benchmark_module,
+    parse_args_to_config,
     run_benchmarks,
 )
-from easybench.core import EasyBench, PartialBenchConfig
+from easybench.core import EasyBench, PartialBenchConfig, get_reporter
 
 # Constants to avoid magic numbers
 NUM_BENCHMARK_FILES = 2
@@ -142,6 +144,7 @@ def cli_args_mock() -> MagicMock:
     args.include_files = None
     args.exclude_files = None
     args.clip_outliers = None
+    args.reporters = None
     return args
 
 
@@ -864,6 +867,7 @@ class TestCliArguments:
         mock_args.include_files = None
         mock_args.exclude_files = None
         mock_args.clip_outliers = None
+        mock_args.reporters = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Set up other mocks
@@ -910,6 +914,7 @@ class TestCliArguments:
         mock_args.include_files = None
         mock_args.exclude_files = None
         mock_args.clip_outliers = None
+        mock_args.reporters = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -951,6 +956,7 @@ class TestCliArguments:
         mock_args.include_files = None
         mock_args.exclude_files = None
         mock_args.clip_outliers = None
+        mock_args.reporters = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -992,6 +998,7 @@ class TestCliArguments:
         mock_args.include_files = None
         mock_args.exclude_files = None
         mock_args.clip_outliers = None
+        mock_args.reporters = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1036,6 +1043,7 @@ class TestCliArguments:
             mock_args.include_files = None
             mock_args.exclude_files = None
             mock_args.clip_outliers = None
+            mock_args.reporters = None
             cli_setup["parse_args"].return_value = mock_args
 
             # Mock finding benchmark files
@@ -1080,6 +1088,7 @@ class TestCliArguments:
         mock_args.include_files = None
         mock_args.exclude_files = None
         mock_args.clip_outliers = None
+        mock_args.reporters = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1121,6 +1130,7 @@ class TestCliArguments:
         mock_args.include_files = None
         mock_args.exclude_files = None
         mock_args.clip_outliers = None
+        mock_args.reporters = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1162,6 +1172,7 @@ class TestCliArguments:
         mock_args.include_files = None
         mock_args.exclude_files = None
         mock_args.clip_outliers = None
+        mock_args.reporters = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1203,6 +1214,7 @@ class TestCliArguments:
         mock_args.include_files = None
         mock_args.exclude_files = None
         mock_args.clip_outliers = None
+        mock_args.reporters = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1252,6 +1264,7 @@ class TestCliArguments:
             mock_args.include_files = None
             mock_args.exclude_files = None
             mock_args.clip_outliers = None
+            mock_args.reporters = None
             cli_setup["parse_args"].return_value = mock_args
 
             # Mock finding benchmark files
@@ -1341,6 +1354,7 @@ class TestCliArguments:
         mock_args.include_files = None
         mock_args.exclude_files = None
         mock_args.clip_outliers = clip_value
+        mock_args.reporters = None
         cli_setup["parse_args"].return_value = mock_args
 
         # Mock finding benchmark files
@@ -1809,3 +1823,32 @@ def test_discover_benchmark_files_nonexistent() -> None:
     ):
         files = discover_benchmark_files("nonexistent")
         assert len(files) == 0
+
+
+def test_reporters_option_in_parser() -> None:
+    """Test that the --reporters option is available in the CLI parser."""
+    parser = create_parser()
+
+    # Check if the --reporters option exists in parser
+    has_reporters_option = any(action.dest == "reporters" for action in parser._actions)
+    assert has_reporters_option
+
+    # Test parsing of single reporter
+    args = parser.parse_args(["--reporters", "console"])
+    assert args.reporters == ["console"]
+
+    # Test parsing of multiple reporters
+    args = parser.parse_args(["--reporters", "console", "simple", "results.csv"])
+    assert args.reporters == ["console", "simple", "results.csv"]
+
+
+def test_reporters_in_config_from_args() -> None:
+    """Test that reporters from CLI args are correctly added to config."""
+    parser = create_parser()
+    args = parser.parse_args(["--reporters", "console", "simple", "results.csv"])
+
+    config = parse_args_to_config(args)
+    assert config.reporters is not None
+    assert [r.__class__ for r in config.reporters] == [
+        r.__class__ for r in map(get_reporter, ["console", "simple", "results.csv"])
+    ]

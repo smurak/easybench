@@ -15,7 +15,7 @@ easybench [オプション] [パス]
 ### コマンドオプション
 
 ```bash
-easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [--progress] [--include PATTERN] [--exclude PATTERN] [--include-files PATTERN] [--exclude-files PATTERN] [--no-time] [--clip-outliers VALUE] [パス]
+easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-unit UNIT] [--sort-by METRIC] [--reverse] [--no-color] [--show-output] [--time-unit UNIT] [--no-progress] [--progress] [--include PATTERN] [--exclude PATTERN] [--include-files PATTERN] [--exclude-files PATTERN] [--no-time] [--clip-outliers VALUE] [--reporters REPORTERS [REPORTERS ...]] [パス]
 ```
 
 - `--trials N`：試行数（デフォルト：5）
@@ -36,6 +36,7 @@ easybench [--trials N] [--loops-per-trial N] [--warmups N] [--memory] [--memory-
 - `--exclude-files PATTERN`：一致するベンチマークファイルを除外する正規表現パターン
 - `--no-time`：時間測定レポートを無効化
 - `--clip-outliers VALUE`: 指定した割合の両端（最小・最大側）の値を切り詰める （0より大きく0.5未満）
+- `--reporters REPORTERS [REPORTERS ...]`: 使用するレポーター（複数指定可能）。例：console、simple、boxplot、violinplot、lineplot、histplot、barplot、または.csv/.json拡張子を持つファイルパス
 - `パス`：ベンチマークファイルを含むディレクトリまたは特定のベンチマークファイル（デフォルト："benchmarks"）
 
 ### 関数ベースのベンチマーク例
