@@ -361,7 +361,7 @@ def parse_args_to_config(args: argparse.Namespace) -> PartialBenchConfig:
         include=args.include,
         exclude=args.exclude,
         clip_outliers=args.clip_outliers,
-        reporters=args.reporters,  # Add reporters to the config
+        reporters=args.reporters,
     )
 
 
