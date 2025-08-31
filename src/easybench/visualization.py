@@ -1,4 +1,4 @@
-# ruff: noqa: FBT001, FBT002, PLR0913
+# ruff: noqa: PLR0913
 """
 Visualization tools for benchmark results.
 
@@ -116,6 +116,7 @@ class DistributionPlotFormatter(PlotFormatter):
 
     def __init__(
         self,
+        *,
         showfliers: bool = True,
         log_scale: bool = False,
         figsize: tuple[int, int] = (10, 6),
@@ -570,6 +571,7 @@ class BoxPlotFormatter(DistributionPlotFormatter):
 
     def __init__(
         self,
+        *,
         showfliers: bool = True,
         log_scale: bool = False,
         figsize: tuple[int, int] = (10, 6),
@@ -608,6 +610,7 @@ class ViolinPlotFormatter(DistributionPlotFormatter):
 
     def __init__(
         self,
+        *,
         log_scale: bool = False,
         figsize: tuple[int, int] = (10, 6),
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
@@ -649,6 +652,7 @@ class HistPlotFormatter(PlotFormatter):
 
     def __init__(
         self,
+        *,
         bins: int | str = "auto",
         log_scale: bool = False,
         figsize: tuple[int, int] = (10, 6),
@@ -901,6 +905,7 @@ class HistPlotFormatter(PlotFormatter):
         self,
         ax: plt.Axes,
         config: BenchConfig,
+        *,
         title_suffix: str = "",
         unit: str = "s",
         show_legend: bool = False,
@@ -950,6 +955,7 @@ class LinePlotFormatter(PlotFormatter):
     def __init__(
         self,
         figsize: tuple[int, int] = (10, 6),
+        *,
         log_scale: bool = False,
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
         sns_theme: dict[str, Any] | None = None,
@@ -1200,6 +1206,7 @@ class LinePlotFormatter(PlotFormatter):
         self,
         ax: plt.Axes,
         config: BenchConfig,
+        *,
         title_suffix: str = "",
         unit: str = "s",
         show_legend: bool = False,
@@ -1245,6 +1252,7 @@ class BarPlotFormatter(PlotFormatter):
     def __init__(
         self,
         metric: MetricType | list[MetricType] | None = None,
+        *,
         log_scale: bool = False,
         figsize: tuple[int, int] = (10, 6),
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
@@ -1521,6 +1529,7 @@ class PlotReporter(Reporter):
     def __init__(
         self,
         formatter: PlotFormatter,
+        *,
         show: bool = True,
         save_path: str | None = None,
         dpi: int = 100,
