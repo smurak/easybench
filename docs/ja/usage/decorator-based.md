@@ -54,6 +54,19 @@ def pop_first(big_list):
     big_list.pop(0)
 ```
 
+`BenchConfig`オブジェクトを位置引数として渡すこともできます：
+
+```python
+from easybench import bench, BenchConfig
+
+my_config = BenchConfig(trials=10, memory=True)
+
+@bench(big_list=list(range(10_000_000)))
+@bench.config(my_config)
+def pop_first(big_list):
+    big_list.pop(0)
+```
+
 !!! tip
     `@bench.config`デコレータは他のbenchデコレータの前（下）に配置してください。  
 

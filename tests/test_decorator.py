@@ -191,6 +191,27 @@ class TestBenchDecoratorOutput:
         assert "Max Time" not in captured.out
         assert "Time" in captured.out
 
+    def test_bench_decorator_config_with_benchconfig(
+        self,
+        capsys: pytest.CaptureFixture,
+    ) -> None:
+        """Test that bench.config accepts a BenchConfig object."""
+        custom_config = BenchConfig(trials=SINGLE_TRIAL, memory=True, show_output=True)
+
+        @bench(value=10)
+        @bench.config(custom_config)
+        def function_with_config(value: int) -> int:
+            return value
+
+        captured = capsys.readouterr()
+        assert f"Benchmark Results ({SINGLE_TRIAL} trial)" in captured.out
+        assert "function_with_config" in captured.out
+        assert "bench_function_with_config" not in captured.out
+        assert "Time" in captured.out
+        assert "Memory" in captured.out
+        assert "Return Values" in captured.out
+        assert "10" in captured.out  # Verify return value is shown
+
     def test_bench_decorator_display_fn_params(
         self,
         capsys: pytest.CaptureFixture,
