@@ -32,13 +32,14 @@ for i in range(1_000_000):
 - `--clip-outliers=FLOAT`：外れ値のクリッピング率（0.0〜1.0）
 - `--time-unit=UNIT`：時間単位（s/ms/us/ns/m）
 - `--no-time`：時間測定を無効化
+- `--reporters REPORTER [REPORTER ...]`：使用するレポーター（複数指定可能）。例：console、simple、boxplot、violinplot、lineplot、histplot、barplot、results.csv、results.json
 
 ### 詳細な使用例
 
 複数のオプションを組み合わせて使用することも可能です：
 
 ```python
-%%easybench --trials=3 --memory --memory-unit=MB --warmups=2 --time-unit=ms
+%%easybench --trials=10 --memory --memory-unit=MB --warmups=2 --time-unit=ms --reporters lineplot console
 # リストの作成
 data = [i for i in range(100_000)]
 

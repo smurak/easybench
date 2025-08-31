@@ -32,13 +32,14 @@ The `%%easybench` magic command supports the following options:
 - `--clip-outliers=FLOAT`: Outlier clipping rate (0.0 to 1.0)
 - `--time-unit=UNIT`: Time unit (s/ms/us/ns/m)
 - `--no-time`: Disable time measurement
+- `--reporters REPORTER [REPORTER ...]`: Reporters to use (can specify multiple). Examples: console, simple, boxplot, violinplot, lineplot, histplot, barplot, results.csv, results.json
 
 ### Detailed Example
 
 You can combine multiple options:
 
 ```python
-%%easybench --trials=3 --memory --memory-unit=MB --warmups=2 --time-unit=ms
+%%easybench --trials=10 --memory --memory-unit=MB --warmups=2 --time-unit=ms --reporters lineplot console
 # Create a list
 data = [i for i in range(100_000)]
 
