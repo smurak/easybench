@@ -3264,7 +3264,7 @@ class TestEasyBenchClipOutliers:
         mock_perf_counter: mock.MagicMock,
         capsys: pytest.CaptureFixture[str],
         parse_benchmark_output: Callable[[str], dict[str, Any]],
-        numpy_available: bool,  # noqa: FBT001
+        numpy_available: bool,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that clip_outliers properly removes outliers from measurements."""
@@ -3354,7 +3354,7 @@ class TestEasyBenchClipOutliers:
         mock_perf_counter: mock.MagicMock,
         capsys: pytest.CaptureFixture[str],
         parse_benchmark_output: Callable[[str], dict[str, Any]],
-        numpy_available: bool,  # noqa: FBT001
+        numpy_available: bool,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test clip_outliers with edge case values."""
@@ -3433,7 +3433,7 @@ class TestEasyBenchClipOutliers:
         mock_perf_counter: mock.MagicMock,
         capsys: pytest.CaptureFixture[str],
         parse_benchmark_output: Callable[[str], dict[str, Any]],
-        numpy_available: bool,  # noqa: FBT001
+        numpy_available: bool,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test clip_outliers when there are few samples."""
@@ -3496,7 +3496,7 @@ class TestEasyBenchClipOutliers:
         capsys: pytest.CaptureFixture[str],
         parse_benchmark_output: Callable[[str], dict[str, Any]],
         allocate_memory: Callable[[int], list[int]],
-        numpy_available: bool,  # noqa: FBT001
+        numpy_available: bool,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that clip_outliers works correctly with memory measurements."""

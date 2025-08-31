@@ -81,7 +81,7 @@ DataFrameLike = dict[str, list[str | float]] | Mapping[str, Sequence[str | float
 
 def complete_stat(
     dic: dict[str, float],
-    memory: bool = False,  # noqa: FBT002, FBT001
+    memory: bool = False,
 ) -> StatType:
     """Complete dictionaries for StatType."""
     stat: StatType = {
