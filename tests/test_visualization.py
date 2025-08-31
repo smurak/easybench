@@ -64,8 +64,8 @@ AVG_MEMORY = 3000
 
 def complete_stat(
     dic: dict[str, float],
-    memory: bool = False,  # noqa: FBT002, FBT001
-    time: bool = True,  # noqa: FBT002, FBT001
+    memory: bool = False,
+    time: bool = True,
 ) -> StatType:
     """Complete dictionaries for StatType."""
     stat: StatType = {}
@@ -773,7 +773,7 @@ class TestLinePlotFormatter:
         mock_results: ResultsType,
         mock_stats: StatsType,
         mock_config: BenchConfig,
-        memory_enabled: bool,  # noqa: FBT001
+        memory_enabled: bool,
         expected_subplots: int,
     ) -> None:
         """Test that the correct number of subplots are created based on memory flag."""
