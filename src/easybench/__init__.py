@@ -29,7 +29,7 @@ except (NameError, ImportError):
     # Not in IPython environment
     pass
 
-__version__ = "0.1.34"
+__version__ = "0.1.35"
 
 __all__ = [
     "BenchConfig",
