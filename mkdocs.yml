@@ -20,8 +20,11 @@ nav:
     - Class-based Benchmarks: usage/class-based.md
     - Command Line Interface: usage/command-line.md
     - Jupyter Notebook Magic Command: usage/notebook-magic.md
-  - Advanced Usage: advanced.md
-  - Reference:
+  - Advanced Usage:
+    - Customizing Output: advanced/customize-output.md
+    - Creating Custom Reporters and Formatters: advanced/custom-reporters.md
+    - Visualization: advanced/visualization.md
+  - API Reference:
     - CLI: reference/cli.md
     - Core: reference/core.md
     - Decorator: reference/decorator.md
