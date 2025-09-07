@@ -22,8 +22,11 @@ nav:
     - クラスベースのベンチマーク: usage/class-based.md
     - コマンドラインインターフェース: usage/command-line.md
     - Jupyter Notebook マジックコマンド: usage/notebook-magic.md
-  - 高度な使用方法: advanced.md
-  - リファレンス:
+  - 高度な使用方法:
+    - 出力のカスタマイズ: advanced/customize-output.md
+    - ReporterやFormatterを自作する: advanced/custom-reporters.md
+    - 可視化: advanced/visualization.md
+  - APIリファレンス:
     - CLI: reference/cli.md
     - Core: reference/core.md
     - Decorator: reference/decorator.md

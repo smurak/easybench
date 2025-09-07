@@ -954,8 +954,8 @@ class LinePlotFormatter(PlotFormatter):
 
     def __init__(
         self,
-        figsize: tuple[int, int] = (10, 6),
         *,
+        figsize: tuple[int, int] = (10, 6),
         log_scale: bool = False,
         engine: Literal["matplotlib", "seaborn"] = "matplotlib",
         sns_theme: dict[str, Any] | None = None,
