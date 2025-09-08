@@ -106,10 +106,8 @@ class CustomFormatter(Formatter):
 BenchConfig(
     trials=10,              # 実行回数
     warmups=2,              # ウォームアップ回数
-    time=True,              # 時間計測するか
-    memory=False,           # メモリ計測するか
-    time_unit="ms",         # 時間単位（"ns", "μs", "ms", "s", "m"）
-    memory_unit="KB",       # メモリ単位（"B", "KB", "MB", "GB"）
+    time="ms",              # 時間計測オプション (True/False/"m"/"s"/"ms"/"us"/"ns")
+    memory="KB",            # メモリ計測オプション (True/False/"B"/"KB"/"MB"/"GB")
     sort_by="avg",          # 結果のソート基準
     reverse=False,          # ソート順を逆にするか
     show_output=False,      # 出力値を表示するか
