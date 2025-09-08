@@ -130,9 +130,9 @@ BenchConfig(
 以下はXML形式で出力するFormatterの実装例です：
 
 ```python
-from easybench.reporters import Formatter
+from easybench.reporters import Formatter, TimeUnit, MemoryUnit
 from easybench.core import BenchConfig
-from easybench.utils import ResultsType, StatsType, TimeUnit, MemoryUnit
+from easybench.utils import ResultsType, StatsType
 
 class XMLFormatter(Formatter):
     """ベンチマーク結果をXML形式でフォーマット"""
