@@ -106,10 +106,8 @@ The value of the `config` argument is a `BenchConfig` object containing benchmar
 BenchConfig(
     trials=10,              # Number of executions
     warmups=2,              # Number of warmup runs
-    time=True,              # Whether to measure time
-    memory=False,           # Whether to measure memory
-    time_unit="ms",         # Time unit ("ns", "μs", "ms", "s", "m")
-    memory_unit="KB",       # Memory unit ("B", "KB", "MB", "GB")
+    time="ms",              # Time measurement option (True/False/"m"/"s"/"ms"/"us"/"ns")
+    memory="KB",            # Memory measurement option (True/False/"B"/"KB"/"MB"/"GB")
     sort_by="avg",          # Result sorting criteria
     reverse=False,          # Whether to reverse sort order
     show_output=False,      # Whether to display output values
