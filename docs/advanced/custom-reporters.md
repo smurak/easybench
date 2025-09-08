@@ -130,9 +130,9 @@ The `format` method returns a value of the following type:
 Here is an example implementation of a Formatter that outputs in XML format:
 
 ```python
-from easybench.reporters import Formatter
+from easybench.reporters import Formatter, TimeUnit, MemoryUnit
 from easybench.core import BenchConfig
-from easybench.utils import ResultsType, StatsType, TimeUnit, MemoryUnit
+from easybench.utils import ResultsType, StatsType
 
 class XMLFormatter(Formatter):
     """Format benchmark results in XML format"""
