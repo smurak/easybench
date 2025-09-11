@@ -434,7 +434,7 @@ class BenchParams(BaseModel):
             small = BenchParams(name="Small", params={"size": 100})
             fast = BenchParams(name="Fast", params={"algorithm": "quicksort"})
 
-            # Creates BenchParams with name="Small x Fast" and
+            # Creates BenchParams with name="Small × Fast" and
             # params={"size": 100, "algorithm": "quicksort"}
             small_fast = small * fast
             ```
@@ -445,7 +445,7 @@ class BenchParams(BaseModel):
 
         # Combine names
         if self.name and other.name:
-            name = f"{self.name} x {other.name}"
+            name = f"{self.name} × {other.name}"
         else:
             return NotImplemented
 

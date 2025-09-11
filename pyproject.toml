@@ -90,6 +90,8 @@ ignore = [
   "D212",     # multi-line-summary-first-line
 ]
 
+allowed-confusables = ["×"]
+
 [tool.ruff.format]
 quote-style = "double"
 

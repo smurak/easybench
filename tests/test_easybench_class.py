@@ -665,10 +665,10 @@ class TestEasyBenchFixtures:
         parsed_out = parse_benchmark_output(captured.out)
 
         # Verify all combinations were created
-        assert "bench_operation (Small x Append)" in parsed_out["functions"]
-        assert "bench_operation (Small x Pop)" in parsed_out["functions"]
-        assert "bench_operation (Large x Append)" in parsed_out["functions"]
-        assert "bench_operation (Large x Pop)" in parsed_out["functions"]
+        assert "bench_operation (Small × Append)" in parsed_out["functions"]
+        assert "bench_operation (Small × Pop)" in parsed_out["functions"]
+        assert "bench_operation (Large × Append)" in parsed_out["functions"]
+        assert "bench_operation (Large × Pop)" in parsed_out["functions"]
 
         # Ensure we have exactly 4 combinations (2 * 2)
         assert len(parsed_out["functions"]) == 2 * 2
@@ -742,12 +742,12 @@ class TestEasyBenchFixtures:
 
         # Check that all 6 combinations were executed
         expected_combinations = [
-            "bench_operation (Small x Add)",
-            "bench_operation (Small x Multiply)",
-            "bench_operation (Medium x Add)",
-            "bench_operation (Medium x Multiply)",
-            "bench_operation (Large x Add)",
-            "bench_operation (Large x Multiply)",
+            "bench_operation (Small × Add)",
+            "bench_operation (Small × Multiply)",
+            "bench_operation (Medium × Add)",
+            "bench_operation (Medium × Multiply)",
+            "bench_operation (Large × Add)",
+            "bench_operation (Large × Multiply)",
         ]
 
         for combination in expected_combinations:
@@ -2483,10 +2483,10 @@ class TestParametrizedDecorator:
 
         captured = capsys.readouterr()
         # Verify all combinations have the custom name
-        assert f"{custom_name} (Small x Append)" in captured.out
-        assert f"{custom_name} (Small x Pop)" in captured.out
-        assert f"{custom_name} (Large x Append)" in captured.out
-        assert f"{custom_name} (Large x Pop)" in captured.out
+        assert f"{custom_name} (Small × Append)" in captured.out
+        assert f"{custom_name} (Small × Pop)" in captured.out
+        assert f"{custom_name} (Large × Append)" in captured.out
+        assert f"{custom_name} (Large × Pop)" in captured.out
         # Original function name should not appear
         assert "bench_operation" not in captured.out
 
@@ -2792,20 +2792,20 @@ class TestEasyBenchMethodFiltering:
         parsed_out = parse_benchmark_output(captured.out)
 
         # Verify all combinations are present
-        assert "bench_operation (Small x Add)" in parsed_out["functions"]
-        assert "bench_operation (Small x Multiply)" in parsed_out["functions"]
-        assert "bench_operation (Large x Add)" in parsed_out["functions"]
-        assert "bench_operation (Large x Multiply)" in parsed_out["functions"]
+        assert "bench_operation (Small × Add)" in parsed_out["functions"]
+        assert "bench_operation (Small × Multiply)" in parsed_out["functions"]
+        assert "bench_operation (Large × Add)" in parsed_out["functions"]
+        assert "bench_operation (Large × Multiply)" in parsed_out["functions"]
 
         # Verify correct results based on operations
         for func_name, func_data in parsed_out["functions"].items():
-            if "Small x Add" in func_name and "output" in func_data:
+            if "Small × Add" in func_name and "output" in func_data:
                 assert func_data["output"][0] == small_size + 1  # 10 + 1
-            elif "Small x Multiply" in func_name and "output" in func_data:
+            elif "Small × Multiply" in func_name and "output" in func_data:
                 assert func_data["output"][0] == small_size * 2  # 10 * 2
-            elif "Large x Add" in func_name and "output" in func_data:
+            elif "Large × Add" in func_name and "output" in func_data:
                 assert func_data["output"][0] == large_size + 1  # 100 + 1
-            elif "Large x Multiply" in func_name and "output" in func_data:
+            elif "Large × Multiply" in func_name and "output" in func_data:
                 assert func_data["output"][0] == large_size * 2  # 100 * 2
 
     def test_bench_params_multiplication_params_only(
@@ -2847,19 +2847,19 @@ class TestEasyBenchMethodFiltering:
         parsed_out = parse_benchmark_output(captured.out)
 
         # Verify all combinations are present
-        assert "bench_data_structure (Small x Simple)" in parsed_out["functions"]
-        assert "bench_data_structure (Small x Complex)" in parsed_out["functions"]
-        assert "bench_data_structure (Large x Simple)" in parsed_out["functions"]
-        assert "bench_data_structure (Large x Complex)" in parsed_out["functions"]
+        assert "bench_data_structure (Small × Simple)" in parsed_out["functions"]
+        assert "bench_data_structure (Small × Complex)" in parsed_out["functions"]
+        assert "bench_data_structure (Large × Simple)" in parsed_out["functions"]
+        assert "bench_data_structure (Large × Complex)" in parsed_out["functions"]
 
         # Verify correct results for each combination
         assert "return_values" in parsed_out
         return_values = parsed_out["return_values"]
 
-        assert return_values["bench_data_structure (Small x Simple)"] == "10"
-        assert return_values["bench_data_structure (Small x Complex)"] == "10"
-        assert return_values["bench_data_structure (Large x Simple)"] == "100"
-        assert return_values["bench_data_structure (Large x Complex)"] == "100"
+        assert return_values["bench_data_structure (Small × Simple)"] == "10"
+        assert return_values["bench_data_structure (Small × Complex)"] == "10"
+        assert return_values["bench_data_structure (Large × Simple)"] == "100"
+        assert return_values["bench_data_structure (Large × Complex)"] == "100"
 
     def test_bench_params_multiplication_fn_params_only(
         self,
@@ -2901,19 +2901,19 @@ class TestEasyBenchMethodFiltering:
         parsed_out = parse_benchmark_output(captured.out)
 
         # Verify all combinations are present
-        assert "bench_calculate (Add x Small)" in parsed_out["functions"]
-        assert "bench_calculate (Add x Large)" in parsed_out["functions"]
-        assert "bench_calculate (Multiply x Small)" in parsed_out["functions"]
-        assert "bench_calculate (Multiply x Large)" in parsed_out["functions"]
+        assert "bench_calculate (Add × Small)" in parsed_out["functions"]
+        assert "bench_calculate (Add × Large)" in parsed_out["functions"]
+        assert "bench_calculate (Multiply × Small)" in parsed_out["functions"]
+        assert "bench_calculate (Multiply × Large)" in parsed_out["functions"]
 
         # Verify correct results for each combination
         assert "return_values" in parsed_out
         return_values = parsed_out["return_values"]
 
-        assert return_values["bench_calculate (Add x Small)"] == "7"  # 5 + 2
-        assert return_values["bench_calculate (Add x Large)"] == "12"  # 10 + 2
-        assert return_values["bench_calculate (Multiply x Small)"] == "10"  # 5 * 2
-        assert return_values["bench_calculate (Multiply x Large)"] == "20"  # 10 * 2
+        assert return_values["bench_calculate (Add × Small)"] == "7"  # 5 + 2
+        assert return_values["bench_calculate (Add × Large)"] == "12"  # 10 + 2
+        assert return_values["bench_calculate (Multiply × Small)"] == "10"  # 5 * 2
+        assert return_values["bench_calculate (Multiply × Large)"] == "20"  # 10 * 2
 
     def test_bench_params_multiplication_mixed(
         self,
@@ -2972,10 +2972,10 @@ class TestEasyBenchMethodFiltering:
         parsed_out = parse_benchmark_output(captured.out)
 
         # Verify all combinations are present
-        assert "bench_collection (List x Small)" in parsed_out["functions"]
-        assert "bench_collection (List x Large)" in parsed_out["functions"]
-        assert "bench_collection (Dict x Small)" in parsed_out["functions"]
-        assert "bench_collection (Dict x Large)" in parsed_out["functions"]
+        assert "bench_collection (List × Small)" in parsed_out["functions"]
+        assert "bench_collection (List × Large)" in parsed_out["functions"]
+        assert "bench_collection (Dict × Small)" in parsed_out["functions"]
+        assert "bench_collection (Dict × Large)" in parsed_out["functions"]
 
         # Verify return values contain expected data
         # Small collections should pass the "small" check and fail the "large" check
@@ -3048,10 +3048,10 @@ class TestEasyBenchMethodFiltering:
 
         # Verify some specific combinations
         combinations = [
-            "bench_operation (Small x Add x String)",
-            "bench_operation (Small x Multiply x Hex)",
-            "bench_operation (Large x Add x String)",
-            "bench_operation (Large x Multiply x Hex)",
+            "bench_operation (Small × Add × String)",
+            "bench_operation (Small × Multiply × Hex)",
+            "bench_operation (Large × Add × String)",
+            "bench_operation (Large × Multiply × Hex)",
         ]
 
         for combination in combinations:
@@ -3061,10 +3061,10 @@ class TestEasyBenchMethodFiltering:
         assert "return_values" in parsed_out
         return_values = parsed_out["return_values"]
 
-        assert return_values["bench_operation (Small x Add x String)"] == "str:11"
-        assert "hex:0x14" in return_values["bench_operation (Small x Multiply x Hex)"]
-        assert return_values["bench_operation (Large x Add x String)"] == "str:101"
-        assert "hex:0xc8" in return_values["bench_operation (Large x Multiply x Hex)"]
+        assert return_values["bench_operation (Small × Add × String)"] == "str:11"
+        assert "hex:0x14" in return_values["bench_operation (Small × Multiply × Hex)"]
+        assert return_values["bench_operation (Large × Add × String)"] == "str:101"
+        assert "hex:0xc8" in return_values["bench_operation (Large × Multiply × Hex)"]
 
 
 class TestTimeOverrideScenarios:
