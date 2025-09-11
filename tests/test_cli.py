@@ -932,7 +932,7 @@ class TestCliArguments:
 
         # Verify run_benchmarks was called with memory=True
         cli_setup["run_benchmarks"].assert_called_once()
-        args, kwargs = cli_setup["run_benchmarks"].call_args
+        _, kwargs = cli_setup["run_benchmarks"].call_args
         assert kwargs["config"].memory
 
     def test_memory_unit_parameter(self, cli_setup: dict[str, MagicMock]) -> None:
@@ -974,7 +974,7 @@ class TestCliArguments:
 
         # Verify run_benchmarks was called with memory=MB
         cli_setup["run_benchmarks"].assert_called_once()
-        args, kwargs = cli_setup["run_benchmarks"].call_args
+        _, kwargs = cli_setup["run_benchmarks"].call_args
         assert kwargs["config"].memory == "MB"
 
     def test_memory_unit_parameter2(self, cli_setup: dict[str, MagicMock]) -> None:
@@ -1016,7 +1016,7 @@ class TestCliArguments:
 
         # Verify run_benchmarks was called with memory=MB
         cli_setup["run_benchmarks"].assert_called_once()
-        args, kwargs = cli_setup["run_benchmarks"].call_args
+        _, kwargs = cli_setup["run_benchmarks"].call_args
         assert kwargs["config"].memory == "B"
 
     def test_sort_by_options(self, cli_setup: dict[str, MagicMock]) -> None:
@@ -1064,7 +1064,7 @@ class TestCliArguments:
 
             # Verify run_benchmarks was called with the correct sort_by
             cli_setup["run_benchmarks"].assert_called_once()
-            args, kwargs = cli_setup["run_benchmarks"].call_args
+            _, kwargs = cli_setup["run_benchmarks"].call_args
             assert kwargs["config"].sort_by == sort_option
 
     def test_trials_parameter(self, cli_setup: dict[str, MagicMock]) -> None:
@@ -1106,7 +1106,7 @@ class TestCliArguments:
 
         # Verify run_benchmarks was called with the correct trials
         cli_setup["run_benchmarks"].assert_called_once()
-        args, kwargs = cli_setup["run_benchmarks"].call_args
+        _, kwargs = cli_setup["run_benchmarks"].call_args
         assert kwargs["config"].trials == DEFAULT_TEST_VALUE
 
     def test_loops_per_trial_parameter(self, cli_setup: dict[str, MagicMock]) -> None:
@@ -1148,7 +1148,7 @@ class TestCliArguments:
 
         # Verify run_benchmarks was called with the correct loops_per_trial
         cli_setup["run_benchmarks"].assert_called_once()
-        args, kwargs = cli_setup["run_benchmarks"].call_args
+        _, kwargs = cli_setup["run_benchmarks"].call_args
         assert kwargs["config"].loops_per_trial == mock_args.loops_per_trial
 
     def test_warmups_parameter(self, cli_setup: dict[str, MagicMock]) -> None:
@@ -1190,7 +1190,7 @@ class TestCliArguments:
 
         # Verify run_benchmarks was called with the correct warmups
         cli_setup["run_benchmarks"].assert_called_once()
-        args, kwargs = cli_setup["run_benchmarks"].call_args
+        _, kwargs = cli_setup["run_benchmarks"].call_args
         assert kwargs["config"].warmups == DEFAULT_TEST_VALUE
 
     def test_no_progress_parameter(self, cli_setup: dict[str, MagicMock]) -> None:
@@ -1232,7 +1232,7 @@ class TestCliArguments:
 
         # Verify run_benchmarks was called with progress=False
         cli_setup["run_benchmarks"].assert_called_once()
-        args, kwargs = cli_setup["run_benchmarks"].call_args
+        _, kwargs = cli_setup["run_benchmarks"].call_args
         assert kwargs["config"].progress is False
 
     def test_include_exclude_options(self, cli_setup: dict[str, MagicMock]) -> None:
@@ -1285,7 +1285,7 @@ class TestCliArguments:
 
             # Verify run_benchmarks was called with the correct include/exclude patterns
             cli_setup["run_benchmarks"].assert_called_once()
-            args, kwargs = cli_setup["run_benchmarks"].call_args
+            _, kwargs = cli_setup["run_benchmarks"].call_args
             assert kwargs["config"].include == case["include"]
             assert kwargs["config"].exclude == case["exclude"]
 
@@ -1372,7 +1372,7 @@ class TestCliArguments:
 
         # Verify run_benchmarks was called with the correct clip_outliers value
         cli_setup["run_benchmarks"].assert_called_once()
-        args, kwargs = cli_setup["run_benchmarks"].call_args
+        _, kwargs = cli_setup["run_benchmarks"].call_args
         assert kwargs["config"].clip_outliers == clip_value
 
 

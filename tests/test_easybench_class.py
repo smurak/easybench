@@ -3247,13 +3247,13 @@ class TestEasyBenchClipOutliers:
 
         with pytest.raises(
             ValueError,
-            match="clip_outliers must be between 0.0 and 1.0",
+            match=r"clip_outliers must be between 0.0 and 1.0",
         ):
             PartialBenchConfig(clip_outliers=-0.1)
 
         with pytest.raises(
             ValueError,
-            match="clip_outliers must be between 0.0 and 1.0",
+            match=r"clip_outliers must be between 0.0 and 1.0",
         ):
             PartialBenchConfig(clip_outliers=1.0)
 
