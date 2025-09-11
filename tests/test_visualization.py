@@ -291,12 +291,12 @@ class TestBoxPlotFormatter:
         assert mock_axes.boxplot.call_count == EXPECTED_CALL_COUNT
 
         # First call should have used orientation
-        args, kwargs = mock_axes.boxplot.call_args_list[0]
+        _, kwargs = mock_axes.boxplot.call_args_list[0]
         assert "orientation" in kwargs
         assert kwargs["orientation"] == "horizontal"
 
         # Second call should have used vert
-        args, kwargs = mock_axes.boxplot.call_args_list[1]
+        _, kwargs = mock_axes.boxplot.call_args_list[1]
         assert "orientation" not in kwargs
         assert "vert" in kwargs
         assert kwargs["vert"] is False  # horizontal means vert=False
@@ -330,12 +330,12 @@ class TestBoxPlotFormatter:
         assert mock_axes.boxplot.call_count == EXPECTED_CALL_COUNT
 
         # First call should have used orientation
-        args, kwargs = mock_axes.boxplot.call_args_list[0]
+        _, kwargs = mock_axes.boxplot.call_args_list[0]
         assert "orientation" in kwargs
         assert kwargs["orientation"] == "vertical"
 
         # Second call should have used vert
-        args, kwargs = mock_axes.boxplot.call_args_list[1]
+        _, kwargs = mock_axes.boxplot.call_args_list[1]
         assert "orientation" not in kwargs
         assert "vert" in kwargs
         assert kwargs["vert"] is True  # vertical means vert=True
@@ -406,7 +406,7 @@ class TestBoxPlotFormatter:
 
             # Verify subplots were created (2 plots for time and memory)
             mock_subplots.assert_called_once()
-            args, kwargs = mock_subplots.call_args
+            args, _ = mock_subplots.call_args
             assert args == (2, 1)  # 2 rows, 1 column
 
             # Verify boxplot was called for both time and memory plots
@@ -1328,7 +1328,7 @@ class TestViolinPlotFormatter:
         assert mock_axes.violinplot.call_count == EXPECTED_CALL_COUNT
 
         # Second call should have used vert
-        args, kwargs = mock_axes.violinplot.call_args_list[1]
+        _, kwargs = mock_axes.violinplot.call_args_list[1]
         assert "vert" in kwargs
         assert kwargs["vert"] is False  # horizontal means vert=False
 
@@ -1365,7 +1365,7 @@ class TestViolinPlotFormatter:
         assert mock_axes.violinplot.call_count == EXPECTED_CALL_COUNT
 
         # Second call should have used vert
-        args, kwargs = mock_axes.violinplot.call_args_list[1]
+        _, kwargs = mock_axes.violinplot.call_args_list[1]
         assert "vert" in kwargs
         assert kwargs["vert"] is True  # vertical means vert=True
 
@@ -1435,7 +1435,7 @@ class TestViolinPlotFormatter:
 
             # Verify subplots were created (2 plots for time and memory)
             mock_subplots.assert_called_once()
-            args, kwargs = mock_subplots.call_args
+            args, _ = mock_subplots.call_args
             assert args == (2, 1)  # 2 rows, 1 column
 
             # Verify violinplot was called for both time and memory plots
@@ -1872,7 +1872,7 @@ class TestHistPlotFormatter:
 
             # Verify subplots were created (2 plots for time and memory)
             mock_subplots.assert_called_once()
-            args, kwargs = mock_subplots.call_args
+            args, _ = mock_subplots.call_args
             assert args == (2, 1)  # 2 rows, 1 column
 
             assert fig is not None

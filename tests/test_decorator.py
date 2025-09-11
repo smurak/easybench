@@ -1173,10 +1173,10 @@ class TestBenchParamsDecorator:
         parsed_out = parse_benchmark_output(captured.out)
 
         # Verify all combinations were created
-        assert "operation (Small x Append)" in parsed_out["functions"]
-        assert "operation (Small x Pop)" in parsed_out["functions"]
-        assert "operation (Large x Append)" in parsed_out["functions"]
-        assert "operation (Large x Pop)" in parsed_out["functions"]
+        assert "operation (Small × Append)" in parsed_out["functions"]
+        assert "operation (Small × Pop)" in parsed_out["functions"]
+        assert "operation (Large × Append)" in parsed_out["functions"]
+        assert "operation (Large × Pop)" in parsed_out["functions"]
 
         # Ensure we have exactly 4 combinations (2 * 2)
         assert len(parsed_out["functions"]) == 2 * 2
@@ -1220,10 +1220,10 @@ class TestBenchParamsDecorator:
         assert len(parsed_out["functions"]) == 2 * 2 * 2
 
         # Check specific combinations
-        assert "process_number (Small x Add x String)" in parsed_out["functions"]
-        assert "process_number (Small x Add x Hex)" in parsed_out["functions"]
-        assert "process_number (Small x Multiply x String)" in parsed_out["functions"]
-        assert "process_number (Large x Add x String)" in parsed_out["functions"]
+        assert "process_number (Small × Add × String)" in parsed_out["functions"]
+        assert "process_number (Small × Add × Hex)" in parsed_out["functions"]
+        assert "process_number (Small × Multiply × String)" in parsed_out["functions"]
+        assert "process_number (Large × Add × String)" in parsed_out["functions"]
 
         # Check that return values are correct
         assert "return_values" in parsed_out
@@ -1231,13 +1231,13 @@ class TestBenchParamsDecorator:
 
         # Check specific values
         # 5 + 1 as string
-        assert return_values["process_number (Small x Add x String)"] == "6"
+        assert return_values["process_number (Small × Add × String)"] == "6"
         # 5 + 1 as hex
-        assert "0x6" in return_values["process_number (Small x Add x Hex)"]
+        assert "0x6" in return_values["process_number (Small × Add × Hex)"]
         # 5 * 2 as string
-        assert return_values["process_number (Small x Multiply x String)"] == "10"
+        assert return_values["process_number (Small × Multiply × String)"] == "10"
         # 20 + 1 as string
-        assert return_values["process_number (Large x Add x String)"] == "21"
+        assert return_values["process_number (Large × Add × String)"] == "21"
 
 
 class TestBenchDecoratorRun:

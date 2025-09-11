@@ -145,10 +145,10 @@ Benchmark Results (5 trials):
 
 Function                            Avg Time (s)  Min Time (s)  Max Time (s)
 ----------------------------------------------------------------------------
-bench_operation (Small x Append)        0.000260      0.000004      0.001239
-bench_operation (Small x Pop)           0.000005      0.000004      0.000008
-bench_operation (Large x Append)        0.001642      0.000277      0.006804
-bench_operation (Large x Pop)           0.000204      0.000183      0.000247
+bench_operation (Small × Append)        0.000260      0.000004      0.001239
+bench_operation (Small × Pop)           0.000005      0.000004      0.000008
+bench_operation (Large × Append)        0.001642      0.000277      0.006804
+bench_operation (Large × Pop)           0.000204      0.000183      0.000247
 ```
 
 ### フィクスチャ（`fixture`デコレータ）
