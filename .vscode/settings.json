@@ -1,0 +1,22 @@
+{
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    {
+      "text": "Follow the Conventional Commits specification (https://www.conventionalcommits.org/)."
+    },
+    {
+      "text": "Use one of these types: feat, fix, docs, style, refactor, perf, test, chore."
+    },
+    {
+      "text": "Format: '<type>(<optional scope>): <description>'."
+    },
+    {
+      "text": "The description must be in lowercase and not end with a period."
+    },
+    {
+      "text": "Keep the subject line under 72 characters."
+    },
+    {
+      "text": "Use the imperative mood (e.g. 'add feature' not 'added feature')."
+    }
+  ]
+}
